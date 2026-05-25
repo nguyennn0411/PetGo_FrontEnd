@@ -102,7 +102,10 @@ const App = () => {
           {/* Navigation */}
           <nav className="hidden lg:flex items-center gap-8 text-sm font-black uppercase tracking-widest text-gray-500">
             <a href="/" className="text-orange-600">Home</a>
+            <a href="/shop" className="hover:text-orange-600 transition-colors">Store</a>
+            <a href="/my-orders" className="hover:text-orange-600 transition-colors">My orders</a>
             <a href="/search" className="hover:text-orange-600 transition-colors">Services</a>
+
             <a href="/my-bookings" className="hover:text-orange-600 transition-colors">My Bookings</a>
             <a href="/favorites" className="hover:text-orange-600 transition-colors">favorites</a>
             <a href="/membership" className="hover:text-orange-600 transition-colors flex items-center gap-1.5">
@@ -426,7 +429,7 @@ const App = () => {
               Dịch vụ chăm sóc thú cưng hàng đầu. Chúng tôi mang đến sự an tâm cho chủ nhân và hạnh phúc cho các bé.
             </p>
           </div>
-          <FooterGroup title="Quick Links" links={['Home', 'Services', 'Membership', 'Help Center']} />
+          <FooterGroup title="Quick Links" links={['Home', 'Services', 'Membership', 'Help Center ', 'Store', 'My orders']} />
           <FooterGroup title="Legal" links={['Terms', 'Privacy', 'Cookie Policy']} />
           <FooterGroup title="Contact" links={['Support: 1900 1234', 'petgo.help@gmail.com', 'Hanoi, Vietnam']} />
         </div>

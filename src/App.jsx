@@ -23,9 +23,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import OtpVerificationPage from './pages/OtpVerificationPage';
 import ProfilePage from './pages/ProfilePage';
-import PartnerShopRegistrationPage from './pages/PartnerShopRegistrationPage';
 import AddPetPage from './pages/AddPetPage';
-import NotificationsPage from './pages/NotificationsPage';
 
 import MembershipPage from './pages/MembershipPage';
 import MembershipPaymentPage from './pages/MembershipPaymentPage';
@@ -40,20 +38,16 @@ import AdminContent from './pages/admin/AdminContent';
 import AdminNotifications from './pages/admin/AdminNotifications';
 import AdminLogs from './pages/admin/AdminLogs';
 import AdminReports from './pages/admin/AdminReports';
-import AdminPartnerServiceRequests from './pages/admin/AdminPartnerServiceRequests';
 import HelpCenterPage from './pages/HelpCenterPage';
-import PartnerDashboardPage from './pages/partner/PartnerDashboardPage';
-import PartnerProfilePage from './pages/partner/PartnerProfilePage';
-import PartnerServicesPage from './pages/partner/PartnerServicesPage';
-import PartnerSchedulePage from './pages/partner/PartnerSchedulePage';
-import PartnerBookingsPage from './pages/partner/PartnerBookingsPage';
-import PartnerBookingDetailPage from './pages/partner/PartnerBookingDetailPage';
-import PartnerRevenuePage from './pages/partner/PartnerRevenuePage';
-import PartnerNotificationsPage from './pages/partner/PartnerNotificationsPage';
-import PartnerPlaceholderPage from './pages/partner/PartnerPlaceholderPage';
-import PartnerPromotionsPage from './pages/partner/PartnerPromotionsPage';
-import PartnerCustomersPage from './pages/partner/PartnerCustomersPage';
-import PartnerReviewsPage from './pages/partner/PartnerReviewsPage';
+import ShopHomePage from './pages/shop/ShopHomePage';
+import ShopCatalogPage from './pages/shop/ShopCatalogPage';
+import ShopProductDetailPage from './pages/shop/ShopProductDetailPage';
+import CartPage from './pages/shop/CartPage';
+import CheckoutPage from './pages/shop/CheckoutPage';
+import ShopOrdersPage from './pages/shop/ShopOrdersPage';
+import AdminProducts from './pages/admin/AdminProducts';
+import AdminShopOrders from './pages/admin/AdminShopOrders';
+
 
 export default function App() {
   return (
@@ -83,12 +77,18 @@ export default function App() {
         <Route path='/register' element={<RegisterPage />} />
         <Route path='/verify-otp' element={<OtpVerificationPage />} />
         <Route path='/profile' element={<ProfilePage />} />
-        <Route path='/partner-registration/shop' element={<PartnerShopRegistrationPage />} />
         <Route path='/add-pet' element={<AddPetPage />} />
-        <Route path='/notifications' element={<NotificationsPage />} />
 
         <Route path='/membership' element={<MembershipPage />} />
         <Route path='/membership-payment' element={<MembershipPaymentPage />} />
+
+        <Route path='/shop' element={<ShopHomePage />} />
+        <Route path='/shop/category' element={<ShopCatalogPage />} />
+        <Route path='/shop/product/:slug' element={<ShopProductDetailPage />} />
+        <Route path='/cart' element={<CartPage />} />
+        <Route path='/checkout' element={<CheckoutPage />} />
+        <Route path='/my-orders' element={<ShopOrdersPage />} />
+
 
         {/* Admin Routes */}
         <Route path='/admin/dashboard' element={<AdminDashboard />} />
@@ -97,27 +97,13 @@ export default function App() {
         <Route path='/admin/bookings' element={<AdminBookings />} />
         <Route path='/admin/vouchers' element={<AdminVouchers />} />
         <Route path='/admin/services' element={<AdminServices />} />
-        <Route path='/admin/partner-service-requests' element={<AdminPartnerServiceRequests />} />
         <Route path='/admin/reviews' element={<AdminReviews />} />
         <Route path='/admin/content' element={<AdminContent />} />
         <Route path='/admin/notifications' element={<AdminNotifications />} />
         <Route path='/admin/logs' element={<AdminLogs />} />
         <Route path='/admin/reports' element={<AdminReports />} />
-
-        {/* Partner Routes */}
-        <Route path='/partner' element={<Navigate to='/partner/dashboard' replace />} />
-        <Route path='/partner/dashboard' element={<PartnerDashboardPage />} />
-        <Route path='/partner/profile' element={<PartnerProfilePage />} />
-        <Route path='/partner/services' element={<PartnerServicesPage />} />
-        <Route path='/partner/schedule' element={<PartnerSchedulePage />} />
-        <Route path='/partner/bookings' element={<PartnerBookingsPage />} />
-        <Route path='/partner/bookings/:id' element={<PartnerBookingDetailPage />} />
-        <Route path='/partner/revenue' element={<PartnerRevenuePage />} />
-        <Route path='/partner/promotions' element={<PartnerPromotionsPage />} />
-        <Route path='/partner/customers' element={<PartnerCustomersPage />} />
-        <Route path='/partner/reviews' element={<PartnerReviewsPage />} />
-        <Route path='/partner/notifications' element={<PartnerNotificationsPage />} />
-        <Route path='/partner/support' element={<PartnerPlaceholderPage type='support' />} />
+        <Route path='/admin/products' element={<AdminProducts />} />
+        <Route path='/admin/shop-orders' element={<AdminShopOrders />} />
 
         <Route path='/help-center' element={<HelpCenterPage />} />
 
