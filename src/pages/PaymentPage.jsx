@@ -15,7 +15,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { getPaymentCheckoutContext, checkoutPayment } from '../api/payments';
+import { getPaymentCheckoutContext, checkoutPayment, createPayOsPayment } from '../api/payments';
 
 const formatCurrency = (value, currency = 'VND') => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -26,7 +26,8 @@ const formatCurrency = (value, currency = 'VND') => new Intl.NumberFormat('vi-VN
 const getErrorMessage = (error, fallback) => error?.response?.data?.message || fallback;
 
 const PAYMENT_OPTIONS = [
-  { id: 'COD', name: 'Thanh toán tại spa (COD)', icon: <Banknote className="w-5 h-5" />, desc: 'Trả tiền khi sử dụng dịch vụ tại cửa hàng' },
+  { id: 'PAYOS', name: 'Thanh toán PayOS (VietQR)', icon: <ShieldCheck className="w-5 h-5 text-orange-500" />, desc: 'Quét mã VietQR chuyển khoản nhanh 24/7' },
+  { id: 'COD', name: 'Thanh toán tại spa (COD)', icon: <Banknote className="w-5 h-5 text-gray-500" />, desc: 'Trả tiền khi sử dụng dịch vụ tại cửa hàng' },
   { id: 'MOMO', name: 'Ví MoMo', icon: <Wallet className="w-5 h-5 text-pink-500" />, desc: 'Thanh toán nhanh qua ứng dụng MoMo' },
   { id: 'VNPAY', name: 'VNPay', icon: <div className="w-5 h-5 bg-blue-600 rounded flex items-center justify-center text-[8px] text-white font-bold italic">VN</div>, desc: 'Thanh toán QR / Internet Banking' },
   { id: 'CARD', name: 'Thẻ tín dụng / Ghi nợ', icon: <CreditCard className="w-5 h-5 text-gray-700" />, desc: 'Visa, Mastercard, JCB' },
@@ -104,6 +105,22 @@ const PaymentPage = () => {
     setSubmitting(true);
     setError('');
     try {
+      if (paymentMethod === 'PAYOS') {
+        const payload = {
+          bookingId,
+          paymentMethod: 'PAYOS',
+          returnUrl: `${window.location.origin}/payment/success`,
+          cancelUrl: `${window.location.origin}/payment/cancel`,
+        };
+        const data = await createPayOsPayment(payload);
+        if (data.checkoutUrl) {
+          window.location.href = data.checkoutUrl;
+          return;
+        } else {
+          throw new Error('Không tạo được liên kết thanh toán PayOS.');
+        }
+      }
+
       const payment = await checkoutPayment({
         bookingId,
         paymentMethod,

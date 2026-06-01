@@ -21,8 +21,10 @@ import {
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import { checkoutMembership, getMembershipCheckoutContext } from '../api/memberships';
+import { createPayOsPayment } from '../api/payments';
 
 const paymentOptions = [
+  { id: 'PAYOS', name: 'Thanh toán PayOS (VietQR)', icon: <ShieldCheck className="w-5 h-5 text-orange-500" />, desc: 'Quét mã VietQR chuyển khoản nhanh 24/7' },
   { id: 'MOMO', name: 'Ví MoMo', icon: <Wallet className="w-5 h-5" />, desc: 'Thanh toán nhanh qua App MoMo' },
   { id: 'VNPAY', name: 'VNPay', icon: <div className="w-5 h-5 bg-blue-600 rounded flex items-center justify-center text-[8px] text-white font-bold italic">VN</div>, desc: 'Cổng thanh toán QR Code ngân hàng' },
   { id: 'CARD', name: 'Credit / Debit Card', icon: <CreditCard className="w-5 h-5" />, desc: 'Visa, Mastercard, JCB' },
@@ -54,7 +56,7 @@ const MembershipPaymentPage = () => {
   const { account, loadingAccount } = useContext(AuthContext);
 
   const planSlug = searchParams.get('plan') || '';
-  const [paymentMethod, setPaymentMethod] = useState('CARD');
+  const [paymentMethod, setPaymentMethod] = useState('PAYOS');
   const [promoInput, setPromoInput] = useState('');
   const [appliedPromoCode, setAppliedPromoCode] = useState('');
   const [activeFaq, setActiveFaq] = useState(null);
@@ -114,6 +116,23 @@ const MembershipPaymentPage = () => {
         autoRenew,
       });
       const result = response?.result || response;
+
+      if (paymentMethod === 'PAYOS') {
+        const payOsPayload = {
+          subscriptionId: result.subscriptionId,
+          paymentMethod: 'PAYOS',
+          returnUrl: `${window.location.origin}/payment/success`,
+          cancelUrl: `${window.location.origin}/payment/cancel`,
+        };
+        const payOsData = await createPayOsPayment(payOsPayload);
+        if (payOsData.checkoutUrl) {
+          window.location.href = payOsData.checkoutUrl;
+          return;
+        } else {
+          throw new Error('Không tạo được liên kết thanh toán PayOS.');
+        }
+      }
+
       navigate(`/membership?checkout=success&subscriptionId=${result.subscriptionId}`);
     } catch (checkoutError) {
       setError(checkoutError?.response?.data?.message || 'Thanh toán membership thất bại.');

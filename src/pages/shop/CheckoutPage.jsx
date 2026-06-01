@@ -31,10 +31,17 @@ export default function CheckoutPage() {
     try {
       setSubmitting(true);
       const order = await shopApi.checkout({ userId, ...form });
+      if (form.paymentMethod === 'PAYOS') {
+        if (order.checkoutUrl) {
+          window.location.href = order.checkoutUrl;
+          return;
+        }
+        throw new Error('Không nhận được liên kết thanh toán PayOS.');
+      }
       alert(`Đặt hàng thành công: ${order.orderCode}`);
       navigate('/my-orders');
     } catch (err) {
-      alert(err.response?.data?.message || 'Đặt hàng thất bại.');
+      alert(err.response?.data?.message || err.message || 'Đặt hàng thất bại.');
     } finally {
       setSubmitting(false);
     }
@@ -62,8 +69,8 @@ export default function CheckoutPage() {
             </div>
             <div>
               <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-3">Phương thức thanh toán</label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {['COD', 'BANK_TRANSFER', 'MOMO', 'VNPAY'].map((m) => <button type="button" key={m} onClick={() => update('paymentMethod', m)} className={`p-4 rounded-2xl border font-black text-xs ${form.paymentMethod === m ? 'bg-orange-500 text-white border-orange-500' : 'bg-white border-gray-200 text-gray-700'}`}>{m}</button>)}
+              <div className="grid grid-cols-2 gap-3">
+                {['COD', 'PAYOS'].map((m) => <button type="button" key={m} onClick={() => update('paymentMethod', m)} className={`p-4 rounded-2xl border font-black text-xs ${form.paymentMethod === m ? 'bg-orange-500 text-white border-orange-500' : 'bg-white border-gray-200 text-gray-700'}`}>{m}</button>)}
               </div>
             </div>
           </section>
