@@ -1,6 +1,32 @@
 import React, { createContext, useEffect, useMemo, useState } from 'react';
 import { getMyAccount } from '../api/auth';
 
+const PARTNER_ROLE_CODES = ['SHOP', 'PARTNER', 'PROVIDER'];
+
+const normalizeRoleCode = (role) => {
+  if (!role) return '';
+  if (typeof role === 'string') return role.toUpperCase();
+  return String(role.code?.code || role.code || role.roleCode || role.name || role.authority || role.role || '').toUpperCase();
+};
+
+const hasPartnerRole = (account) => {
+  const roles = account?.roles || account?.user?.roles || account?.authorities || [];
+  const roleList = Array.isArray(roles) ? roles : [roles];
+  return roleList.some((role) => PARTNER_ROLE_CODES.includes(normalizeRoleCode(role)));
+};
+
+const syncOwnerUserId = (account) => {
+  if (hasPartnerRole(account)) {
+    localStorage.removeItem('petgo_owner_user_id');
+    return;
+  }
+
+  const ownerId = account?.ownerUserId || account?.userId || account?.id;
+  if (ownerId) {
+    localStorage.setItem('petgo_owner_user_id', String(ownerId));
+  }
+};
+
 export const AuthContext = createContext();
 
 const clearAuthStorage = () => {
@@ -8,6 +34,7 @@ const clearAuthStorage = () => {
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('account');
   localStorage.removeItem('user');
+  localStorage.removeItem('petgo_owner_user_id');
 };
 
 export function AuthProvider({ children }) {
@@ -38,9 +65,7 @@ export function AuthProvider({ children }) {
         const me = await getMyAccount();
         setAccount(me);
         localStorage.setItem('account', JSON.stringify(me));
-        if (me?.ownerUserId || me?.userId || me?.id) {
-          localStorage.setItem('petgo_owner_user_id', String(me.ownerUserId || me.userId || me.id));
-        }
+        syncOwnerUserId(me);
       } catch (error) {
         clearAuthStorage();
         setAccount(null);
@@ -63,10 +88,7 @@ export function AuthProvider({ children }) {
     if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
     if (userAccount) {
       localStorage.setItem('account', JSON.stringify(userAccount));
-      const ownerId = userAccount.ownerUserId || userAccount.userId || userAccount.id;
-      if (ownerId) {
-        localStorage.setItem('petgo_owner_user_id', String(ownerId));
-      }
+      syncOwnerUserId(userAccount);
       setAccount(userAccount);
       nextAccount = userAccount;
     }
@@ -79,10 +101,7 @@ export function AuthProvider({ children }) {
     setAccount((prev) => {
       const next = { ...(prev || {}), ...(updated || {}) };
       localStorage.setItem('account', JSON.stringify(next));
-      const ownerId = next.ownerUserId || next.userId || next.id;
-      if (ownerId) {
-        localStorage.setItem('petgo_owner_user_id', String(ownerId));
-      }
+      syncOwnerUserId(next);
       return next;
     });
   };

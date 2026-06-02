@@ -1,7 +1,6 @@
-import React, { useContext, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Search,
-  MapPin,
   Star,
   Heart,
   Calendar,
@@ -9,13 +8,9 @@ import {
   PawPrint,
   ChevronRight,
   ShieldCheck,
-  Clock,
   BadgeCheck,
   Zap,
   Tag,
-  MessageCircle,
-  Menu,
-  X,
   Navigation,
   Scissors,
   Stethoscope,
@@ -25,41 +20,64 @@ import {
   Check,
   ArrowRight,
   CheckCircle,
-  LogOut,
-  Smile,
   Quote,
-  Bell
 } from 'lucide-react';
-import { AuthContext } from '../context/AuthContext';
-import { getRoleLandingPath, hasAdminRole, hasPartnerRole } from '../utils/partnerAccess';
+import { getProviderFilterOptions } from '../api/providers';
 
 const App = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const { account, loadingAccount, logout } = useContext(AuthContext);
-  const canViewDashboard = account && (hasAdminRole(account) || hasPartnerRole(account));
-  const dashboardPath = canViewDashboard ? getRoleLandingPath(account, '/profile') : '/profile';
+  const [serviceCategories, setServiceCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
-  const handleProfileMenuNavigate = (path) => {
-    setIsProfileMenuOpen(false);
-    window.location.href = path;
-  };
+  useEffect(() => {
+    const loadCategories = async () => {
+      setLoadingCategories(true);
+      try {
+        const data = await getProviderFilterOptions();
+        setServiceCategories(Array.isArray(data?.serviceCategories) ? data.serviceCategories : []);
+      } catch {
+        setServiceCategories([]);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
 
-  const handleLogout = () => {
-    setIsProfileMenuOpen(false);
-    logout?.();
-    window.location.href = '/login';
-  };
+    loadCategories();
+  }, []);
 
-  // Danh mục dịch vụ
-  const categories = [
-    { name: 'Pet Spa', icon: <PawPrint className="w-6 h-6" />, slug: 'spa', color: 'bg-orange-100 text-orange-600' },
-    { name: 'Grooming', icon: <Scissors className="w-6 h-6" />, slug: 'grooming', color: 'bg-blue-100 text-blue-600' },
-    { name: 'Veterinary', icon: <Stethoscope className="w-6 h-6" />, slug: 'clinic', color: 'bg-red-100 text-red-600' },
-    { name: 'Pet Boarding', icon: <Hotel className="w-6 h-6" />, slug: 'boarding', color: 'bg-green-100 text-green-600' },
-    { name: 'Pet Training', icon: <Award className="w-6 h-6" />, slug: 'training', color: 'bg-yellow-100 text-yellow-600' },
-    { name: 'Pet Walking', icon: <Navigation className="w-6 h-6" />, slug: 'walking', color: 'bg-purple-100 text-purple-600' },
+  const flattenCategories = (categories = [], parentName = '') => categories.flatMap((category) => {
+    const current = {
+      ...category,
+      displayName: parentName ? `${parentName} / ${category?.name || 'Dịch vụ'}` : category?.name,
+      isChild: Boolean(parentName),
+    };
+    return [current, ...flattenCategories(category?.children || [], category?.name || parentName)];
+  });
+
+  const visibleCategories = useMemo(() => flattenCategories(serviceCategories).slice(0, 12), [serviceCategories]);
+  const heroCategories = visibleCategories.slice(0, 5);
+
+  const introSteps = [
+    { title: 'Tìm dịch vụ phù hợp', desc: 'Lọc spa, thú y, khách sạn thú cưng hoặc dịch vụ theo nhu cầu của bé.', icon: <Search className="w-5 h-5" /> },
+    { title: 'So sánh đối tác', desc: 'Xem đánh giá, khoảng cách, giá tham khảo và thông tin cửa hàng trước khi chọn.', icon: <BadgeCheck className="w-5 h-5" /> },
+    { title: 'Đặt lịch & theo dõi', desc: 'Quản lý lịch hẹn, thanh toán, hóa đơn và nhắc lịch trong cùng một tài khoản.', icon: <Calendar className="w-5 h-5" /> },
   ];
+
+  const audienceCards = [
+    { title: 'Dành cho chủ nuôi', desc: 'Một nơi để tìm dịch vụ đáng tin cậy, lưu địa điểm yêu thích và chăm sóc thú cưng đều đặn hơn.', cta: 'Khám phá dịch vụ', href: '/search', icon: <User className="w-6 h-6" /> },
+    { title: 'Dành cho đối tác', desc: 'Cửa hàng có thể giới thiệu hồ sơ, quản lý dịch vụ, lịch làm việc và booking từ khách hàng.', cta: 'Đăng ký đối tác', href: '/partner-registration/shop', icon: <PawPrint className="w-6 h-6" /> },
+  ];
+
+  const getCategoryIcon = (categoryName = '') => {
+    const normalizedName = categoryName.toLowerCase();
+    if (normalizedName.includes('groom')) return <Scissors className="w-5 h-5" />;
+    if (normalizedName.includes('clinic') || normalizedName.includes('vet')) return <Stethoscope className="w-5 h-5" />;
+    if (normalizedName.includes('board') || normalizedName.includes('hotel')) return <Hotel className="w-5 h-5" />;
+    if (normalizedName.includes('train')) return <Award className="w-5 h-5" />;
+    if (normalizedName.includes('walk')) return <Navigation className="w-5 h-5" />;
+    return <PawPrint className="w-5 h-5" />;
+  };
+
+  const getCategorySearchValue = (category) => category?.id ?? category?.slug ?? category?.name;
 
   // Nhà cung cấp gần đây
   const nearbyProviders = [
@@ -76,197 +94,216 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-800">
-      {/* Header */}
-      <header className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex justify-between items-center">
-          {/* Logo */}
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.location.href = '/'}>
-            <div className="bg-orange-500 p-1.5 rounded-lg shadow-lg">
-              <PawPrint className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-black text-gray-900 tracking-tighter">Pet<span className="text-orange-500">Go</span></span>
-          </div>
+      {/* Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-orange-50/80 via-white to-white pt-14 pb-14 sm:pt-20 sm:pb-20">
+        <div className="absolute -top-24 right-[-6rem] h-80 w-80 rounded-full bg-orange-200/40 blur-[120px]"></div>
+        <div className="max-w-7xl mx-auto px-4 relative z-10">
+          <div className="grid items-center gap-10 lg:grid-cols-[1.02fr_0.98fr]">
+            <div className="text-center lg:text-left">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-orange-100 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-orange-600 shadow-sm">
+                <ShieldCheck className="h-4 w-4" /> Đối tác được kiểm duyệt
+              </div>
+              <h1 className="mx-auto mb-5 max-w-3xl text-4xl font-black leading-tight tracking-tight text-gray-950 sm:text-5xl lg:mx-0 lg:text-6xl">
+                Đặt lịch chăm sóc thú cưng <span className="text-orange-500">dễ dàng</span>
+              </h1>
+              <p className="mx-auto mb-8 max-w-2xl text-base font-medium leading-8 text-gray-500 lg:mx-0 sm:text-lg">
+                Tìm dịch vụ phù hợp, xem nhà cung cấp uy tín và quản lý lịch hẹn của bé cưng trong một nơi.
+              </p>
 
-          {/* Quick Search */}
-          <div className="hidden lg:flex flex-1 max-w-sm mx-8">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Tìm spa, thú y..."
-                className="w-full pl-10 pr-4 py-2 bg-gray-100 border-none rounded-full text-sm outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
-              />
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <nav className="hidden lg:flex items-center gap-8 text-sm font-black uppercase tracking-widest text-gray-500">
-            <a href="/" className="text-orange-600">Home</a>
-            <a href="/shop" className="hover:text-orange-600 transition-colors">Store</a>
-            <a href="/my-orders" className="hover:text-orange-600 transition-colors">My orders</a>
-            <a href="/search" className="hover:text-orange-600 transition-colors">Services</a>
-
-            <a href="/my-bookings" className="hover:text-orange-600 transition-colors">My Bookings</a>
-            <a href="/favorites" className="hover:text-orange-600 transition-colors">favorites</a>
-            <a href="/membership" className="hover:text-orange-600 transition-colors flex items-center gap-1.5">
-              <Crown className="w-4 h-4 text-orange-500" /> Membership
-            </a>
-            {account && (
-              <a href="/notifications" className="hover:text-orange-600 transition-colors flex items-center gap-1.5">
-                <Bell className="w-4 h-4 text-orange-500" /> Notifications
-              </a>
-            )}
-            {loadingAccount ? (
-              <div className="h-9 w-24 rounded-full bg-gray-100 animate-pulse" aria-label="Đang kiểm tra đăng nhập" />
-            ) : account ? (
-              <div className="relative">
+              <div className="mx-auto mb-5 flex max-w-2xl flex-col gap-3 rounded-3xl border border-orange-100 bg-white p-3 shadow-xl shadow-orange-100/50 lg:mx-0 sm:flex-row">
+                <div className="flex min-h-14 flex-1 items-center gap-3 rounded-2xl bg-gray-50 px-4">
+                  <Search className="text-orange-500 w-5 h-5" />
+                  <input type="text" placeholder="Tìm spa, thú y, khách sạn..." className="w-full bg-transparent text-sm font-bold outline-none" />
+                </div>
                 <button
-                  type="button"
-                  className="w-9 h-9 rounded-full bg-orange-100 border-2 border-white flex items-center justify-center shadow-sm cursor-pointer hover:bg-orange-200 transition-colors"
-                  onClick={() => setIsProfileMenuOpen((open) => !open)}
-                  aria-label="Mở menu tài khoản"
+                  onClick={() => window.location.href = '/search'}
+                  className="rounded-2xl bg-orange-500 px-8 py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-orange-600"
                 >
-                  <User className="w-5 h-5 text-orange-600" />
+                  Tìm kiếm
                 </button>
-                {isProfileMenuOpen && (
-                  <div className="absolute right-0 top-full mt-3 w-56 rounded-2xl bg-white border border-gray-100 shadow-2xl p-2 z-[60] normal-case tracking-normal text-left">
+              </div>
+
+              <div className="mb-8 flex flex-wrap justify-center gap-2 lg:justify-start">
+                {loadingCategories ? (
+                  [...Array(4)].map((_, index) => <span key={index} className="h-10 w-28 rounded-full bg-orange-100/70 animate-pulse" />)
+                ) : heroCategories.length ? (
+                  heroCategories.map((cat) => (
                     <button
                       type="button"
-                      onClick={() => handleProfileMenuNavigate('/profile')}
-                      className="w-full px-4 py-3 rounded-xl hover:bg-orange-50 transition-colors text-left"
+                      key={`hero-chip-${getCategorySearchValue(cat)}`}
+                      onClick={() => window.location.href = `/search?serviceCategoryIds=${getCategorySearchValue(cat)}`}
+                      className="inline-flex items-center gap-2 rounded-full border border-orange-100 bg-white px-4 py-2 text-xs font-black text-gray-700 shadow-sm transition-all hover:border-orange-300 hover:text-orange-600"
                     >
-                      <span className="block text-sm font-black text-gray-900">Profile</span>
-                      <span className="block text-[11px] font-semibold text-gray-400 mt-0.5">Thông tin cá nhân</span>
+                      {getCategoryIcon(cat?.name)}
+                      <span className="max-w-[150px] truncate">{cat?.name || 'Dịch vụ'}</span>
                     </button>
-                    {canViewDashboard && (
-                      <button
-                        type="button"
-                        onClick={() => handleProfileMenuNavigate(dashboardPath)}
-                        className="w-full px-4 py-3 rounded-xl hover:bg-orange-50 transition-colors text-left"
-                      >
-                        <span className="block text-sm font-black text-gray-900">Dashboard</span>
-                        <span className="block text-[11px] font-semibold text-gray-400 mt-0.5">Khu vực quản lý theo tài khoản</span>
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="mt-2 flex w-full items-center gap-3 rounded-xl border-t border-gray-100 px-4 py-3 text-left text-red-500 transition-colors hover:bg-red-50"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span className="text-sm font-black">Đăng xuất</span>
-                    </button>
-                  </div>
+                  ))
+                ) : (
+                  <span className="rounded-full bg-white px-4 py-2 text-xs font-bold text-gray-400">Danh mục sẽ hiển thị khi backend sẵn sàng</span>
                 )}
               </div>
-            ) : (
-              <a
-                href="/login"
-                className="inline-flex items-center justify-center rounded-full bg-orange-500 px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-orange-100 transition-all hover:bg-orange-600 hover:shadow-orange-200"
-              >
-                Đăng nhập
-              </a>
-            )}
-          </nav>
 
-          {!loadingAccount && !account && (
-            <a
-              href="/login"
-              className="lg:hidden ml-auto mr-2 inline-flex items-center justify-center rounded-full bg-orange-500 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-md shadow-orange-100 transition-all hover:bg-orange-600"
-            >
-              Đăng nhập
-            </a>
-          )}
-
-          <button className="lg:hidden p-2" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-            {isMenuOpen ? <X /> : <Menu />}
-          </button>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-20 sm:pt-48 sm:pb-32 overflow-hidden bg-gradient-to-b from-orange-50/50 to-white">
-        <div className="absolute top-20 left-10 w-64 h-64 bg-orange-200 rounded-full blur-[100px] opacity-20 -z-10"></div>
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <h1 className="text-4xl sm:text-7xl font-black text-gray-900 mb-6 leading-tight tracking-tighter">
-            Find the best <span className="text-orange-500">pet care</span> <br /> services near you
-          </h1>
-          <p className="text-gray-500 max-w-2xl mx-auto text-lg mb-10 font-medium">
-            Book trusted pet grooming, spa and veterinary services in seconds. <br className="hidden sm:block" />
-            Trusted by 50,000+ pet parents nationwide.
-          </p>
-
-          {/* Large Search Bar */}
-          <div className="max-w-3xl mx-auto flex flex-col sm:flex-row gap-4 p-3 bg-white rounded-[2.5rem] shadow-2xl border border-gray-50 mb-12">
-            <div className="flex-[1.5] flex items-center px-4 gap-3 border-r border-gray-100">
-              <Search className="text-orange-500 w-5 h-5" />
-              <input type="text" placeholder="Search pet services, spa or clinic" className="w-full bg-transparent outline-none font-bold text-sm" />
+              <div className="flex flex-wrap justify-center lg:justify-start gap-4">
+                <button
+                  onClick={() => window.location.href = '/search'}
+                  className="flex items-center gap-2 rounded-2xl bg-gray-950 px-8 py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-orange-500"
+                >
+                  Đặt dịch vụ <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => window.location.href = '/membership'}
+                  className="rounded-2xl border border-gray-200 bg-white px-8 py-4 text-xs font-black uppercase tracking-widest text-gray-900 transition-all hover:border-orange-300 hover:text-orange-600"
+                >
+                  Xem membership
+                </button>
+              </div>
+              <div className="mt-8 grid grid-cols-3 gap-3 max-w-lg mx-auto lg:mx-0">
+                <HeroStat value="50K+" label="pet parents" />
+                <HeroStat value="4.8/5" label="đánh giá" />
+                <HeroStat value="24/7" label="hỗ trợ" />
+              </div>
             </div>
-            <div className="flex-1 flex items-center px-4 gap-3">
-              <MapPin className="text-orange-500 w-5 h-5" />
-              <input type="text" placeholder="Hồ Chí Minh" className="w-full bg-transparent outline-none font-bold text-sm" />
+
+            <div className="relative">
+              <div className="absolute -left-4 top-8 hidden rounded-3xl bg-white p-4 shadow-xl shadow-orange-100 lg:block">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-green-50 text-green-600"><CheckCircle className="h-5 w-5" /></div>
+                  <div><p className="text-xs font-black text-gray-900">Booking confirmed</p><p className="text-[10px] font-bold text-gray-400">Grooming · 10:30 AM</p></div>
+                </div>
+              </div>
+              <div className="absolute right-4 bottom-8 hidden rounded-3xl bg-gray-950 p-5 text-white shadow-2xl lg:block">
+                <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">Next visit</p>
+                <p className="mt-1 text-sm font-black">Happy Tails Clinic</p>
+              </div>
+              <div className="overflow-hidden rounded-[2.25rem] border-8 border-white bg-orange-50 shadow-2xl shadow-orange-100">
+                <img
+                  src="https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&q=80&w=900"
+                  alt="Chủ nuôi vui vẻ cùng thú cưng"
+                  className="h-[320px] w-full object-cover sm:h-[460px]"
+                />
+              </div>
             </div>
-            <button
-              onClick={() => window.location.href = '/search'}
-              className="bg-gray-900 text-white px-10 py-4 rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-orange-500 transition-all"
-            >
-              Search
-            </button>
           </div>
+        </div>
+      </section>
 
-          <div className="flex flex-wrap justify-center gap-4">
-            <button
-              onClick={() => window.location.href = '/search'}
-              className="px-10 py-5 bg-orange-500 text-white font-black rounded-2xl shadow-xl shadow-orange-100 hover:scale-105 transition-all uppercase tracking-widest text-xs flex items-center gap-2"
-            >
-              Book a Service <ArrowRight className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => window.location.href = '/membership'}
-              className="px-10 py-5 bg-white text-gray-900 font-black rounded-2xl border-2 border-gray-100 hover:border-orange-500 hover:text-orange-600 transition-all uppercase tracking-widest text-xs"
-            >
-              Explore Membership
-            </button>
+      {/* Introduction */}
+      <section className="py-18 bg-white">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500 mb-3">PetGo là gì?</p>
+              <h2 className="text-3xl font-black tracking-tight text-gray-950 sm:text-5xl">
+                Nền tảng kết nối chủ nuôi với dịch vụ chăm sóc thú cưng đáng tin cậy.
+              </h2>
+              <p className="mt-5 text-base font-medium leading-8 text-gray-500">
+                PetGo giúp bạn tìm kiếm, so sánh, đặt lịch và quản lý các nhu cầu chăm sóc thú cưng hằng ngày — từ grooming, khám thú y đến khách sạn lưu trú.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {introSteps.map((step, index) => (
+                <div key={step.title} className="rounded-[2rem] border border-orange-100 bg-orange-50/40 p-6">
+                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-orange-500 shadow-sm">
+                    {step.icon}
+                  </div>
+                  <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-orange-500">Bước {index + 1}</p>
+                  <h3 className="text-lg font-black text-gray-950">{step.title}</h3>
+                  <p className="mt-3 text-sm font-medium leading-6 text-gray-500">{step.desc}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* Service Categories */}
-      <section className="py-20 bg-gray-50/50">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <h2 className="text-2xl font-black text-gray-900 uppercase tracking-widest mb-12 italic">Popular Categories</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
-            {categories.map((cat, i) => (
-              <div
-                key={i}
-                onClick={() => window.location.href = `/search?category=${cat.slug}`}
-                className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all cursor-pointer group"
-              >
-                <div className={`${cat.color} w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform`}>
-                  {cat.icon}
-                </div>
-                <span className="font-black text-gray-700 text-sm">{cat.name}</span>
+      <section id="services" className="py-16 bg-white scroll-mt-24">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500 mb-3">Categories</p>
+              <h2 className="text-3xl font-black tracking-tight text-gray-900 sm:text-4xl">Chọn dịch vụ cho bé</h2>
+            </div>
+            <button
+              onClick={() => window.location.href = '/search'}
+              className="w-fit rounded-2xl bg-gray-950 px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-orange-500"
+            >
+              Mở trang tìm kiếm
+            </button>
+          </div>
+
+          <div className="rounded-[2rem] border border-gray-100 bg-gray-50/60 p-4 sm:p-6">
+            {loadingCategories ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {[...Array(8)].map((_, index) => (
+                  <div key={index} className="h-28 rounded-3xl bg-white animate-pulse" />
+                ))}
               </div>
-            ))}
+            ) : visibleCategories.length ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {visibleCategories.map((cat) => (
+                  <button
+                    type="button"
+                    key={getCategorySearchValue(cat)}
+                    onClick={() => window.location.href = `/search?serviceCategoryIds=${getCategorySearchValue(cat)}`}
+                    className="group rounded-3xl border border-gray-100 bg-white p-5 text-left transition-all hover:-translate-y-1 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-100/60"
+                  >
+                    <span className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-500 transition-all group-hover:bg-orange-500 group-hover:text-white">
+                      {getCategoryIcon(cat?.name)}
+                    </span>
+                    <span className="block min-h-10 text-sm font-black leading-5 text-gray-900 group-hover:text-orange-600">
+                      {cat?.displayName || cat?.name || 'Dịch vụ'}
+                    </span>
+                    {cat?.description ? (
+                      <span className="mt-2 block line-clamp-2 text-xs font-medium leading-5 text-gray-500">{cat.description}</span>
+                    ) : (
+                      <span className="mt-2 block text-xs font-bold text-gray-400">Xem nhà cung cấp phù hợp</span>
+                    )}
+                    <span className="mt-5 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-orange-500">
+                      Khám phá <ChevronRight className="h-3.5 w-3.5" />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center">
+                <p className="text-sm font-bold text-gray-500">Chưa có dữ liệu danh mục dịch vụ.</p>
+                <button
+                  onClick={() => window.location.href = '/#services'}
+                  className="mt-4 rounded-xl bg-orange-500 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white"
+                >
+                  Đi tới tìm kiếm
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      {/* Nearby Services */}
-      <section className="py-24 max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between mb-12">
-          <div>
-            <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Pet Services Near You</h2>
-            <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.2em] mt-2">Dựa trên vị trí hiện tại của bạn</p>
+      {/* Audiences */}
+      <section className="py-20 bg-gray-50/70">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="mb-10 max-w-3xl">
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500 mb-3">PetGo dành cho ai?</p>
+            <h2 className="text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">Một hệ sinh thái cho cả chủ nuôi và đơn vị chăm sóc thú cưng.</h2>
           </div>
-          <button onClick={() => window.location.href = '/search'} className="text-sm font-black text-orange-600 hover:underline flex items-center gap-1">
-            See All <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-          {nearbyProviders.map((p) => (
-            <ProviderCard key={p.id} provider={p} badge="Nearby" />
-          ))}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {audienceCards.map((card) => (
+              <div key={card.title} className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-500">
+                  {card.icon}
+                </div>
+                <h3 className="text-2xl font-black text-gray-950">{card.title}</h3>
+                <p className="mt-3 text-sm font-medium leading-7 text-gray-500">{card.desc}</p>
+                <button
+                  onClick={() => window.location.href = card.href}
+                  className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-gray-950 px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-orange-500"
+                >
+                  {card.cta} <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -369,7 +406,7 @@ const App = () => {
             <p className="text-orange-100 text-lg font-medium opacity-90">Dành riêng cho khách hàng đặt lịch qua ứng dụng PetGo.</p>
           </div>
           <button
-            onClick={() => window.location.href = '/search'}
+            onClick={() => window.location.href = '/#services'}
             className="px-12 py-5 bg-white text-orange-600 font-black rounded-2xl shadow-xl hover:scale-105 transition-all uppercase tracking-widest text-sm"
           >
             Book Now
@@ -480,6 +517,13 @@ const ProviderCard = ({ provider, badge }) => (
         </button>
       </div>
     </div>
+  </div>
+);
+
+const HeroStat = ({ value, label }) => (
+  <div className="rounded-2xl border border-orange-100 bg-white/80 p-3 text-center shadow-sm sm:p-4">
+    <p className="text-xl font-black text-gray-950">{value}</p>
+    <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-gray-400">{label}</p>
   </div>
 );
 

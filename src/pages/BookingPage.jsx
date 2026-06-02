@@ -230,7 +230,7 @@ const BookingPage = () => {
         customerNote: formData.customerNote || undefined,
       });
 
-      navigate(`/payment?bookingId=${booking.bookingId}`, {
+      navigate(`/booking-success?bookingId=${booking.bookingId}`, {
         replace: true,
         state: { bookingId: booking.bookingId, booking },
       });
@@ -552,7 +552,7 @@ const BookingPage = () => {
                   className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-orange-500 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-600 shadow-lg shadow-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  {submitting ? 'Đang tạo booking...' : 'Tạo booking và tới thanh toán'}
+                  {submitting ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu đặt lịch'}
                 </button>
               )}
             </div>
@@ -589,9 +589,9 @@ const BookingPage = () => {
             <div className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm">
               <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">Lưu ý</h3>
               <ul className="space-y-3 text-sm text-gray-500 font-medium">
-                <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" /> Backend sẽ kiểm tra lại slot còn chỗ trước khi tạo booking.</li>
-                <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" /> Booking mới sẽ được lưu với trạng thái <strong className="text-gray-800">PENDING_PAYMENT</strong>.</li>
-                <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" /> Ở bước chức năng kế tiếp, bạn có thể nối booking vừa tạo sang Payment/Invoice.</li>
+                <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" /> Backend sẽ kiểm tra lại dịch vụ, thú cưng và khung giờ trước khi tạo yêu cầu.</li>
+                <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" /> Yêu cầu mới sẽ ở trạng thái <strong className="text-gray-800">PENDING_CONFIRMATION</strong> để shop duyệt/xếp lịch.</li>
+                <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" /> Bạn chỉ thanh toán trước nếu shop hoặc dịch vụ yêu cầu; nếu không, thanh toán sau khi shop nhận lịch.</li>
               </ul>
             </div>
           </aside>

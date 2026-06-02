@@ -7,16 +7,14 @@ import {
   List,
   Loader2,
   MapPin,
-  Menu,
   Navigation,
   PawPrint,
   Search,
   SlidersHorizontal,
   Star,
   User,
-  X,
 } from 'lucide-react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getProviderFilterOptions, searchProviders } from '../api/providers';
 import {
   buildProviderAddress,
@@ -29,6 +27,7 @@ import {
 
 const DEFAULT_FILTERS = {
   query: '',
+  partnerName: '',
   city: '',
   serviceCategoryIds: [],
   minPrice: '',
@@ -43,7 +42,6 @@ const DEFAULT_FILTERS = {
 const SearchFilterPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [layout, setLayout] = useState('grid');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -63,6 +61,7 @@ const SearchFilterPage = () => {
 
     return {
       query: searchParams.get('query') || searchParams.get('q') || '',
+      partnerName: searchParams.get('partnerName') || '',
       city: searchParams.get('city') || '',
       serviceCategoryIds,
       minPrice: searchParams.get('minPrice') || '',
@@ -91,7 +90,7 @@ const SearchFilterPage = () => {
   }, []);
 
   const buildParams = (page = 0) => ({
-    query: filters.query || undefined,
+    query: [filters.query, filters.partnerName].filter(Boolean).join(' ') || undefined,
     city: filters.city || undefined,
     serviceCategoryIds: filters.serviceCategoryIds.length ? filters.serviceCategoryIds.join(',') : undefined,
     minPrice: filters.minPrice || undefined,
@@ -110,6 +109,7 @@ const SearchFilterPage = () => {
   const syncSearchParams = () => {
     const params = new URLSearchParams();
     if (filters.query) params.set('query', filters.query);
+    if (filters.partnerName) params.set('partnerName', filters.partnerName);
     if (filters.city) params.set('city', filters.city);
     if (filters.serviceCategoryIds.length) params.set('serviceCategoryIds', filters.serviceCategoryIds.join(','));
     if (filters.minPrice) params.set('minPrice', filters.minPrice);
@@ -205,89 +205,10 @@ const SearchFilterPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex justify-between items-center">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="bg-orange-500 p-2 rounded-xl">
-              <PawPrint className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-black text-gray-900 tracking-tight">
-              Pet<span className="text-orange-500">Go</span>
-            </span>
-          </div>
-
-          <nav className="hidden lg:flex items-center gap-8 text-sm font-bold text-gray-500">
-            <Link to="/" className="hover:text-orange-600 transition-colors">Home</Link>
-            <Link to="/search" className="text-orange-600">Services</Link>
-            <Link to="/providers" className="hover:text-orange-600 transition-colors">Providers</Link>
-            <Link to="/nearby" className="hover:text-orange-600 transition-colors">Nearby</Link>
-            <div
-              className="w-9 h-9 rounded-full bg-orange-100 border-2 border-white shadow-sm flex items-center justify-center cursor-pointer"
-              onClick={() => navigate('/profile')}
-            >
-              <User className="w-4 h-4 text-orange-600" />
-            </div>
-          </nav>
-
-          <button className="lg:hidden p-2" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-            {isMenuOpen ? <X /> : <Menu />}
-          </button>
-        </div>
-
-        {isMenuOpen && (
-          <div className="lg:hidden px-4 pb-4 flex flex-col gap-3 text-sm font-medium text-gray-600">
-            <Link to="/">Home</Link>
-            <Link to="/providers">Providers</Link>
-            <Link to="/nearby">Nearby</Link>
-          </div>
-        )}
-      </header>
-
-      <section className="bg-white border-b border-gray-100 py-10 sm:py-16">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h1 className="text-3xl sm:text-4xl font-black text-gray-900 mb-8 tracking-tight">
-            Tìm dịch vụ hoàn hảo cho thú cưng
-          </h1>
-          <div className="relative group max-w-2xl mx-auto">
-            <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
-              <Search className="w-6 h-6 text-gray-400 group-focus-within:text-orange-500 transition-colors" />
-            </div>
-            <input
-              type="text"
-              value={filters.query}
-              onChange={(e) => setFilters((prev) => ({ ...prev, query: e.target.value }))}
-              placeholder="Search by provider name or service"
-              className="w-full pl-16 pr-6 py-5 bg-gray-50 border-2 border-transparent rounded-[2.5rem] text-lg font-bold focus:bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-50 transition-all outline-none shadow-inner"
-            />
-            {loading && (
-              <div className="absolute right-6 top-1/2 -translate-y-1/2">
-                <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
-              </div>
-            )}
-          </div>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm">
-            <button
-              onClick={requestLocation}
-              disabled={location.loading}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-700 font-semibold hover:bg-blue-100 disabled:opacity-60"
-            >
-              <Navigation className="w-4 h-4" /> {location.loading ? 'Đang lấy vị trí...' : 'Dùng vị trí hiện tại'}
-            </button>
-            <button
-              onClick={() => navigate('/nearby')}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-50 text-orange-700 font-semibold hover:bg-orange-100"
-            >
-              <MapPin className="w-4 h-4" /> Xem gần bạn
-            </button>
-            <span className="text-gray-500 font-medium">{location.label}</span>
-          </div>
-        </div>
-      </section>
-
       <main className="max-w-7xl mx-auto px-4 py-10">
-        <div className="flex flex-col lg:flex-row gap-10">
-          <aside className="lg:w-80 shrink-0 space-y-8">
-            <div className="flex items-center justify-between lg:justify-start gap-2 mb-2">
+        <div className="grid gap-8 lg:grid-cols-[340px_1fr]">
+          <aside className="lg:sticky lg:top-24 lg:self-start rounded-[2rem] border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-2 mb-5 border-b border-gray-100 pb-4">
               <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                 <SlidersHorizontal className="w-4 h-4 text-orange-500" /> Bộ lọc nâng cao
               </h3>
@@ -296,7 +217,53 @@ const SearchFilterPage = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
+            <div className="space-y-4 max-h-[calc(100vh-9rem)] overflow-y-auto pr-1">
+              <FilterGroup label="Tìm kiếm">
+                <div className="space-y-3">
+                  <div className="relative group">
+                    <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500" />
+                    <input
+                      type="text"
+                      value={filters.query}
+                      onChange={(e) => setFilters((prev) => ({ ...prev, query: e.target.value }))}
+                      placeholder="Tên dịch vụ, từ khóa..."
+                      className="w-full rounded-2xl border border-gray-200 bg-white py-3.5 pl-11 pr-4 text-sm font-bold outline-none focus:border-orange-500"
+                    />
+                  </div>
+                  {loading && (
+                    <div className="flex items-center gap-2 text-xs font-semibold text-orange-600">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Đang cập nhật kết quả...
+                    </div>
+                  )}
+                </div>
+              </FilterGroup>
+
+              <FilterGroup label="Lọc theo partner">
+                <div className="relative group">
+                  <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500" />
+                  <input
+                    type="text"
+                    value={filters.partnerName}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, partnerName: e.target.value }))}
+                    placeholder="Tên shop/partner..."
+                    className="w-full rounded-2xl border border-gray-200 bg-white py-3.5 pl-11 pr-4 text-sm font-bold outline-none focus:border-orange-500"
+                  />
+                </div>
+              </FilterGroup>
+
+              <FilterGroup label="Lọc theo dịch vụ / category">
+                <div className="space-y-3 max-h-64 overflow-auto pr-1">
+                  {(filterOptions.serviceCategories || []).map((item) => (
+                    <CategoryFilterNode
+                      key={item.id}
+                      category={item}
+                      selectedIds={filters.serviceCategoryIds}
+                      onChange={handleCategoryChange}
+                    />
+                  ))}
+                </div>
+              </FilterGroup>
+
               <FilterGroup label="Vị trí">
                 <select
                   value={filters.city}
@@ -308,18 +275,21 @@ const SearchFilterPage = () => {
                     <option key={item} value={item}>{item}</option>
                   ))}
                 </select>
-              </FilterGroup>
-
-              <FilterGroup label="Loại dịch vụ">
-                <div className="space-y-3 max-h-56 overflow-auto pr-1">
-                  {(filterOptions.serviceCategories || []).map((item) => (
-                    <CategoryFilterNode
-                      key={item.id}
-                      category={item}
-                      selectedIds={filters.serviceCategoryIds}
-                      onChange={handleCategoryChange}
-                    />
-                  ))}
+                <div className="mt-3 flex flex-col gap-2 text-sm">
+                  <button
+                    onClick={requestLocation}
+                    disabled={location.loading}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 py-3 font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+                  >
+                    <Navigation className="w-4 h-4" /> {location.loading ? 'Đang lấy vị trí...' : 'Dùng vị trí hiện tại'}
+                  </button>
+                  <button
+                    onClick={() => navigate('/nearby')}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-orange-50 px-4 py-3 font-semibold text-orange-700 hover:bg-orange-100"
+                  >
+                    <MapPin className="w-4 h-4" /> Xem gần bạn
+                  </button>
+                  <span className="text-xs font-medium text-gray-500">{location.label}</span>
                 </div>
               </FilterGroup>
 
@@ -385,8 +355,8 @@ const SearchFilterPage = () => {
                       type="button"
                       onClick={() => setFilters((prev) => ({ ...prev, timeOfDay: prev.timeOfDay === value ? '' : value }))}
                       className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all border ${filters.timeOfDay === value
-                          ? 'bg-gray-900 text-white border-gray-900'
-                          : 'bg-gray-50 border-transparent hover:border-orange-200 hover:bg-white'
+                        ? 'bg-gray-900 text-white border-gray-900'
+                        : 'bg-gray-50 border-transparent hover:border-orange-200 hover:bg-white'
                         }`}
                     >
                       {mapTimeOfDayLabel(value)}
@@ -411,9 +381,10 @@ const SearchFilterPage = () => {
             </div>
           </aside>
 
-          <div className="flex-1">
+          <div className="min-w-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
               <div>
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-orange-500 mb-2">Kết quả lọc / tìm kiếm</p>
                 <h2 className="text-xl font-black text-gray-900">
                   {result.totalItems > 0 ? `${result.totalItems} kết quả phù hợp` : 'Kết quả tìm kiếm'}
                 </h2>
@@ -499,12 +470,23 @@ const SearchFilterPage = () => {
           </div>
         </div>
       </main>
+      <footer className="border-t border-gray-100 bg-white py-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+          <div className="flex items-center justify-center gap-2 sm:justify-start">
+            <div className="rounded-lg bg-orange-500 p-1.5">
+              <PawPrint className="h-4 w-4 text-white" />
+            </div>
+            <span className="font-black text-gray-900">Pet<span className="text-orange-500">Go</span></span>
+          </div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">© 2025 PetGo Platform. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   );
 };
 
 const FilterGroup = ({ label, children }) => (
-  <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+  <div className="bg-gray-50/70 p-4 rounded-3xl border border-gray-100">
     <div className="flex items-center justify-between mb-4">
       <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">{label}</h3>
       <Info className="w-4 h-4 text-gray-300" />

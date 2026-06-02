@@ -9,10 +9,9 @@ import {
   Loader2,
   PawPrint,
   Search,
-  User,
   XCircle,
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { getMyBookings } from '../api/bookings';
 import { resolveOwnerUserId } from '../utils/ownerUser';
@@ -90,26 +89,6 @@ const MyBookingsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
-      <header className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex justify-between items-center">
-          <button className="flex items-center gap-2" onClick={() => navigate('/')}>
-            <div className="bg-orange-500 p-1.5 rounded-lg shadow-lg shadow-orange-100">
-              <PawPrint className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-black text-gray-900 tracking-tight">Pet<span className="text-orange-500">Go</span></span>
-          </button>
-
-          <div className="hidden md:flex items-center gap-8 text-sm font-bold text-gray-500">
-            <Link to="/" className="hover:text-orange-600 transition-colors">Home</Link>
-            <Link to="/search" className="hover:text-orange-600 transition-colors">Services</Link>
-            <Link to="/my-bookings" className="text-orange-600">My Booking</Link>
-            <button className="w-10 h-10 rounded-full bg-orange-100 border-2 border-white flex items-center justify-center shadow-sm" onClick={() => navigate('/profile')}>
-              <User className="w-5 h-5 text-orange-600" />
-            </button>
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-5xl mx-auto px-4 py-10 sm:py-16">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10">
           <div>
@@ -129,11 +108,10 @@ const MyBookingsPage = () => {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-6 py-2.5 rounded-2xl text-sm font-black transition-all whitespace-nowrap ${
-                activeTab === tab.key
+              className={`px-6 py-2.5 rounded-2xl text-sm font-black transition-all whitespace-nowrap ${activeTab === tab.key
                   ? 'bg-gray-900 text-white shadow-xl scale-105'
                   : 'bg-white text-gray-500 border border-gray-100 hover:border-orange-200 hover:text-orange-600 shadow-sm'
-              }`}
+                }`}
             >
               {tab.label} <span className="ml-2 opacity-70">{counts[tab.key] ?? 0}</span>
             </button>
