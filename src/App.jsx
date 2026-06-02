@@ -10,6 +10,8 @@ import FavoritesPage from './pages/FavoritesPage';
 
 import BookingPage from './pages/BookingPage';
 import PaymentPage from './pages/PaymentPage';
+import PaymentSuccessPage from './pages/PaymentSuccessPage';
+import PaymentCancelPage from './pages/PaymentCancelPage';
 import BookingSuccessPage from './pages/BookingSuccessPage';
 import InvoicePage from './pages/InvoicePage';
 
@@ -84,10 +86,12 @@ export default function App() {
         <Route path='/nearby' element={withOwnerShell(<NearbyProvidersPage />, '/search')} />
         <Route path='/favorites' element={withOwnerShell(<FavoritesPage />, '/favorites')} />
 
-        <Route path='/booking' element={withOwnerShell(<BookingPage />, '/my-bookings')} />
-        <Route path='/payment' element={withOwnerShell(<PaymentPage />, '/my-bookings')} />
-        <Route path='/booking-success' element={withOwnerShell(<BookingSuccessPage />, '/my-bookings')} />
-        <Route path='/invoice' element={withOwnerShell(<InvoicePage />, '/my-bookings')} />
+        <Route path='/booking' element={<BookingPage />} />
+        <Route path='/payment' element={<PaymentPage />} />
+        <Route path='/payment/success' element={<PaymentSuccessPage />} />
+        <Route path='/payment/cancel' element={<PaymentCancelPage />} />
+        <Route path='/booking-success' element={<BookingSuccessPage />} />
+        <Route path='/invoice' element={<InvoicePage />} />
 
         <Route path='/my-bookings' element={withOwnerShell(<MyBookingsPage />, '/my-bookings')} />
         <Route path='/bookings/:id' element={withOwnerShell(<BookingDetailPage />, '/my-bookings')} />
