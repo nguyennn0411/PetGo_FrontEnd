@@ -60,8 +60,8 @@ button {
   cursor: pointer;
 }
 
-.petgo-owner-shell,
-.petgo-owner-page,
+.petgo-user-shell,
+.petgo-user-page,
 .min-h-screen.bg-gray-50,
 .min-h-screen.bg-white {
   background:
@@ -117,8 +117,8 @@ textarea:focus-visible {
 
 @media (max-width: 768px) {
 
-  .petgo-owner-page,
-  .petgo-owner-shell,
+  .petgo-user-page,
+  .petgo-user-shell,
   .min-h-screen.bg-gray-50,
   .min-h-screen.bg-white {
     background: linear-gradient(180deg, #fffaf5 0%, #ffffff 54%, #fff7ed 100%) !important;

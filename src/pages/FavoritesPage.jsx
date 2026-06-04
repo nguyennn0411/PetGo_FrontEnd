@@ -14,7 +14,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { getFavorites, removeFavoriteProvider } from '../api/favorites';
-import { resolveOwnerUserId } from '../utils/ownerUser';
+import { resolveUserId } from '../utils/userIdentity';
 
 const getCurrentPosition = () =>
   new Promise((resolve) => {
@@ -35,7 +35,7 @@ const getCurrentPosition = () =>
 const FavoritesPage = () => {
   const navigate = useNavigate();
   const { account } = useContext(AuthContext);
-  const ownerUserId = useMemo(() => resolveOwnerUserId(account), [account]);
+  const userId = useMemo(() => resolveUserId(account), [account]);
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +44,7 @@ const FavoritesPage = () => {
   const [removingId, setRemovingId] = useState(null);
 
   const loadData = async () => {
-    if (!ownerUserId) {
+    if (!userId) {
       setError('Không xác định được tài khoản người dùng để tải danh sách yêu thích.');
       setLoading(false);
       return;
@@ -55,7 +55,7 @@ const FavoritesPage = () => {
     try {
       const position = await getCurrentPosition();
       setCoords(position);
-      const data = await getFavorites(ownerUserId, position || {});
+      const data = await getFavorites(userId, position || {});
       setItems(data?.items || []);
     } catch (err) {
       setError(err?.response?.data?.message || 'Không tải được danh sách yêu thích.');
@@ -68,13 +68,13 @@ const FavoritesPage = () => {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerUserId]);
+  }, [userId]);
 
   const handleRemove = async (providerId) => {
-    if (!ownerUserId) return;
+    if (!userId) return;
     try {
       setRemovingId(providerId);
-      await removeFavoriteProvider(ownerUserId, providerId);
+      await removeFavoriteProvider(userId, providerId);
       setItems((prev) => prev.filter((item) => item.providerId !== providerId));
     } catch (err) {
       window.alert(err?.response?.data?.message || 'Không thể xóa khỏi danh sách yêu thích.');

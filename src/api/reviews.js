@@ -1,16 +1,16 @@
 import api from './axios';
 
-export const getReviewContext = async (ownerUserId, bookingId) => {
-  const response = await api.get(`/users/${ownerUserId}/bookings/${bookingId}/review-context`);
+export const getReviewContext = async (userId, bookingId) => {
+  const response = await api.get(`/users/${userId}/bookings/${bookingId}/review-context`);
   return response.data;
 };
 
-export const createReview = async (ownerUserId, bookingId, payload) => {
-  const response = await api.post(`/users/${ownerUserId}/bookings/${bookingId}/reviews`, payload);
+export const createReview = async (userId, bookingId, payload) => {
+  const response = await api.post(`/users/${userId}/bookings/${bookingId}/reviews`, payload);
   return response.data;
 };
 
-export const getMyReviews = async (ownerUserId) => {
-  const response = await api.get(`/users/${ownerUserId}/reviews`);
+export const getMyReviews = async (userId) => {
+  const response = await api.get(`/users/${userId}/reviews`);
   return response.data;
 };

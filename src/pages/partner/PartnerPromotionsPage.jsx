@@ -10,7 +10,7 @@ import {
 } from '../../api/partner';
 
 const PartnerPromotionsPage = () => (
-    <PartnerLayout title="Khuyến mãi" subtitle="Tạo mã ưu đãi riêng cho dịch vụ của shop bạn">
+    <PartnerLayout title="Khuyến mãi" subtitle="Tạo mã ưu đãi riêng cho dịch vụ của bạn">
         <PromotionManager
             partnerMode
             loadPromotions={getPartnerPromotions}

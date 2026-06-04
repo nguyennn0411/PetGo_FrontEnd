@@ -287,7 +287,7 @@ const PaymentPage = () => {
             </section>
 
             <div className="flex flex-col sm:flex-row gap-6">
-              <PolicyBox title="Trạng thái booking" desc={`Booking hiện ở trạng thái: ${checkoutContext.bookingStatus}. Checkout chỉ ghi nhận thanh toán/hóa đơn; booking vẫn cần shop duyệt/xếp lịch trước khi được nhận.`} />
+              <PolicyBox title="Trạng thái booking" desc={`Booking hiện ở trạng thái: ${checkoutContext.bookingStatus}. Checkout chỉ ghi nhận thanh toán/hóa đơn; booking vẫn cần provider duyệt/xếp lịch trước khi được nhận.`} />
               <PolicyBox title="Chính sách hóa đơn" desc="Invoice sẽ được sinh tự động sau checkout. Bạn có thể mở lại từ màn hình thành công hoặc trang booking detail sau này." />
             </div>
           </div>

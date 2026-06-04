@@ -1,17 +1,15 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import {
     BarChart3,
     Bell,
     CalendarDays,
-    ChevronLeft,
     CreditCard,
     Gift,
     HelpCircle,
     Home,
     LogOut,
     Menu,
-    MessageSquare,
     Scissors,
     ShoppingBag,
     Star,
@@ -21,7 +19,10 @@ import {
 } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import { canAccessPartnerArea } from '../../utils/partnerAccess';
+import { getPartnerProfile } from '../../api/partner';
 import { PartnerLoadingState } from './PartnerStates';
+
+const partnerSidebarScrollKey = 'partner_sidebar_scroll_top';
 
 const navGroups = [
     {
@@ -29,9 +30,9 @@ const navGroups = [
         items: [{ label: 'Dashboard', path: '/partner/dashboard', icon: BarChart3 }],
     },
     {
-        title: 'Quản lý shop',
+        title: 'Quản lý nhà cung cấp',
         items: [
-            { label: 'Hồ sơ shop', path: '/partner/profile', icon: Store },
+            { label: 'Hồ sơ nhà cung cấp', path: '/partner/profile', icon: Store },
             { label: 'Dịch vụ', path: '/partner/services', icon: Scissors },
             { label: 'Khuyến mãi', path: '/partner/promotions', icon: Gift },
             { label: 'Lịch làm việc', path: '/partner/schedule', icon: CalendarDays },
@@ -55,10 +56,38 @@ const navGroups = [
     },
 ];
 
-const PartnerLayout = ({ children, title = 'Partner Dashboard', subtitle = 'Quản lý shop và vận hành booking của bạn', providerName }) => {
+const PartnerLayout = ({ children, title = 'Partner Dashboard', subtitle = 'Quản lý nhà cung cấp và vận hành booking của bạn', providerName }) => {
     const navigate = useNavigate();
     const { account, loadingAccount, logout } = useContext(AuthContext);
     const [open, setOpen] = useState(false);
+    const [remoteProviderName, setRemoteProviderName] = useState(null);
+    const sidebarRef = useRef(null);
+
+    useEffect(() => {
+        const saved = sessionStorage.getItem(partnerSidebarScrollKey);
+        if (sidebarRef.current && saved) {
+            sidebarRef.current.scrollTop = Number(saved) || 0;
+        }
+    }, []);
+
+    useEffect(() => {
+        if (providerName || loadingAccount || !account) return undefined;
+
+        let isMounted = true;
+        getPartnerProfile()
+            .then((profile) => {
+                if (!isMounted) return;
+                setRemoteProviderName(profile?.businessName || profile?.providerName || null);
+            })
+            .catch(() => {
+                if (!isMounted) return;
+                setRemoteProviderName(null);
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [providerName, loadingAccount, account]);
 
     if (loadingAccount) {
         return <div className="min-h-screen bg-gray-50 p-6"><PartnerLoadingState /></div>;
@@ -69,7 +98,7 @@ const PartnerLayout = ({ children, title = 'Partner Dashboard', subtitle = 'Qu�
     }
 
     if (!canAccessPartnerArea(account)) {
-        return <Navigate to="/partner-registration/shop" replace />;
+        return <Navigate to="/partner-registration/provider" replace />;
     }
 
     const handleLogout = () => {
@@ -91,7 +120,15 @@ const PartnerLayout = ({ children, title = 'Partner Dashboard', subtitle = 'Qu�
                     <button className="lg:hidden p-2" onClick={() => setOpen(false)}><X className="w-5 h-5" /></button>
                 </div>
 
-                <nav className="p-4 space-y-5 overflow-y-auto h-[calc(100vh-5rem)]">
+                <nav
+                    ref={sidebarRef}
+                    onScroll={() => {
+                        if (sidebarRef.current) {
+                            sessionStorage.setItem(partnerSidebarScrollKey, String(sidebarRef.current.scrollTop));
+                        }
+                    }}
+                    className="p-4 space-y-5 overflow-y-auto h-[calc(100vh-5rem)]"
+                >
                     {navGroups.map((group) => (
                         <div key={group.title} className="space-y-2">
                             <p className="px-3 text-[10px] font-black uppercase tracking-widest text-gray-400">{group.title}</p>
@@ -125,7 +162,6 @@ const PartnerLayout = ({ children, title = 'Partner Dashboard', subtitle = 'Qu�
                     <div className="h-20 px-4 sm:px-8 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3 min-w-0">
                             <button className="lg:hidden p-2 rounded-xl hover:bg-gray-100" onClick={() => setOpen(true)}><Menu className="w-6 h-6" /></button>
-                            <button onClick={() => navigate('/')} className="hidden sm:flex p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-orange-500"><ChevronLeft className="w-5 h-5" /></button>
                             <div className="min-w-0">
                                 <h1 className="text-xl sm:text-2xl font-black truncate">{title}</h1>
                                 <p className="text-xs sm:text-sm text-gray-500 font-semibold truncate">{subtitle}</p>
@@ -135,12 +171,9 @@ const PartnerLayout = ({ children, title = 'Partner Dashboard', subtitle = 'Qu�
                             <Link to="/" title="Về trang thương mại" className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 text-gray-500 font-black text-xs uppercase tracking-widest hover:bg-orange-50 hover:text-orange-600">
                                 <Home className="w-4 h-4" /> Trang thương mại
                             </Link>
-                            <button onClick={() => navigate('/partner/notifications')} className="relative p-3 rounded-2xl bg-gray-50 text-gray-500 hover:text-orange-500 hover:bg-orange-50" title="Thông báo">
-                                <MessageSquare className="w-5 h-5" />
-                            </button>
                             <div className="text-right hidden md:block">
-                                <p className="text-sm font-black truncate max-w-48">{providerName || account?.fullName || account?.name || 'Partner'}</p>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-green-600">Verified shop</p>
+                                <p className="text-sm font-black truncate max-w-48">{providerName || remoteProviderName || account?.businessName || account?.providerName || account?.fullName || account?.name || 'Partner'}</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-green-600">Verified provider</p>
                             </div>
                         </div>
                     </div>

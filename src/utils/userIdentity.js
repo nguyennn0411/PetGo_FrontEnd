@@ -1,4 +1,4 @@
-export const resolveOwnerUserId = (account) => {
+export const resolveUserId = (account) => {
   const roles = account?.roles || account?.user?.roles || account?.authorities || [];
   const roleList = Array.isArray(roles) ? roles : [roles];
   const hasPartnerRole = roleList.some((role) => {
@@ -11,7 +11,7 @@ export const resolveOwnerUserId = (account) => {
   if (hasPartnerRole) return null;
 
   const candidates = [
-    account?.ownerUserId,
+    account?.userId,
     account?.userId,
     account?.id,
     account?.accountId,
@@ -20,7 +20,7 @@ export const resolveOwnerUserId = (account) => {
   ];
 
   const localCandidate = typeof window !== 'undefined'
-    ? window.localStorage.getItem('petgo_owner_user_id')
+    ? window.localStorage.getItem('petgo_user_id')
     : null;
 
   for (const candidate of [...candidates, localCandidate]) {

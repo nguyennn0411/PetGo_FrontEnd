@@ -1,21 +1,21 @@
 import api from './axios';
 
-export const getFavorites = async (ownerUserId, params = {}) => {
-  const response = await api.get(`/users/${ownerUserId}/favorites`, { params });
+export const getFavorites = async (userId, params = {}) => {
+  const response = await api.get(`/users/${userId}/favorites`, { params });
   return response.data;
 };
 
-export const getFavoriteProviderIds = async (ownerUserId) => {
-  const response = await api.get(`/users/${ownerUserId}/favorites/provider-ids`);
+export const getFavoriteProviderIds = async (userId) => {
+  const response = await api.get(`/users/${userId}/favorites/provider-ids`);
   return response.data;
 };
 
-export const addFavoriteProvider = async (ownerUserId, providerId) => {
-  const response = await api.post(`/users/${ownerUserId}/favorites/providers/${providerId}`);
+export const addFavoriteProvider = async (userId, providerId) => {
+  const response = await api.post(`/users/${userId}/favorites/providers/${providerId}`);
   return response.data;
 };
 
-export const removeFavoriteProvider = async (ownerUserId, providerId) => {
-  const response = await api.delete(`/users/${ownerUserId}/favorites/providers/${providerId}`);
+export const removeFavoriteProvider = async (userId, providerId) => {
+  const response = await api.delete(`/users/${userId}/favorites/providers/${providerId}`);
   return response.data;
 };

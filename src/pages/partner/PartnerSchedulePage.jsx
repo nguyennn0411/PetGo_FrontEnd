@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Clock, RotateCcw, Save } from 'lucide-react';
 import PartnerLayout from '../../components/partner/PartnerLayout';
-import { PartnerErrorState, PartnerLoadingState } from '../../components/partner/PartnerStates';
+import { PartnerErrorState, PartnerLoadingState, PartnerNotice, getPartnerErrorMessage, usePartnerToast } from '../../components/partner/PartnerStates';
 import { getPartnerSchedule, updatePartnerWeeklySchedule } from '../../api/partner';
 
 const defaultWeeklyHours = [1, 2, 3, 4, 5, 6, 7].map((weekday) => ({
@@ -28,6 +28,7 @@ const PartnerSchedulePage = () => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const { showToast } = usePartnerToast();
 
     const openDays = useMemo(() => weeklyHours.filter((day) => !day.closed), [weeklyHours]);
 
@@ -50,7 +51,9 @@ const PartnerSchedulePage = () => {
                 }));
             }
         } catch (err) {
-            setError(err.response?.data?.message || 'Không thể tải lịch làm việc.');
+            const message = getPartnerErrorMessage(err, 'Không thể tải lịch làm việc.');
+            setError(message);
+            showToast({ tone: 'error', title: 'Không tải được lịch làm việc', message });
         } finally {
             setLoading(false);
         }
@@ -110,6 +113,7 @@ const PartnerSchedulePage = () => {
         const validationMessage = validateWeeklyHours();
         if (validationMessage) {
             setError(validationMessage);
+            showToast({ tone: 'warning', title: 'Lịch làm việc chưa hợp lệ', message: validationMessage });
             return;
         }
         try {
@@ -126,8 +130,11 @@ const PartnerSchedulePage = () => {
             }));
             await updatePartnerWeeklySchedule(payload);
             setSuccess('Đã cập nhật lịch làm việc.');
+            showToast({ tone: 'success', title: 'Đã cập nhật lịch làm việc', message: 'Lịch làm việc mới đã được lưu.' });
         } catch (err) {
-            setError(err.response?.data?.message || 'Cập nhật lịch thất bại.');
+            const message = getPartnerErrorMessage(err, 'Cập nhật lịch thất bại.');
+            setError(message);
+            showToast({ tone: 'error', title: 'Cập nhật lịch thất bại', message });
         } finally {
             setSaving(false);
         }
@@ -137,14 +144,13 @@ const PartnerSchedulePage = () => {
         <PartnerLayout title="Lịch làm việc" subtitle="Cấu hình ngày mở cửa và khung giờ nhận booking">
             <div className="space-y-6">
                 {error && <PartnerErrorState message={error} onRetry={loadSchedule} />}
-                {success && <div className="p-4 rounded-2xl bg-green-50 border border-green-100 text-green-700 font-black">{success}</div>}
+                {success && <PartnerNotice tone="success" title="Đã cập nhật lịch" message={success} onDismiss={() => setSuccess('')} />}
 
                 <section className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div>
                             <p className="text-xs font-black uppercase tracking-widest text-orange-500">Thiết lập tối giản</p>
                             <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2"><CalendarDays className="w-6 h-6 text-orange-500" /> Lịch tuần</h2>
-                            <p className="text-gray-500 font-semibold mt-1">Partner chỉ cần khai báo shop mở ngày nào và giờ nào. Slot chi tiết sẽ được hệ thống tính từ lịch + thời lượng dịch vụ.</p>
                         </div>
                         <div className="rounded-2xl bg-orange-50 px-5 py-4 text-orange-700 font-black flex items-center gap-2">
                             <Clock className="w-5 h-5" /> {openDays.length}/7 ngày mở cửa
@@ -178,9 +184,6 @@ const PartnerSchedulePage = () => {
                                 </label>
                             </div>
                         ))}
-                        <div className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-500 font-semibold">
-                            Lịch này chỉ quyết định khung giờ shop nhận booking. Nếu cần ngày nghỉ đặc biệt hoặc đóng slot đã có booking, xử lý ở phase sau để tránh làm phức tạp MVP.
-                        </div>
                         <button disabled={saving} className="px-6 py-4 rounded-2xl bg-gray-900 text-white font-black hover:bg-orange-500 disabled:opacity-60 flex items-center gap-2"><Save className="w-5 h-5" /> {saving ? 'Đang lưu...' : 'Lưu lịch tuần'}</button>
                     </form>
                 )}

@@ -19,14 +19,24 @@ import {
   Crown,
   Check,
   ArrowRight,
-  CheckCircle,
   Quote,
+  ChevronLeft,
 } from 'lucide-react';
 import { getProviderFilterOptions } from '../api/providers';
+import { getHomePage } from '../api/home';
+
+const categoryMarqueeStyles = `
+  @keyframes petgoCategoryMarquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+`;
 
 const App = () => {
   const [serviceCategories, setServiceCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [sliders, setSliders] = useState([]);
+  const [activeSlide, setActiveSlide] = useState(0);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -44,6 +54,42 @@ const App = () => {
     loadCategories();
   }, []);
 
+  useEffect(() => {
+    const loadHome = async () => {
+      try {
+        const data = await getHomePage();
+        setSliders(Array.isArray(data?.sliders) ? data.sliders : []);
+      } catch {
+        setSliders([]);
+      }
+    };
+
+    loadHome();
+  }, []);
+
+  const fallbackSliders = [
+    {
+      id: 'fallback-1',
+      title: 'PetGo - chăm sóc thú cưng trong một chạm',
+      subtitle: '',
+      imageUrl: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&q=80&w=1600',
+      ctaLabel: 'Khám phá PetGo',
+      ctaUrl: '/search',
+    },
+  ];
+
+  const homeSliders = sliders.length ? sliders : fallbackSliders;
+
+  useEffect(() => {
+    if (homeSliders.length <= 1) return undefined;
+    const timer = window.setInterval(() => {
+      setActiveSlide((current) => (current + 1) % homeSliders.length);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [homeSliders.length]);
+
+  const goToSlide = (index) => setActiveSlide((index + homeSliders.length) % homeSliders.length);
+
   const flattenCategories = (categories = [], parentName = '') => categories.flatMap((category) => {
     const current = {
       ...category,
@@ -54,7 +100,7 @@ const App = () => {
   });
 
   const visibleCategories = useMemo(() => flattenCategories(serviceCategories).slice(0, 12), [serviceCategories]);
-  const heroCategories = visibleCategories.slice(0, 5);
+  const marqueeCategories = useMemo(() => [...visibleCategories, ...visibleCategories], [visibleCategories]);
 
   const introSteps = [
     { title: 'Tìm dịch vụ phù hợp', desc: 'Lọc spa, thú y, khách sạn thú cưng hoặc dịch vụ theo nhu cầu của bé.', icon: <Search className="w-5 h-5" /> },
@@ -64,7 +110,7 @@ const App = () => {
 
   const audienceCards = [
     { title: 'Dành cho chủ nuôi', desc: 'Một nơi để tìm dịch vụ đáng tin cậy, lưu địa điểm yêu thích và chăm sóc thú cưng đều đặn hơn.', cta: 'Khám phá dịch vụ', href: '/search', icon: <User className="w-6 h-6" /> },
-    { title: 'Dành cho đối tác', desc: 'Cửa hàng có thể giới thiệu hồ sơ, quản lý dịch vụ, lịch làm việc và booking từ khách hàng.', cta: 'Đăng ký đối tác', href: '/partner-registration/shop', icon: <PawPrint className="w-6 h-6" /> },
+    { title: 'Dành cho đối tác', desc: 'Cửa hàng có thể giới thiệu hồ sơ, quản lý dịch vụ, lịch làm việc và booking từ khách hàng.', cta: 'Đăng ký đối tác', href: '/partner-registration/provider', icon: <PawPrint className="w-6 h-6" /> },
   ];
 
   const getCategoryIcon = (categoryName = '') => {
@@ -94,95 +140,60 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-800">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-orange-50/80 via-white to-white pt-14 pb-14 sm:pt-20 sm:pb-20">
+      <style>{categoryMarqueeStyles}</style>
+      {/* Home Slider */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-orange-50/80 via-white to-white pt-6 pb-8 sm:pt-10 sm:pb-12">
         <div className="absolute -top-24 right-[-6rem] h-80 w-80 rounded-full bg-orange-200/40 blur-[120px]"></div>
         <div className="max-w-7xl mx-auto px-4 relative z-10">
-          <div className="grid items-center gap-10 lg:grid-cols-[1.02fr_0.98fr]">
-            <div className="text-center lg:text-left">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-orange-100 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-orange-600 shadow-sm">
-                <ShieldCheck className="h-4 w-4" /> Đối tác được kiểm duyệt
-              </div>
-              <h1 className="mx-auto mb-5 max-w-3xl text-4xl font-black leading-tight tracking-tight text-gray-950 sm:text-5xl lg:mx-0 lg:text-6xl">
-                Đặt lịch chăm sóc thú cưng <span className="text-orange-500">dễ dàng</span>
-              </h1>
-              <p className="mx-auto mb-8 max-w-2xl text-base font-medium leading-8 text-gray-500 lg:mx-0 sm:text-lg">
-                Tìm dịch vụ phù hợp, xem nhà cung cấp uy tín và quản lý lịch hẹn của bé cưng trong một nơi.
-              </p>
-
-              <div className="mx-auto mb-5 flex max-w-2xl flex-col gap-3 rounded-3xl border border-orange-100 bg-white p-3 shadow-xl shadow-orange-100/50 lg:mx-0 sm:flex-row">
-                <div className="flex min-h-14 flex-1 items-center gap-3 rounded-2xl bg-gray-50 px-4">
-                  <Search className="text-orange-500 w-5 h-5" />
-                  <input type="text" placeholder="Tìm spa, thú y, khách sạn..." className="w-full bg-transparent text-sm font-bold outline-none" />
+          <div className="relative overflow-hidden rounded-[2.5rem] border border-orange-100 bg-white shadow-2xl shadow-orange-100/60">
+            <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${activeSlide * 100}%)` }}>
+              {homeSliders.map((slide) => (
+                <div key={slide.id} className="min-w-full">
+                  <button
+                    type="button"
+                    onClick={() => { if (slide.ctaUrl) window.location.href = slide.ctaUrl; }}
+                    className="group relative block h-[340px] w-full overflow-hidden text-left sm:h-[430px] lg:h-[520px]"
+                    aria-label={slide.ctaLabel || slide.title || 'PetGo banner'}
+                  >
+                    <img
+                      src={slide.imageUrl}
+                      alt={slide.title || 'PetGo banner'}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-[1200ms] group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-gray-950/80 via-gray-950/35 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-gray-950/60 to-transparent" />
+                    <div className="relative z-10 flex h-full max-w-3xl flex-col justify-center px-6 py-10 sm:px-10 lg:px-14">
+                      <h1 className="max-w-3xl text-4xl font-black leading-tight tracking-tight text-white drop-shadow sm:text-5xl lg:text-6xl">
+                        {slide.title}
+                      </h1>
+                      {slide.subtitle && (
+                        <p className="mt-5 max-w-2xl text-base font-semibold leading-8 text-white/85 sm:text-lg">
+                          {slide.subtitle}
+                        </p>
+                      )}
+                      <span className="mt-8 inline-flex w-fit items-center gap-2 rounded-2xl bg-orange-500 px-7 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-orange-950/20 transition-all group-hover:bg-white group-hover:text-orange-600">
+                        {slide.ctaLabel || 'Khám phá ngay'} <ArrowRight className="h-4 w-4" />
+                      </span>
+                    </div>
+                  </button>
                 </div>
-                <button
-                  onClick={() => window.location.href = '/search'}
-                  className="rounded-2xl bg-orange-500 px-8 py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-orange-600"
-                >
-                  Tìm kiếm
-                </button>
-              </div>
-
-              <div className="mb-8 flex flex-wrap justify-center gap-2 lg:justify-start">
-                {loadingCategories ? (
-                  [...Array(4)].map((_, index) => <span key={index} className="h-10 w-28 rounded-full bg-orange-100/70 animate-pulse" />)
-                ) : heroCategories.length ? (
-                  heroCategories.map((cat) => (
-                    <button
-                      type="button"
-                      key={`hero-chip-${getCategorySearchValue(cat)}`}
-                      onClick={() => window.location.href = `/search?serviceCategoryIds=${getCategorySearchValue(cat)}`}
-                      className="inline-flex items-center gap-2 rounded-full border border-orange-100 bg-white px-4 py-2 text-xs font-black text-gray-700 shadow-sm transition-all hover:border-orange-300 hover:text-orange-600"
-                    >
-                      {getCategoryIcon(cat?.name)}
-                      <span className="max-w-[150px] truncate">{cat?.name || 'Dịch vụ'}</span>
-                    </button>
-                  ))
-                ) : (
-                  <span className="rounded-full bg-white px-4 py-2 text-xs font-bold text-gray-400">Danh mục sẽ hiển thị khi backend sẵn sàng</span>
-                )}
-              </div>
-
-              <div className="flex flex-wrap justify-center lg:justify-start gap-4">
-                <button
-                  onClick={() => window.location.href = '/search'}
-                  className="flex items-center gap-2 rounded-2xl bg-gray-950 px-8 py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-orange-500"
-                >
-                  Đặt dịch vụ <ArrowRight className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => window.location.href = '/membership'}
-                  className="rounded-2xl border border-gray-200 bg-white px-8 py-4 text-xs font-black uppercase tracking-widest text-gray-900 transition-all hover:border-orange-300 hover:text-orange-600"
-                >
-                  Xem membership
-                </button>
-              </div>
-              <div className="mt-8 grid grid-cols-3 gap-3 max-w-lg mx-auto lg:mx-0">
-                <HeroStat value="50K+" label="pet parents" />
-                <HeroStat value="4.8/5" label="đánh giá" />
-                <HeroStat value="24/7" label="hỗ trợ" />
-              </div>
+              ))}
             </div>
-
-            <div className="relative">
-              <div className="absolute -left-4 top-8 hidden rounded-3xl bg-white p-4 shadow-xl shadow-orange-100 lg:block">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-green-50 text-green-600"><CheckCircle className="h-5 w-5" /></div>
-                  <div><p className="text-xs font-black text-gray-900">Booking confirmed</p><p className="text-[10px] font-bold text-gray-400">Grooming · 10:30 AM</p></div>
+            {homeSliders.length > 1 && (
+              <>
+                <button type="button" onClick={() => goToSlide(activeSlide - 1)} className="absolute left-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-900 shadow-lg transition hover:bg-orange-500 hover:text-white sm:flex" aria-label="Slider trước">
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button type="button" onClick={() => goToSlide(activeSlide + 1)} className="absolute right-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-900 shadow-lg transition hover:bg-orange-500 hover:text-white sm:flex" aria-label="Slider sau">
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+                <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-2">
+                  {homeSliders.map((slide, index) => (
+                    <button key={`dot-${slide.id}`} type="button" onClick={() => goToSlide(index)} className={`h-2.5 rounded-full transition-all ${index === activeSlide ? 'w-8 bg-orange-500' : 'w-2.5 bg-white/80'}`} aria-label={`Chuyển đến slider ${index + 1}`} />
+                  ))}
                 </div>
-              </div>
-              <div className="absolute right-4 bottom-8 hidden rounded-3xl bg-gray-950 p-5 text-white shadow-2xl lg:block">
-                <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">Next visit</p>
-                <p className="mt-1 text-sm font-black">Happy Tails Clinic</p>
-              </div>
-              <div className="overflow-hidden rounded-[2.25rem] border-8 border-white bg-orange-50 shadow-2xl shadow-orange-100">
-                <img
-                  src="https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&q=80&w=900"
-                  alt="Chủ nuôi vui vẻ cùng thú cưng"
-                  className="h-[320px] w-full object-cover sm:h-[460px]"
-                />
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -221,49 +232,49 @@ const App = () => {
         <div className="max-w-7xl mx-auto px-4">
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500 mb-3">Categories</p>
-              <h2 className="text-3xl font-black tracking-tight text-gray-900 sm:text-4xl">Chọn dịch vụ cho bé</h2>
+              <h2 className="text-3xl font-black tracking-tight text-gray-900 sm:text-4xl">Danh mục dịch vụ</h2>
             </div>
-            <button
-              onClick={() => window.location.href = '/search'}
-              className="w-fit rounded-2xl bg-gray-950 px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-orange-500"
-            >
-              Mở trang tìm kiếm
-            </button>
           </div>
 
           <div className="rounded-[2rem] border border-gray-100 bg-gray-50/60 p-4 sm:p-6">
             {loadingCategories ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="flex gap-4 overflow-hidden">
                 {[...Array(8)].map((_, index) => (
-                  <div key={index} className="h-28 rounded-3xl bg-white animate-pulse" />
+                  <div key={index} className="h-52 min-w-[260px] rounded-3xl bg-white animate-pulse sm:min-w-[300px]" />
                 ))}
               </div>
             ) : visibleCategories.length ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {visibleCategories.map((cat) => (
-                  <button
-                    type="button"
-                    key={getCategorySearchValue(cat)}
-                    onClick={() => window.location.href = `/search?serviceCategoryIds=${getCategorySearchValue(cat)}`}
-                    className="group rounded-3xl border border-gray-100 bg-white p-5 text-left transition-all hover:-translate-y-1 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-100/60"
-                  >
-                    <span className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-500 transition-all group-hover:bg-orange-500 group-hover:text-white">
-                      {getCategoryIcon(cat?.name)}
-                    </span>
-                    <span className="block min-h-10 text-sm font-black leading-5 text-gray-900 group-hover:text-orange-600">
-                      {cat?.displayName || cat?.name || 'Dịch vụ'}
-                    </span>
-                    {cat?.description ? (
-                      <span className="mt-2 block line-clamp-2 text-xs font-medium leading-5 text-gray-500">{cat.description}</span>
-                    ) : (
-                      <span className="mt-2 block text-xs font-bold text-gray-400">Xem nhà cung cấp phù hợp</span>
-                    )}
-                    <span className="mt-5 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-orange-500">
-                      Khám phá <ChevronRight className="h-3.5 w-3.5" />
-                    </span>
-                  </button>
-                ))}
+              <div className="group relative overflow-hidden py-2">
+                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-gray-50 via-gray-50/90 to-transparent" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-gray-50 via-gray-50/90 to-transparent" />
+                <div
+                  className="flex w-max gap-4 motion-reduce:animate-none group-hover:[animation-play-state:paused]"
+                  style={{ animation: 'petgoCategoryMarquee 32s linear infinite' }}
+                >
+                  {marqueeCategories.map((cat, index) => (
+                    <button
+                      type="button"
+                      key={`${getCategorySearchValue(cat)}-${index}`}
+                      onClick={() => window.location.href = `/search?serviceCategoryIds=${getCategorySearchValue(cat)}`}
+                      className="group/card min-w-[260px] rounded-3xl border border-gray-100 bg-white p-5 text-left transition-all hover:-translate-y-1 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-100/60 sm:min-w-[300px] lg:min-w-[320px]"
+                    >
+                      <span className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-500 transition-all group-hover/card:bg-orange-500 group-hover/card:text-white">
+                        {getCategoryIcon(cat?.name)}
+                      </span>
+                      <span className="block min-h-10 text-sm font-black leading-5 text-gray-900 group-hover/card:text-orange-600">
+                        {cat?.displayName || cat?.name || 'Dịch vụ'}
+                      </span>
+                      {cat?.description ? (
+                        <span className="mt-2 block line-clamp-2 text-xs font-medium leading-5 text-gray-500">{cat.description}</span>
+                      ) : (
+                        <span className="mt-2 block text-xs font-bold text-gray-400">Xem nhà cung cấp phù hợp</span>
+                      )}
+                      <span className="mt-5 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-orange-500">
+                        Khám phá <ChevronRight className="h-3.5 w-3.5" />
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center">
@@ -417,12 +428,12 @@ const App = () => {
       {/* Why Choose PetGo */}
       <section className="py-24 bg-white text-center">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-3xl sm:text-5xl font-black text-gray-900 mb-20 uppercase italic">Why Choose PetGo</h2>
+          <h2 className="text-3xl sm:text-5xl font-black text-gray-900 mb-20 uppercase italic">Vì sao chọn PetGo?</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12">
-            <Feature icon={<ShieldCheck className="w-10 h-10" />} title="Verified providers" desc="100% đối tác được kiểm duyệt kỹ lưỡng." />
-            <Feature icon={<BadgeCheck className="w-10 h-10" />} title="Transparent pricing" desc="Giá cả công khai, không phí ẩn." />
-            <Feature icon={<Quote className="w-10 h-10" />} title="Real reviews" desc="Đánh giá từ khách hàng thực tế." />
-            <Feature icon={<Zap className="w-10 h-10" />} title="Easy booking" desc="Đặt lịch nhanh chóng trong 30s." />
+            <Feature icon={<ShieldCheck className="w-10 h-10" />} title="Đối tác đã xác minh" desc="100% đối tác được kiểm duyệt kỹ lưỡng." />
+            <Feature icon={<BadgeCheck className="w-10 h-10" />} title="Giá cả minh bạch" desc="Giá cả công khai, không phí ẩn." />
+            <Feature icon={<Quote className="w-10 h-10" />} title="Đánh giá thật" desc="Đánh giá từ khách hàng thực tế." />
+            <Feature icon={<Zap className="w-10 h-10" />} title="Đặt lịch dễ dàng" desc="Đặt lịch nhanh chóng trong 30 giây." />
           </div>
         </div>
       </section>
@@ -517,13 +528,6 @@ const ProviderCard = ({ provider, badge }) => (
         </button>
       </div>
     </div>
-  </div>
-);
-
-const HeroStat = ({ value, label }) => (
-  <div className="rounded-2xl border border-orange-100 bg-white/80 p-3 text-center shadow-sm sm:p-4">
-    <p className="text-xl font-black text-gray-950">{value}</p>
-    <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-gray-400">{label}</p>
   </div>
 );
 

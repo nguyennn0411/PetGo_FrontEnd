@@ -14,7 +14,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { getMyBookings } from '../api/bookings';
-import { resolveOwnerUserId } from '../utils/ownerUser';
+import { resolveUserId } from '../utils/userIdentity';
 
 const TABS = [
   { key: 'ALL', label: 'All' },
@@ -45,7 +45,7 @@ const fallbackImage = 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b
 const MyBookingsPage = () => {
   const navigate = useNavigate();
   const { account } = useContext(AuthContext);
-  const ownerUserId = resolveOwnerUserId(account);
+  const userId = resolveUserId(account);
 
   const [activeTab, setActiveTab] = useState('ALL');
   const [data, setData] = useState(null);
@@ -53,16 +53,16 @@ const MyBookingsPage = () => {
   const [error, setError] = useState('');
 
   const loadBookings = async (status = activeTab) => {
-    if (!ownerUserId) {
+    if (!userId) {
       setLoading(false);
-      setError('Chưa xác định được ownerUserId. Hãy đăng nhập hoặc lưu localStorage.petgo_owner_user_id để test.');
+      setError('Chưa xác định được userId. Hãy đăng nhập hoặc lưu localStorage.petgo_user_id để test.');
       return;
     }
 
     setLoading(true);
     setError('');
     try {
-      const response = await getMyBookings(ownerUserId, status);
+      const response = await getMyBookings(userId, status);
       setData(response);
     } catch (err) {
       setError(err?.response?.data?.message || 'Không tải được danh sách booking.');
@@ -75,7 +75,7 @@ const MyBookingsPage = () => {
   useEffect(() => {
     loadBookings(activeTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerUserId, activeTab]);
+  }, [userId, activeTab]);
 
   const counts = useMemo(() => data?.counts || {}, [data]);
   const bookings = data?.bookings || [];

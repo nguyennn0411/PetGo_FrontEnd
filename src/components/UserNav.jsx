@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Bell, Calendar, Crown, Heart, LogOut, Menu, PawPrint, Search, ShoppingBag, User, X } from 'lucide-react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
@@ -12,13 +12,34 @@ const navItems = [
     { to: '/favorites', label: 'Yêu thích', icon: Heart },
 ];
 
-const OwnerNav = ({ activePath = '' }) => {
+const UserNav = ({ activePath = '' }) => {
     const navigate = useNavigate();
     const { account, loadingAccount, logout } = useContext(AuthContext);
     const [open, setOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
+    const profileRef = useRef(null);
     const canViewDashboard = account && (hasAdminRole(account) || hasPartnerRole(account));
     const dashboardPath = canViewDashboard ? getRoleLandingPath(account, '/profile') : '/profile';
+
+    useEffect(() => {
+        if (!profileOpen) {
+            return undefined;
+        }
+
+        const handleClickOutside = (event) => {
+            if (profileRef.current && !profileRef.current.contains(event.target)) {
+                setProfileOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [profileOpen]);
 
     const isActive = (path) => activePath ? activePath === path : undefined;
 
@@ -62,15 +83,15 @@ const OwnerNav = ({ activePath = '' }) => {
                     {loadingAccount ? (
                         <div className="h-10 w-24 animate-pulse rounded-full bg-gray-100" />
                     ) : account ? (
-                        <div className="relative">
+                        <div ref={profileRef} className="relative">
                             <button type="button" onClick={() => setProfileOpen((value) => !value)} className="flex h-10 items-center gap-2 rounded-full border border-gray-200 bg-white py-1 pl-1 pr-3 text-sm font-black text-gray-800 transition-colors hover:border-orange-200 hover:text-orange-600">
                                 <span className="grid h-8 w-8 place-items-center rounded-full bg-orange-50 text-orange-600"><User className="h-4 w-4" /></span>
                                 <span className="max-w-28 truncate">Tài khoản</span>
                             </button>
                             {profileOpen && (
                                 <div className="absolute right-0 mt-3 w-60 rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-gray-200/70">
-                                    <button onClick={() => navigate('/profile')} className="w-full rounded-2xl px-4 py-3 text-left text-sm font-black hover:bg-orange-50">Hồ sơ cá nhân</button>
-                                    {canViewDashboard && <button onClick={() => navigate(dashboardPath)} className="w-full rounded-2xl px-4 py-3 text-left text-sm font-black hover:bg-orange-50">Dashboard</button>}
+                                    <button onClick={() => { setProfileOpen(false); navigate('/profile'); }} className="w-full rounded-2xl px-4 py-3 text-left text-sm font-black hover:bg-orange-50">Hồ sơ cá nhân</button>
+                                    {canViewDashboard && <button onClick={() => { setProfileOpen(false); navigate(dashboardPath); }} className="w-full rounded-2xl px-4 py-3 text-left text-sm font-black hover:bg-orange-50">Dashboard</button>}
                                     <button onClick={handleLogout} className="mt-1 flex w-full items-center gap-2 rounded-2xl px-4 py-3 text-left text-sm font-black text-red-500 hover:bg-red-50"><LogOut className="h-4 w-4" /> Đăng xuất</button>
                                 </div>
                             )}
@@ -126,4 +147,4 @@ const OwnerNav = ({ activePath = '' }) => {
     );
 };
 
-export default OwnerNav;
+export default UserNav;

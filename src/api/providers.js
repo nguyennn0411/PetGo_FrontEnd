@@ -20,6 +20,11 @@ export const getProviderFilterOptions = async () => {
   return response.data;
 };
 
+export const getActiveProviderServices = async (params = {}) => {
+  const response = await api.get('/providers/services', { params });
+  return response.data;
+};
+
 export const getProviderDetail = async (providerId, params = {}) => {
   const response = await api.get(`/providers/${providerId}`, { params });
   return response.data;

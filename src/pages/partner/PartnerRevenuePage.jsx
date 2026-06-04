@@ -78,7 +78,7 @@ const PartnerRevenuePage = () => {
     ];
 
     return (
-        <PartnerLayout title="Doanh thu" subtitle="Theo dõi revenue, invoice và payment của shop" providerName={summary?.businessName}>
+        <PartnerLayout title="Doanh thu" subtitle="Theo dõi revenue, invoice và payment của provider" providerName={summary?.businessName}>
             <div className="space-y-6">
                 {error && <PartnerErrorState message={error} onRetry={loadRevenue} />}
 

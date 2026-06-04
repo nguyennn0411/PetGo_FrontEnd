@@ -15,29 +15,29 @@ export const getBookingSummary = async (bookingId) => {
   return response.data;
 };
 
-export const getMyBookings = async (ownerUserId, status = 'ALL') => {
-  const response = await api.get(`/users/${ownerUserId}/bookings`, {
+export const getMyBookings = async (userId, status = 'ALL') => {
+  const response = await api.get(`/users/${userId}/bookings`, {
     params: { status },
   });
   return response.data;
 };
 
-export const getBookingDetail = async (ownerUserId, bookingId) => {
-  const response = await api.get(`/users/${ownerUserId}/bookings/${bookingId}`);
+export const getBookingDetail = async (userId, bookingId) => {
+  const response = await api.get(`/users/${userId}/bookings/${bookingId}`);
   return response.data;
 };
 
-export const getBookingRescheduleContext = async (ownerUserId, bookingId) => {
-  const response = await api.get(`/users/${ownerUserId}/bookings/${bookingId}/reschedule-context`);
+export const getBookingRescheduleContext = async (userId, bookingId) => {
+  const response = await api.get(`/users/${userId}/bookings/${bookingId}/reschedule-context`);
   return response.data;
 };
 
-export const rescheduleBooking = async (ownerUserId, bookingId, payload) => {
-  const response = await api.post(`/users/${ownerUserId}/bookings/${bookingId}/reschedule`, payload);
+export const rescheduleBooking = async (userId, bookingId, payload) => {
+  const response = await api.post(`/users/${userId}/bookings/${bookingId}/reschedule`, payload);
   return response.data;
 };
 
-export const cancelBooking = async (ownerUserId, bookingId, payload) => {
-  const response = await api.post(`/users/${ownerUserId}/bookings/${bookingId}/cancel`, payload);
+export const cancelBooking = async (userId, bookingId, payload) => {
+  const response = await api.post(`/users/${userId}/bookings/${bookingId}/cancel`, payload);
   return response.data;
 };

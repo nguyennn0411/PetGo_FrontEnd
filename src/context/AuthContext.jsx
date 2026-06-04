@@ -15,15 +15,15 @@ const hasPartnerRole = (account) => {
   return roleList.some((role) => PARTNER_ROLE_CODES.includes(normalizeRoleCode(role)));
 };
 
-const syncOwnerUserId = (account) => {
+const syncUserId = (account) => {
   if (hasPartnerRole(account)) {
-    localStorage.removeItem('petgo_owner_user_id');
+    localStorage.removeItem('petgo_user_id');
     return;
   }
 
-  const ownerId = account?.ownerUserId || account?.userId || account?.id;
-  if (ownerId) {
-    localStorage.setItem('petgo_owner_user_id', String(ownerId));
+  const userId = account?.userId || account?.userId || account?.id;
+  if (userId) {
+    localStorage.setItem('petgo_user_id', String(userId));
   }
 };
 
@@ -34,7 +34,7 @@ const clearAuthStorage = () => {
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('account');
   localStorage.removeItem('user');
-  localStorage.removeItem('petgo_owner_user_id');
+  localStorage.removeItem('petgo_user_id');
 };
 
 export function AuthProvider({ children }) {
@@ -65,7 +65,7 @@ export function AuthProvider({ children }) {
         const me = await getMyAccount();
         setAccount(me);
         localStorage.setItem('account', JSON.stringify(me));
-        syncOwnerUserId(me);
+        syncUserId(me);
       } catch (error) {
         clearAuthStorage();
         setAccount(null);
@@ -88,7 +88,7 @@ export function AuthProvider({ children }) {
     if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
     if (userAccount) {
       localStorage.setItem('account', JSON.stringify(userAccount));
-      syncOwnerUserId(userAccount);
+      syncUserId(userAccount);
       setAccount(userAccount);
       nextAccount = userAccount;
     }
@@ -101,7 +101,7 @@ export function AuthProvider({ children }) {
     setAccount((prev) => {
       const next = { ...(prev || {}), ...(updated || {}) };
       localStorage.setItem('account', JSON.stringify(next));
-      syncOwnerUserId(next);
+      syncUserId(next);
       return next;
     });
   };

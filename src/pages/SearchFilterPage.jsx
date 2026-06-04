@@ -11,11 +11,11 @@ import {
   PawPrint,
   Search,
   SlidersHorizontal,
+  ChevronDown,
   Star,
-  User,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getProviderFilterOptions, searchProviders } from '../api/providers';
+import { getActiveProviderServices, getProviderFilterOptions, searchProviders } from '../api/providers';
 import {
   buildProviderAddress,
   formatCurrencyVnd,
@@ -39,13 +39,43 @@ const DEFAULT_FILTERS = {
   featuredOnly: false,
 };
 
+const findCategoryNode = (items = [], categoryId, parentChain = []) => {
+  const target = String(categoryId);
+  for (const item of items || []) {
+    if (String(item.id) === target) return { node: item, parents: parentChain };
+    const found = findCategoryNode(item.children || [], target, [...parentChain, item]);
+    if (found) return found;
+  }
+  return null;
+};
+
+const collectCategoryIds = (category) => [String(category.id), ...(category.children || []).flatMap(collectCategoryIds)];
+
+const syncParentCategorySelection = (selectedIds, categories = []) => {
+  const selectedSet = new Set(selectedIds.map(String));
+  const visit = (category) => {
+    const children = category.children || [];
+    children.forEach(visit);
+    if (!children.length) return;
+    const hasSelectedChild = children.some((child) => selectedSet.has(String(child.id)) || collectCategoryIds(child).some((id) => selectedSet.has(id)));
+    if (hasSelectedChild) selectedSet.add(String(category.id));
+    else selectedSet.delete(String(category.id));
+  };
+  (categories || []).forEach(visit);
+  return Array.from(selectedSet);
+};
+
 const SearchFilterPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [layout, setLayout] = useState('grid');
+  const [resultView, setResultView] = useState('providers');
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [servicesLoading, setServicesLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState({ items: [], totalItems: 0, page: 0, size: 12, hasNext: false, filterOptions: null });
+  const [activeServices, setActiveServices] = useState([]);
   const [filterOptions, setFilterOptions] = useState({ serviceCategories: [], cities: [], sortOptions: [], timeOfDayOptions: [] });
   const [favorites, setFavorites] = useState(loadFavoriteProviderIds());
   const [location, setLocation] = useState({ latitude: '', longitude: '', enabled: false, loading: false, label: 'Chưa lấy vị trí' });
@@ -143,10 +173,23 @@ const SearchFilterPage = () => {
     }
   };
 
+  const fetchActiveServices = async () => {
+    setServicesLoading(true);
+    try {
+      const data = await getActiveProviderServices(buildParams(0));
+      setActiveServices(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setActiveServices([]);
+    } finally {
+      setServicesLoading(false);
+    }
+  };
+
   useEffect(() => {
     syncSearchParams();
     const timer = setTimeout(() => {
       fetchResults(0, false);
+      fetchActiveServices();
     }, 350);
 
     return () => clearTimeout(timer);
@@ -155,12 +198,23 @@ const SearchFilterPage = () => {
 
   const handleCategoryChange = (categoryId) => {
     const value = String(categoryId);
-    setFilters((prev) => ({
-      ...prev,
-      serviceCategoryIds: prev.serviceCategoryIds.includes(value)
-        ? prev.serviceCategoryIds.filter((item) => item !== value)
-        : [...prev.serviceCategoryIds, value],
-    }));
+    const found = findCategoryNode(filterOptions.serviceCategories || [], value);
+    if (!found?.node) return;
+    const targetIds = collectCategoryIds(found.node);
+    setFilters((prev) => {
+      const selectedSet = new Set(prev.serviceCategoryIds.map(String));
+      const shouldSelect = !selectedSet.has(value);
+      if (shouldSelect) {
+        targetIds.forEach((id) => selectedSet.add(id));
+        found.parents.forEach((parent) => selectedSet.add(String(parent.id)));
+      } else {
+        targetIds.forEach((id) => selectedSet.delete(id));
+      }
+      return {
+        ...prev,
+        serviceCategoryIds: syncParentCategorySelection(Array.from(selectedSet), filterOptions.serviceCategories || []),
+      };
+    });
   };
 
   const handleToggleFavorite = (providerId) => {
@@ -203,21 +257,36 @@ const SearchFilterPage = () => {
     return appliedCategories + appliedExtras + (filters.featuredOnly ? 1 : 0);
   }, [filters]);
 
+  const serviceResults = useMemo(() => activeServices.map((service) => ({
+    ...service,
+    provider: {
+      id: service.providerId,
+      name: service.providerName,
+      image: service.providerImage,
+      address: service.providerAddress,
+    },
+  })), [activeServices]);
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
       <main className="max-w-7xl mx-auto px-4 py-10">
         <div className="grid gap-8 lg:grid-cols-[340px_1fr]">
           <aside className="lg:sticky lg:top-24 lg:self-start rounded-[2rem] border border-gray-100 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-2 mb-5 border-b border-gray-100 pb-4">
-              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-orange-500" /> Bộ lọc nâng cao
+              <h3
+                className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 cursor-pointer lg:cursor-auto"
+                onClick={() => setMobileFiltersOpen((v) => !v)}
+                aria-expanded={mobileFiltersOpen}
+              >
+                <SlidersHorizontal className="w-4 h-4 text-orange-500" /> Bộ lọc
+                <ChevronDown className={`w-4 h-4 ml-1 transition-transform lg:hidden ${mobileFiltersOpen ? 'rotate-180' : ''}`} />
               </h3>
               <button className="text-xs font-bold text-orange-600" onClick={clearFilters}>
                 Xóa tất cả
               </button>
             </div>
 
-            <div className="space-y-4 max-h-[calc(100vh-9rem)] overflow-y-auto pr-1">
+            <div className={`${mobileFiltersOpen ? 'block' : 'hidden'} lg:block space-y-4 max-h-[calc(100vh-9rem)] overflow-y-auto pr-1`}>
               <FilterGroup label="Tìm kiếm">
                 <div className="space-y-3">
                   <div className="relative group">
@@ -238,20 +307,7 @@ const SearchFilterPage = () => {
                 </div>
               </FilterGroup>
 
-              <FilterGroup label="Lọc theo partner">
-                <div className="relative group">
-                  <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500" />
-                  <input
-                    type="text"
-                    value={filters.partnerName}
-                    onChange={(e) => setFilters((prev) => ({ ...prev, partnerName: e.target.value }))}
-                    placeholder="Tên shop/partner..."
-                    className="w-full rounded-2xl border border-gray-200 bg-white py-3.5 pl-11 pr-4 text-sm font-bold outline-none focus:border-orange-500"
-                  />
-                </div>
-              </FilterGroup>
-
-              <FilterGroup label="Lọc theo dịch vụ / category">
+              <FilterGroup label="Danh mục dịch vụ" collapsible>
                 <div className="space-y-3 max-h-64 overflow-auto pr-1">
                   {(filterOptions.serviceCategories || []).map((item) => (
                     <CategoryFilterNode
@@ -384,7 +440,6 @@ const SearchFilterPage = () => {
           <div className="min-w-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.25em] text-orange-500 mb-2">Kết quả lọc / tìm kiếm</p>
                 <h2 className="text-xl font-black text-gray-900">
                   {result.totalItems > 0 ? `${result.totalItems} kết quả phù hợp` : 'Kết quả tìm kiếm'}
                 </h2>
@@ -394,6 +449,27 @@ const SearchFilterPage = () => {
               </div>
 
               <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 rounded-2xl border bg-white px-3 py-2 shadow-sm" aria-label="Chuyển kiểu kết quả">
+                  <button
+                    type="button"
+                    onClick={() => setResultView('providers')}
+                    title="Xem nhà cung cấp"
+                    aria-label="Xem nhà cung cấp"
+                    className={`text-sm font-bold transition-colors ${resultView === 'providers' ? 'text-orange-600' : 'text-gray-500 hover:text-gray-900'}`}
+                  >
+                    Nhà cung cấp
+                  </button>
+                  <span className="h-4 w-px bg-gray-200" aria-hidden="true"></span>
+                  <button
+                    type="button"
+                    onClick={() => setResultView('services')}
+                    title="Xem dịch vụ"
+                    aria-label="Xem dịch vụ"
+                    className={`text-sm font-bold transition-colors ${resultView === 'services' ? 'text-orange-600' : 'text-gray-500 hover:text-gray-900'}`}
+                  >
+                    Dịch vụ
+                  </button>
+                </div>
                 <div className="flex bg-white border rounded-2xl p-1">
                   <button
                     onClick={() => setLayout('grid')}
@@ -426,18 +502,24 @@ const SearchFilterPage = () => {
               </div>
             )}
 
-            {loading && result.items.length === 0 ? (
+            {(resultView === 'services' ? servicesLoading && serviceResults.length === 0 : loading && result.items.length === 0) ? (
               <div className="py-20 flex items-center justify-center gap-3 text-gray-500">
                 <Loader2 className="w-5 h-5 animate-spin" /> Đang tìm kiếm...
               </div>
-            ) : result.items.length === 0 ? (
+            ) : result.items.length === 0 || (resultView === 'services' && serviceResults.length === 0) ? (
               <div className="bg-white rounded-3xl border p-10 text-center text-gray-500">
-                Không có nhà cung cấp phù hợp với bộ lọc này.
+                {resultView === 'services' ? 'Không có dịch vụ phù hợp với bộ lọc này.' : 'Không có nhà cung cấp phù hợp với bộ lọc này.'}
               </div>
             ) : (
               <>
                 <div className={layout === 'grid' ? 'grid grid-cols-1 xl:grid-cols-2 gap-6' : 'space-y-5'}>
-                  {result.items.map((provider) => (
+                  {resultView === 'services' ? serviceResults.map((service) => (
+                    <ServiceResultCard
+                      key={`${service.provider?.id}-${service.id}`}
+                      service={service}
+                      layout={layout}
+                    />
+                  )) : result.items.map((provider) => (
                     <ProviderResultCard
                       key={provider.id}
                       provider={provider}
@@ -485,15 +567,35 @@ const SearchFilterPage = () => {
   );
 };
 
-const FilterGroup = ({ label, children }) => (
-  <div className="bg-gray-50/70 p-4 rounded-3xl border border-gray-100">
-    <div className="flex items-center justify-between mb-4">
-      <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">{label}</h3>
-      <Info className="w-4 h-4 text-gray-300" />
+const FilterGroup = ({ label, children, collapsible = false, defaultOpen = true }) => {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <div className="bg-gray-50/70 p-4 rounded-3xl border border-gray-100">
+      <div className="flex items-center justify-between mb-4">
+        {collapsible ? (
+          <h3
+            className="flex items-center gap-2 text-sm font-black text-gray-900 uppercase tracking-wider cursor-pointer"
+            onClick={() => setOpen((v) => !v)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(v => !v); } }}
+            aria-expanded={open}
+          >
+            <span>{label}</span>
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform lg:hidden ${open ? '' : 'rotate-180'}`} />
+          </h3>
+        ) : (
+          <>
+            <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">{label}</h3>
+            <Info className="w-4 h-4 text-gray-300" />
+          </>
+        )}
+      </div>
+      {collapsible ? (open ? children : null) : children}
     </div>
-    {children}
-  </div>
-);
+  );
+};
 
 const CategoryFilterNode = ({ category, selectedIds, onChange, level = 0 }) => {
   const value = String(category.id);
@@ -506,7 +608,7 @@ const CategoryFilterNode = ({ category, selectedIds, onChange, level = 0 }) => {
           type="checkbox"
           checked={selectedIds.includes(value)}
           onChange={() => onChange(value)}
-          className="w-5 h-5 rounded-lg border-2 border-gray-200 text-orange-500 focus:ring-0 cursor-pointer transition-all"
+          className="w-5 h-5 min-w-5 min-h-5 shrink-0 rounded-lg border-2 border-gray-200 text-orange-500 focus:ring-0 cursor-pointer transition-all"
         />
         <span className="text-sm font-bold text-gray-500 group-hover:text-gray-900 transition-colors">
           {category.name}
@@ -615,6 +717,68 @@ const ProviderResultCard = ({ provider, layout, isFavorite, onToggleFavorite }) 
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+};
+
+const ServiceResultCard = ({ service, layout }) => {
+  const navigate = useNavigate();
+  const provider = service.provider || {};
+  const serviceId = service.providerServiceId || service.id;
+  const bookingParams = new URLSearchParams();
+  if (provider.id) bookingParams.set('providerId', provider.id);
+  if (serviceId && !String(serviceId).startsWith('provider-')) bookingParams.set('serviceId', serviceId);
+  const serviceImage = service.photoUrls?.[0] || service.imageUrl || service.thumbnailUrl || pickProviderImage(provider);
+  const categoryName = service.categoryName || service.categories?.[0]?.name;
+  const duration = service.duration || (service.durationMinutes ? `${service.durationMinutes} phút` : 'Theo lịch hẹn');
+  const priceValue = service.priceDisplay || `${formatCurrencyVnd(service.price)}đ`;
+  const description = service.description || service.shortDescription || service.desc || 'Đang cập nhật mô tả dịch vụ.';
+
+  return (
+    <div className={layout === 'grid'
+      ? 'bg-white rounded-[2rem] border border-gray-100 shadow-sm p-5'
+      : 'bg-white rounded-[2rem] border border-gray-100 shadow-sm p-5 flex flex-col md:flex-row md:items-center gap-5'}>
+      <div className={layout === 'grid' ? 'flex items-start gap-4' : 'flex items-start gap-4 flex-1'}>
+        <img
+          src={serviceImage}
+          alt={service.name}
+          className="w-20 h-20 rounded-3xl object-cover shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-black uppercase tracking-widest text-orange-500 mb-1">Dịch vụ</p>
+          <h3 className="font-black text-xl text-gray-900 leading-tight">{service.name}</h3>
+          <p className="text-sm font-semibold text-gray-500 mt-1 truncate">Tại {provider.name}</p>
+          <p className="text-sm text-gray-500 font-medium mt-2 line-clamp-2">{description}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 text-xs font-semibold">
+              {duration}
+            </span>
+            {categoryName && (
+              <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold">
+                {categoryName}
+              </span>
+            )}
+            {(provider.categorySlugs || []).slice(0, categoryName ? 2 : 3).map((item) => (
+              <span key={item} className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold uppercase">
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className={layout === 'grid' ? 'mt-5 pt-4 border-t flex items-end justify-between gap-3' : 'md:w-56 shrink-0 flex md:flex-col items-end justify-between gap-3'}>
+        <div className="text-right md:text-left">
+          <p className="text-xs uppercase tracking-widest text-gray-400 font-black">Giá từ</p>
+          <p className="text-2xl font-black text-gray-900">{priceValue}</p>
+        </div>
+        <button
+          onClick={() => navigate(`/booking?${bookingParams.toString()}`)}
+          className="px-4 py-2 rounded-2xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 whitespace-nowrap"
+        >
+          Đặt dịch vụ
+        </button>
       </div>
     </div>
   );

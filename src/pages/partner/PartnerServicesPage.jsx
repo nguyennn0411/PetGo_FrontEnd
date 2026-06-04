@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Camera, Copy, Eye, FileText, ImagePlus, Loader2, Plus, Save, Scissors, Search, Send, Trash2, X } from 'lucide-react';
 import PartnerLayout from '../../components/partner/PartnerLayout';
-import { PartnerEmptyState, PartnerErrorState, PartnerLoadingState, PartnerStatusBadge } from '../../components/partner/PartnerStates';
+import { PartnerEmptyState, PartnerErrorState, PartnerLoadingState, PartnerNotice, PartnerStatusBadge, getPartnerErrorMessage, usePartnerToast } from '../../components/partner/PartnerStates';
 import {
     archivePartnerService,
     copyPartnerService,
@@ -126,6 +126,7 @@ const PartnerServicesPage = () => {
     const [requestPageSize, setRequestPageSize] = useState(5);
     const [requestPage, setRequestPage] = useState(1);
     const [selectedRequest, setSelectedRequest] = useState(null);
+    const { showToast } = usePartnerToast();
 
     const activeCount = useMemo(() => services.filter((service) => service.active).length, [services]);
     const drafts = useMemo(() => requests.filter((request) => request.status === 'DRAFT'), [requests]);
@@ -180,7 +181,9 @@ const PartnerServicesPage = () => {
             setServices(Array.isArray(serviceData) ? serviceData : []);
             setRequests(Array.isArray(requestData) ? requestData : []);
         } catch (err) {
-            setError(err.response?.data?.message || 'Không thể tải dịch vụ partner.');
+            const message = getPartnerErrorMessage(err, 'Không thể tải dịch vụ partner.');
+            setError(message);
+            showToast({ tone: 'error', title: 'Không tải được dịch vụ', message });
         } finally {
             setLoading(false);
         }
@@ -201,7 +204,9 @@ const PartnerServicesPage = () => {
         const pendingUpdate = pendingUpdateByServiceId.get(Number(service.id));
         if (pendingUpdate) {
             setSelectedRequest(pendingUpdate);
-            setSuccess('Dịch vụ này đang có yêu cầu cập nhật chờ admin duyệt. Vui lòng xem yêu cầu hiện tại thay vì gửi trùng.');
+            const message = 'Dịch vụ này đang có yêu cầu cập nhật chờ admin duyệt. Vui lòng xem yêu cầu hiện tại thay vì gửi trùng.';
+            setSuccess(message);
+            showToast({ tone: 'info', title: 'Yêu cầu đang chờ duyệt', message });
             setError('');
             return;
         }
@@ -258,9 +263,11 @@ const PartnerServicesPage = () => {
         if (fieldName) {
             setFieldErrors((prev) => ({ ...prev, [fieldName]: normalized }));
             setError('');
+            showToast({ tone: 'warning', title: 'Thông tin dịch vụ chưa hợp lệ', message: normalized });
             return;
         }
         setError(normalized);
+        showToast({ tone: 'error', title: 'Thao tác dịch vụ thất bại', message: normalized });
     };
 
     const updatePriceAmount = (value) => updateField('priceAmount', digitsOnly(value));
@@ -297,7 +304,9 @@ const PartnerServicesPage = () => {
 
     const handleSaveDraft = async () => {
         if (!form.draftId && draftSlotsLeft <= 0) {
-            setError('Bạn đã lưu tối đa 3 bản nháp dịch vụ. Hãy xóa/gửi một bản nháp trước.');
+            const message = 'Bạn đã lưu tối đa 3 bản nháp dịch vụ. Hãy xóa/gửi một bản nháp trước.';
+            setError(message);
+            showToast({ tone: 'warning', title: 'Đã đạt giới hạn bản nháp', message });
             return;
         }
         try {
@@ -309,6 +318,7 @@ const PartnerServicesPage = () => {
             if (form.draftId) await updatePartnerServiceDraft(form.draftId, payload);
             else await savePartnerServiceDraft(payload);
             setSuccess('Đã lưu bản nháp dịch vụ.');
+            showToast({ tone: 'success', title: 'Đã lưu bản nháp', message: 'Bản nháp dịch vụ đã được lưu.' });
             resetForm();
             await loadServices();
         } catch (err) {
@@ -324,6 +334,7 @@ const PartnerServicesPage = () => {
         if (hasFieldErrors(validationErrors)) {
             setFieldErrors(validationErrors);
             setError('');
+            showToast({ tone: 'warning', title: 'Thông tin dịch vụ chưa hợp lệ', message: Object.values(validationErrors)[0] || 'Vui lòng kiểm tra lại các trường bắt buộc.' });
             return;
         }
         try {
@@ -333,7 +344,9 @@ const PartnerServicesPage = () => {
             setFieldErrors({});
             if (form.draftId) await submitPartnerServiceDraft(form.draftId);
             else await submitPartnerServiceChangeRequest(buildPayload());
-            setSuccess(form.providerServiceId ? 'Đã gửi yêu cầu cập nhật dịch vụ để admin duyệt.' : 'Đã gửi yêu cầu tạo dịch vụ để admin duyệt.');
+            const message = form.providerServiceId ? 'Đã gửi yêu cầu cập nhật dịch vụ để admin duyệt.' : 'Đã gửi yêu cầu tạo dịch vụ để admin duyệt.';
+            setSuccess(message);
+            showToast({ tone: 'success', title: 'Đã gửi yêu cầu dịch vụ', message });
             resetForm();
             await loadServices();
         } catch (err) {
@@ -348,20 +361,26 @@ const PartnerServicesPage = () => {
         setIsImageDragActive(false);
         if (!selectedFiles.length) return;
         if (form.photoUrls.length >= MAX_PHOTOS) {
-            setFieldErrors((prev) => ({ ...prev, photoUrls: 'Bạn chỉ được thêm tối đa 5 ảnh mô tả.' }));
+            const message = 'Bạn chỉ được thêm tối đa 5 ảnh mô tả.';
+            setFieldErrors((prev) => ({ ...prev, photoUrls: message }));
             setError('');
+            showToast({ tone: 'warning', title: 'Không thể thêm ảnh', message });
             return;
         }
         const invalid = selectedFiles.find((file) => !file.type.startsWith('image/'));
         if (invalid) {
-            setFieldErrors((prev) => ({ ...prev, photoUrls: 'Vui lòng chỉ chọn file ảnh.' }));
+            const message = 'Vui lòng chỉ chọn file ảnh.';
+            setFieldErrors((prev) => ({ ...prev, photoUrls: message }));
             setError('');
+            showToast({ tone: 'warning', title: 'File ảnh chưa hợp lệ', message });
             return;
         }
         const oversized = selectedFiles.find((file) => file.size > 5 * 1024 * 1024);
         if (oversized) {
-            setFieldErrors((prev) => ({ ...prev, photoUrls: 'Mỗi ảnh không được vượt quá 5MB.' }));
+            const message = 'Mỗi ảnh không được vượt quá 5MB.';
+            setFieldErrors((prev) => ({ ...prev, photoUrls: message }));
             setError('');
+            showToast({ tone: 'warning', title: 'File ảnh quá lớn', message });
             return;
         }
         const availableSlots = MAX_PHOTOS - form.photoUrls.length;
@@ -378,8 +397,11 @@ const PartnerServicesPage = () => {
             const urls = await Promise.all(uploadFiles.map((file) => uploadPartnerServiceImage(file)));
             setForm((prev) => ({ ...prev, photoUrls: normalizeImages([...prev.photoUrls, ...urls]) }));
             if (selectedFiles.length > availableSlots) setFieldErrors((prev) => ({ ...prev, photoUrls: `Chỉ còn ${availableSlots} vị trí ảnh, các ảnh dư đã được bỏ qua.` }));
+            showToast({ tone: 'success', title: 'Đã tải ảnh lên', message: `Đã thêm ${urls.length} ảnh mô tả dịch vụ.` });
         } catch (err) {
-            setFieldErrors((prev) => ({ ...prev, photoUrls: err.response?.data?.message || 'Upload ảnh dịch vụ thất bại.' }));
+            const message = getPartnerErrorMessage(err, 'Upload ảnh dịch vụ thất bại.');
+            setFieldErrors((prev) => ({ ...prev, photoUrls: message }));
+            showToast({ tone: 'error', title: 'Upload ảnh thất bại', message });
         } finally {
             setUploading(false);
         }
@@ -422,9 +444,12 @@ const PartnerServicesPage = () => {
     const handleToggle = async (service) => {
         try {
             await updatePartnerServiceStatus(service.id, !service.active);
+            showToast({ tone: 'success', title: 'Đã cập nhật trạng thái', message: 'Trạng thái hiển thị dịch vụ đã được cập nhật.' });
             loadServices();
         } catch (err) {
-            setError(err.response?.data?.message || 'Cập nhật trạng thái dịch vụ thất bại.');
+            const message = getPartnerErrorMessage(err, 'Cập nhật trạng thái dịch vụ thất bại.');
+            setError(message);
+            showToast({ tone: 'error', title: 'Cập nhật trạng thái thất bại', message });
         }
     };
 
@@ -432,37 +457,50 @@ const PartnerServicesPage = () => {
         if (!window.confirm(`Ẩn dịch vụ ${service.displayName || service.serviceName}? Dịch vụ có booking cũ sẽ không bị xóa.`)) return;
         try {
             await archivePartnerService(service.id);
+            showToast({ tone: 'success', title: 'Đã ẩn dịch vụ', message: 'Dịch vụ đã được ẩn khỏi danh sách hiển thị.' });
             loadServices();
         } catch (err) {
-            setError(err.response?.data?.message || 'Archive dịch vụ thất bại.');
+            const message = getPartnerErrorMessage(err, 'Archive dịch vụ thất bại.');
+            setError(message);
+            showToast({ tone: 'error', title: 'Ẩn dịch vụ thất bại', message });
         }
     };
 
     const handleCopyService = async (service) => {
         if (draftSlotsLeft <= 0) {
-            setError('Bạn đã lưu tối đa 3 bản nháp dịch vụ.');
+            const message = 'Bạn đã lưu tối đa 3 bản nháp dịch vụ.';
+            setError(message);
+            showToast({ tone: 'warning', title: 'Đã đạt giới hạn bản nháp', message });
             return;
         }
         try {
             await copyPartnerService(service.id);
             setSuccess('Đã tạo bản nháp sao chép từ dịch vụ.');
+            showToast({ tone: 'success', title: 'Đã tạo bản nháp', message: 'Đã tạo bản nháp sao chép từ dịch vụ.' });
             await loadServices();
         } catch (err) {
-            setError(err.response?.data?.message || 'Tạo bản sao thất bại.');
+            const message = getPartnerErrorMessage(err, 'Tạo bản sao thất bại.');
+            setError(message);
+            showToast({ tone: 'error', title: 'Tạo bản sao thất bại', message });
         }
     };
 
     const handleCopyDraft = async (draft) => {
         if (draftSlotsLeft <= 0) {
-            setError('Bạn đã lưu tối đa 3 bản nháp dịch vụ.');
+            const message = 'Bạn đã lưu tối đa 3 bản nháp dịch vụ.';
+            setError(message);
+            showToast({ tone: 'warning', title: 'Đã đạt giới hạn bản nháp', message });
             return;
         }
         try {
             await copyPartnerServiceChangeRequest(draft.id);
             setSuccess('Đã tạo bản nháp sao chép.');
+            showToast({ tone: 'success', title: 'Đã tạo bản nháp', message: 'Đã tạo bản nháp sao chép.' });
             await loadServices();
         } catch (err) {
-            setError(err.response?.data?.message || 'Tạo bản sao thất bại.');
+            const message = getPartnerErrorMessage(err, 'Tạo bản sao thất bại.');
+            setError(message);
+            showToast({ tone: 'error', title: 'Tạo bản sao thất bại', message });
         }
     };
 
@@ -471,9 +509,12 @@ const PartnerServicesPage = () => {
         try {
             await deletePartnerServiceDraft(draft.id);
             setSuccess('Đã xóa bản nháp.');
+            showToast({ tone: 'success', title: 'Đã xóa bản nháp', message: 'Bản nháp dịch vụ đã được xóa.' });
             await loadServices();
         } catch (err) {
-            setError(err.response?.data?.message || 'Xóa bản nháp thất bại.');
+            const message = getPartnerErrorMessage(err, 'Xóa bản nháp thất bại.');
+            setError(message);
+            showToast({ tone: 'error', title: 'Xóa bản nháp thất bại', message });
         }
     };
 
@@ -481,13 +522,12 @@ const PartnerServicesPage = () => {
         <PartnerLayout title="Dịch vụ" subtitle="Tạo/cập nhật dịch vụ qua yêu cầu admin duyệt">
             <div className="space-y-6">
                 {error && <PartnerErrorState message={error} onRetry={loadServices} />}
-                {success && <div className="p-4 rounded-2xl bg-green-50 border border-green-100 text-green-700 font-black">{success}</div>}
+                {success && <PartnerNotice tone="success" title="Thông báo dịch vụ" message={success} onDismiss={() => setSuccess('')} />}
 
                 <section className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div>
-                            <h2 className="text-2xl font-black text-gray-900">Dịch vụ của shop</h2>
-                            <p className="text-gray-500 font-semibold mt-1">Tạo mới/cập nhật đều gửi admin duyệt. Partner được lưu tối đa {DRAFT_LIMIT} bản nháp.</p>
+                            <h2 className="text-2xl font-black text-gray-900">Dịch vụ của nhà cung cấp</h2>
                         </div>
                         <button type="button" onClick={startCreate} className="px-5 py-3 rounded-2xl bg-gray-900 text-white font-black hover:bg-orange-500 flex items-center justify-center gap-2">
                             <Plus className="w-5 h-5" /> Tạo dịch vụ
@@ -721,7 +761,7 @@ const PartnerServicesPage = () => {
                     </div>
                 )}
 
-                {loading ? <PartnerLoadingState /> : services.length === 0 ? <PartnerEmptyState title="Chưa có dịch vụ được duyệt" message="Tạo yêu cầu dịch vụ đầu tiên và chờ admin duyệt trước khi hiển thị cho khách." action={<button onClick={startCreate} className="px-5 py-3 rounded-2xl bg-gray-900 text-white font-black">Tạo yêu cầu</button>} /> : (
+                {loading ? <PartnerLoadingState /> : services.length === 0 ? <PartnerEmptyState title="Chưa có dịch vụ được duyệt" message="Tạo yêu cầu dịch vụ đầu tiên bằng nút Tạo dịch vụ phía trên và chờ admin duyệt trước khi hiển thị cho khách." /> : (
                     <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {services.map((service) => (
                             <div key={service.id} className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm space-y-4">
