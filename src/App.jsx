@@ -52,28 +52,7 @@ import CheckoutPage from './pages/shop/CheckoutPage';
 import ShopOrdersPage from './pages/shop/ShopOrdersPage';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminShopOrders from './pages/admin/AdminShopOrders';
-import PartnerProviderRegistrationPage from './pages/PartnerProviderRegistrationPage';
-import PartnerDashboardPage from './pages/partner/PartnerDashboardPage';
-import PartnerProfilePage from './pages/partner/PartnerProfilePage';
-import PartnerServicesPage from './pages/partner/PartnerServicesPage';
-import PartnerSchedulePage from './pages/partner/PartnerSchedulePage';
-import PartnerBookingsPage from './pages/partner/PartnerBookingsPage';
-import PartnerBookingDetailPage from './pages/partner/PartnerBookingDetailPage';
-import PartnerCustomersPage from './pages/partner/PartnerCustomersPage';
-import PartnerPromotionsPage from './pages/partner/PartnerPromotionsPage';
-import PartnerRevenuePage from './pages/partner/PartnerRevenuePage';
-import PartnerReviewsPage from './pages/partner/PartnerReviewsPage';
-import PartnerNotificationsPage from './pages/partner/PartnerNotificationsPage';
-import PartnerPlaceholderPage from './pages/partner/PartnerPlaceholderPage';
-import UserNav from './components/UserNav';
-
-const withUserShell = (element, activePath = '') => (
-  <div className='petgo-user-shell min-h-screen'>
-    <UserNav activePath={activePath} />
-    {element}
-  </div>
-);
-
+import AiChatWidget from './components/AiChatWidget';
 
 export default function App() {
   return (
@@ -159,6 +138,7 @@ export default function App() {
         <Route path='/services' element={<Navigate to='/' replace />} />
         <Route path='*' element={<Navigate to='/' replace />} />
       </Routes>
+        <AiChatWidget />
     </BrowserRouter>
   );
 }
