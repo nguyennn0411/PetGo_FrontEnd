@@ -4,7 +4,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import PartnerRegistrationPanel from '../components/registration/PartnerRegistrationPanel';
 import { AuthContext } from '../context/AuthContext';
 
-const PartnerShopRegistrationPage = () => {
+const PartnerProviderRegistrationPage = () => {
     const navigate = useNavigate();
     const { account, loadingAccount } = useContext(AuthContext);
 
@@ -72,4 +72,4 @@ const PartnerShopRegistrationPage = () => {
     );
 };
 
-export default PartnerShopRegistrationPage;
+export default PartnerProviderRegistrationPage;

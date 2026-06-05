@@ -84,7 +84,7 @@ const RegisterPage = () => {
             </div>
             <div>
               <p className="text-lg font-black">Trusted Platform</p>
-              <p className="text-gray-400 font-medium italic">Verified by thousands of pet owners</p>
+              <p className="text-gray-400 font-medium italic">Verified by thousands of pet users</p>
             </div>
           </div>
         </div>

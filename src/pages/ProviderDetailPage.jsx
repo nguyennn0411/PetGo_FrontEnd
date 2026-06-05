@@ -25,7 +25,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getProviderDetail } from '../api/providers';
 import { addFavoriteProvider, getFavoriteProviderIds, removeFavoriteProvider } from '../api/favorites';
 import { AuthContext } from '../context/AuthContext';
-import { resolveOwnerUserId } from '../utils/ownerUser';
+import { resolveUserId } from '../utils/userIdentity';
 import { formatCurrencyVnd, providerFallbackImage } from '../utils/providerHelpers';
 
 const getCurrentPosition = () =>
@@ -69,7 +69,7 @@ const ProviderDetailPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { account } = useContext(AuthContext);
-  const ownerUserId = useMemo(() => resolveOwnerUserId(account), [account]);
+  const userId = useMemo(() => resolveUserId(account), [account]);
 
   const [provider, setProvider] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -117,13 +117,13 @@ const ProviderDetailPage = () => {
     let ignore = false;
 
     const loadFavoriteState = async () => {
-      if (!ownerUserId || !id) {
+      if (!userId || !id) {
         if (!ignore) setIsFavorite(false);
         return;
       }
 
       try {
-        const ids = await getFavoriteProviderIds(ownerUserId);
+        const ids = await getFavoriteProviderIds(userId);
         if (!ignore) setIsFavorite((ids || []).includes(Number(id)));
       } catch {
         if (!ignore) setIsFavorite(false);
@@ -134,27 +134,27 @@ const ProviderDetailPage = () => {
     return () => {
       ignore = true;
     };
-  }, [ownerUserId, id]);
+  }, [userId, id]);
 
   const galleryImages = useMemo(() => {
     if (!provider) return [];
-    const images = [provider.bannerImage, provider.mainImage, ...(provider.gallery || [])].filter(Boolean);
+    const images = [...(provider.gallery || [])].filter(Boolean);
     return Array.from(new Set(images));
   }, [provider]);
 
   const handleToggleFavorite = async () => {
-    if (!ownerUserId) {
-      window.alert('Vui lòng đăng nhập hoặc đặt ownerUserId để lưu yêu thích.');
+    if (!userId) {
+      window.alert('Vui lòng đăng nhập hoặc đặt userId để lưu yêu thích.');
       return;
     }
 
     try {
       setFavoriteLoading(true);
       if (isFavorite) {
-        await removeFavoriteProvider(ownerUserId, Number(id));
+        await removeFavoriteProvider(userId, Number(id));
         setIsFavorite(false);
       } else {
-        await addFavoriteProvider(ownerUserId, Number(id));
+        await addFavoriteProvider(userId, Number(id));
         setIsFavorite(true);
       }
     } catch (err) {
@@ -242,38 +242,7 @@ const ProviderDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-800 pb-20">
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex justify-between items-center gap-4">
-          <div className="flex items-center gap-4 min-w-0">
-            <button
-              onClick={() => navigate(-1)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors shrink-0"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-2 cursor-pointer min-w-0" onClick={() => navigate('/')}>
-              <div className="bg-orange-500 p-1.5 rounded-lg">
-                <PawPrint className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-black text-gray-900 truncate">
-                Pet<span className="text-orange-500">Go</span>
-              </span>
-            </div>
-          </div>
 
-          <nav className="hidden lg:flex items-center gap-8 text-sm font-bold text-gray-500">
-            <Link to="/" className="hover:text-orange-600 transition-colors">Home</Link>
-            <Link to="/search" className="hover:text-orange-600 transition-colors text-orange-600">Services</Link>
-            <Link to="/my-bookings" className="hover:text-orange-600 transition-colors">My Booking</Link>
-            <button
-              onClick={() => navigate('/favorites')}
-              className="p-2 bg-gray-50 rounded-full hover:text-red-500 transition-colors"
-            >
-              <Heart className={`w-5 h-5 ${isFavorite ? 'text-red-500 fill-red-500' : ''}`} />
-            </button>
-          </nav>
-        </div>
-      </header>
 
       <section className="relative h-[45vh] w-full overflow-hidden bg-gray-900">
         <img
@@ -327,11 +296,10 @@ const ProviderDetailPage = () => {
               </button>
               <button
                 onClick={handleToggleFavorite}
-                className={`w-14 h-14 rounded-full backdrop-blur-md border flex items-center justify-center transition-all ${
-                  isFavorite
-                    ? 'bg-red-500 border-red-500 text-white shadow-lg shadow-red-500/30'
-                    : 'bg-white/10 border-white/20 text-white hover:bg-white hover:text-red-500'
-                }`}
+                className={`w-14 h-14 rounded-full backdrop-blur-md border flex items-center justify-center transition-all ${isFavorite
+                  ? 'bg-red-500 border-red-500 text-white shadow-lg shadow-red-500/30'
+                  : 'bg-white/10 border-white/20 text-white hover:bg-white hover:text-red-500'
+                  }`}
               >
                 {favoriteLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />}
               </button>
@@ -340,7 +308,7 @@ const ProviderDetailPage = () => {
         </div>
       </section>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 relative z-10">
         <div className="grid lg:grid-cols-[1fr_400px] gap-8 items-start">
           <div className="space-y-8">
             <section className="bg-white rounded-[2.5rem] p-6 sm:p-8 border border-gray-100 shadow-sm">
@@ -373,13 +341,6 @@ const ProviderDetailPage = () => {
                     <SummaryTile label="Hủy miễn phí" value={`${provider.summary?.cancellationFreeHours || 0}h`} />
                     <SummaryTile label="Tình trạng" value={provider.summary?.openNow ? 'Đang mở' : 'Ngoài giờ'} accent={provider.summary?.openNow ? 'green' : 'gray'} />
                   </div>
-
-                  <div className="flex flex-wrap gap-3">
-                    <PrimaryAction onClick={() => navigate(buildBookingQuery({ providerId: provider.id }))}>
-                      Đặt lịch ngay
-                    </PrimaryAction>
-                    <SecondaryAction onClick={() => navigate('/search')}>Xem nhà cung cấp khác</SecondaryAction>
-                  </div>
                 </div>
               </div>
             </section>
@@ -387,15 +348,8 @@ const ProviderDetailPage = () => {
             <section className="bg-white rounded-[2.5rem] p-6 sm:p-8 border border-gray-100 shadow-sm">
               <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
                 <div>
-                  <h2 className="text-2xl font-black text-gray-900 mb-1">Không gian & hình ảnh</h2>
-                  <p className="text-sm font-medium text-gray-500">{provider.summary?.totalGalleryImages || galleryImages.length} ảnh được hiển thị từ backend</p>
+                  <h2 className="text-2xl font-black text-gray-900 mb-1">Ảnh giới thiệu</h2>
                 </div>
-                <button
-                  onClick={() => setPreviewImage(galleryImages[0] || providerFallbackImage)}
-                  className="px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-all"
-                >
-                  Xem ảnh lớn
-                </button>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {galleryImages.length ? (
@@ -464,7 +418,7 @@ const ProviderDetailPage = () => {
                           onClick={() => openBookingForService(service.id)}
                           className="px-8 py-4 bg-gray-900 text-white text-[10px] font-black rounded-[1.5rem] hover:bg-orange-500 hover:shadow-lg transition-all uppercase tracking-widest"
                         >
-                          Book Now
+                          Đặt lịch ngay
                         </button>
                       </div>
                     </div>
@@ -496,7 +450,7 @@ const ProviderDetailPage = () => {
                       <div className="flex justify-between items-start gap-4 mb-4 flex-wrap">
                         <div className="flex items-center gap-4 min-w-0">
                           <img
-                            src={review.avatar || 'https://i.pravatar.cc/150?img=12'}
+                            src={review.avatar || providerFallbackImage}
                             alt={review.user}
                             className="w-14 h-14 rounded-2xl object-cover border-2 border-white shadow-sm"
                           />
@@ -579,11 +533,10 @@ const ProviderDetailPage = () => {
                         <button
                           key={slot.id}
                           onClick={() => handleSlotClick(slot)}
-                          className={`group relative p-4 rounded-2xl text-xs font-black transition-all border ${
-                            selectedSlotId === slot.id
-                              ? 'bg-orange-500 text-white border-orange-500 shadow-lg'
-                              : 'bg-gray-50 text-gray-600 border-gray-100 hover:bg-orange-500 hover:text-white hover:border-orange-500 hover:shadow-lg'
-                          }`}
+                          className={`group relative p-4 rounded-2xl text-xs font-black transition-all border ${selectedSlotId === slot.id
+                            ? 'bg-orange-500 text-white border-orange-500 shadow-lg'
+                            : 'bg-gray-50 text-gray-600 border-gray-100 hover:bg-orange-500 hover:text-white hover:border-orange-500 hover:shadow-lg'
+                            }`}
                         >
                           <div>{slot.label}</div>
                           <div className={`mt-1 text-[10px] font-bold ${selectedSlotId === slot.id ? 'text-white/80' : 'text-gray-400 group-hover:text-white/80'}`}>

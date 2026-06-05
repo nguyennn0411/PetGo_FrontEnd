@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import { createPet, getPetDetail, updatePet } from '../api/pets';
-import { resolveOwnerUserId } from '../utils/ownerUser';
+import { resolveUserId } from '../utils/userIdentity';
 
 const SPECIES_OPTIONS = [
   { value: 'DOG', label: 'Chó' },
@@ -120,7 +120,7 @@ const AddPetPage = () => {
   const isEditMode = Boolean(petId);
 
   const { account, loadingAccount } = useContext(AuthContext);
-  const ownerUserId = useMemo(() => resolveOwnerUserId(account), [account]);
+  const userId = useMemo(() => resolveUserId(account), [account]);
 
   const [formData, setFormData] = useState(emptyForm);
   const [avatarFile, setAvatarFile] = useState(null);
@@ -131,7 +131,7 @@ const AddPetPage = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!isEditMode || !ownerUserId) return;
+    if (!isEditMode || !userId) return;
 
     let isMounted = true;
 
@@ -140,7 +140,7 @@ const AddPetPage = () => {
         setLoadingPet(true);
         setError('');
 
-        const data = await getPetDetail(ownerUserId, petId);
+        const data = await getPetDetail(userId, petId);
 
         if (!isMounted) return;
 
@@ -158,7 +158,7 @@ const AddPetPage = () => {
     return () => {
       isMounted = false;
     };
-  }, [isEditMode, ownerUserId, petId]);
+  }, [isEditMode, userId, petId]);
 
   useEffect(() => {
     return () => {
@@ -206,8 +206,8 @@ const AddPetPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!ownerUserId) {
-      setError('Không tìm thấy ownerUserId. Hãy đăng nhập trước khi lưu thú cưng.');
+    if (!userId) {
+      setError('Không tìm thấy userId. Hãy đăng nhập trước khi lưu thú cưng.');
       return;
     }
 
@@ -224,9 +224,9 @@ const AddPetPage = () => {
       const multipartPayload = buildMultipartPayload(payload, avatarFile);
 
       if (isEditMode) {
-        await updatePet(ownerUserId, petId, multipartPayload);
+        await updatePet(userId, petId, multipartPayload);
       } else {
-        await createPet(ownerUserId, multipartPayload);
+        await createPet(userId, multipartPayload);
       }
 
       setSuccess(true);
@@ -238,7 +238,7 @@ const AddPetPage = () => {
     }
   };
 
-  const showLoginRequired = !loadingAccount && !ownerUserId;
+  const showLoginRequired = !loadingAccount && !userId;
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
@@ -288,11 +288,11 @@ const AddPetPage = () => {
                 <h2 className="text-2xl font-black text-amber-900">Bạn cần đăng nhập trước</h2>
 
                 <p className="text-amber-700 font-medium max-w-xl mx-auto">
-                  Trang này cần `ownerUserId` từ tài khoản đã đăng nhập để gọi API Pet CRUD.
+                  Trang này cần `userId` từ tài khoản đã đăng nhập để gọi API Pet CRUD.
                 </p>
 
                 <p className="text-xs text-amber-600 font-bold">
-                  Nếu bạn đang test backend độc lập, có thể lưu thủ công `petgo_owner_user_id` vào localStorage.
+                  Nếu bạn đang test backend độc lập, có thể lưu thủ công `petgo_user_id` vào localStorage.
                 </p>
 
                 <div className="flex justify-center gap-3 pt-2">

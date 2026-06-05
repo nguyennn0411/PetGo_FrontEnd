@@ -37,8 +37,8 @@ import {
   getAccountDisplayName,
   getAccountEmail,
   getAccountPhone,
-  resolveOwnerUserId,
-} from '../utils/ownerUser';
+  resolveUserId,
+} from '../utils/userIdentity';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -46,7 +46,7 @@ const ProfilePage = () => {
   const initialTab = searchParams.get('tab') || 'personal';
 
   const { account, updateAccount, loadingAccount } = useContext(AuthContext);
-  const ownerUserId = useMemo(() => resolveOwnerUserId(account), [account]);
+  const userId = useMemo(() => resolveUserId(account), [account]);
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -102,8 +102,8 @@ const ProfilePage = () => {
       setBookingsError('');
       const [profileRes, bookingsRes] = await Promise.all([
         api.get('/profile/me'),
-        ownerUserId
-          ? api.get(`/users/${ownerUserId}/bookings`, { params: { status: 'ALL' } })
+        userId
+          ? api.get(`/users/${userId}/bookings`, { params: { status: 'ALL' } })
           : Promise.resolve({ data: { bookings: [] } }),
       ]);
 
@@ -123,7 +123,7 @@ const ProfilePage = () => {
   };
 
   const loadPets = async () => {
-    if (!ownerUserId) {
+    if (!userId) {
       setPets([]);
       return;
     }
@@ -131,7 +131,7 @@ const ProfilePage = () => {
     try {
       setPetsLoading(true);
       setPetsError('');
-      const response = await api.get(`/users/${ownerUserId}/pets`);
+      const response = await api.get(`/users/${userId}/pets`);
       const payload = response.data?.items ? response.data : (response.data?.result || response.data);
       setPets(payload?.items || []);
     } catch (error) {
@@ -148,7 +148,7 @@ const ProfilePage = () => {
     setBookingsLoading(true);
     loadProfile();
     loadPets();
-  }, [loadingAccount, ownerUserId]);
+  }, [loadingAccount, userId]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -177,13 +177,13 @@ const ProfilePage = () => {
   };
 
   const handleDeletePet = async (petId, petName) => {
-    if (!ownerUserId) return;
+    if (!userId) return;
     const accepted = window.confirm(`Bạn có chắc muốn xóa thú cưng ${petName}?`);
     if (!accepted) return;
 
     try {
       setDeletingPetId(petId);
-      await api.delete(`/users/${ownerUserId}/pets/${petId}`);
+      await api.delete(`/users/${userId}/pets/${petId}`);
       setPets((prev) => prev.filter((pet) => pet.id !== petId));
       setProfile((prev) => prev ? { ...prev, totalPets: Math.max((prev.totalPets || 1) - 1, 0) } : prev);
     } catch (error) {
@@ -225,18 +225,6 @@ const ProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <button onClick={() => navigate('/')} className="p-2 hover:bg-gray-100 rounded-full transition-colors group">
-            <ArrowLeft className="w-6 h-6 text-gray-600 group-hover:text-orange-500" />
-          </button>
-          <span className="font-black text-xl tracking-tight">Profile</span>
-          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <Settings className="w-6 h-6 text-gray-600" />
-          </button>
-        </div>
-      </header>
-
       <main className="max-w-5xl mx-auto px-4 mt-6 space-y-6">
         {profileError && (
           <div className="rounded-[2rem] border border-red-100 bg-red-50 px-5 py-4 text-red-600 font-bold flex items-center justify-between gap-4">
@@ -274,7 +262,7 @@ const ProfilePage = () => {
                     <Calendar className="w-4 h-4 text-orange-500" />
                     Tham gia từ {displayUser.joinDate}
                   </p>
-                  {ownerUserId && <p className="text-xs text-gray-400 font-black uppercase tracking-widest">Owner ID: {ownerUserId}</p>}
+                  {userId && <p className="text-xs text-gray-400 font-black uppercase tracking-widest">User ID: {userId}</p>}
                 </div>
               </div>
 
@@ -467,7 +455,7 @@ const ProfilePage = () => {
             )}
 
             {activeTab === 'partner-registration' && (
-              <PartnerRegistrationChoice onSelectShop={() => navigate('/partner-registration/shop')} />
+              <PartnerRegistrationChoice onSelectProvider={() => navigate('/partner-registration/provider')} />
             )}
 
             {activeTab === 'notifications' && (
@@ -540,7 +528,7 @@ const ProfilePage = () => {
   );
 };
 
-const PartnerRegistrationChoice = ({ onSelectShop }) => (
+const PartnerRegistrationChoice = ({ onSelectProvider }) => (
   <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-white space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
     <div className="space-y-3">
       <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center">
@@ -548,22 +536,22 @@ const PartnerRegistrationChoice = ({ onSelectShop }) => (
       </div>
       <div>
         <h2 className="text-2xl font-black">Chọn loại đăng ký Partner</h2>
-        <p className="text-gray-500 font-medium mt-1">Bắt đầu bằng luồng đăng ký phù hợp. Hiện tại PetGo đang mở đăng ký cho shop/dịch vụ.</p>
+        <p className="text-gray-500 font-medium mt-1">Hiện tại PetGo đang mở đăng ký cho nhà cung cấp dịch vụ.</p>
       </div>
     </div>
 
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <button
         type="button"
-        onClick={onSelectShop}
+        onClick={onSelectProvider}
         className="group min-h-48 rounded-[2rem] bg-orange-50 p-6 text-left border border-orange-100 transition-all hover:-translate-y-1 hover:bg-orange-500 hover:text-white hover:shadow-2xl hover:shadow-orange-100 active:scale-[0.98]"
       >
         <span className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-orange-500 shadow-sm transition-all group-hover:bg-white/20 group-hover:text-white">
           <Store className="w-7 h-7" />
         </span>
-        <span className="block text-xl font-black text-gray-900 transition-colors group-hover:text-white">Đăng ký cho shop</span>
+        <span className="block text-xl font-black text-gray-900 transition-colors group-hover:text-white">Đăng ký cho provider</span>
         <span className="mt-2 block text-sm font-semibold leading-relaxed text-gray-500 transition-colors group-hover:text-orange-50">
-          Dành cho shop/provider muốn tạo hồ sơ dịch vụ, gửi ảnh địa điểm và chờ admin xét duyệt.
+          Dành cho provider muốn tạo hồ sơ dịch vụ, gửi ảnh địa điểm và chờ xét duyệt.
         </span>
         <span className="mt-5 inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-orange-600 transition-colors group-hover:text-white">
           Bắt đầu đăng ký

@@ -7,17 +7,15 @@ import {
   List,
   Loader2,
   MapPin,
-  Menu,
   Navigation,
   PawPrint,
   Search,
   SlidersHorizontal,
+  ChevronDown,
   Star,
-  User,
-  X,
 } from 'lucide-react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { getProviderFilterOptions, searchProviders } from '../api/providers';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { getActiveProviderServices, getProviderFilterOptions, searchProviders } from '../api/providers';
 import {
   buildProviderAddress,
   formatCurrencyVnd,
@@ -29,6 +27,7 @@ import {
 
 const DEFAULT_FILTERS = {
   query: '',
+  partnerName: '',
   city: '',
   serviceCategoryIds: [],
   minPrice: '',
@@ -40,14 +39,43 @@ const DEFAULT_FILTERS = {
   featuredOnly: false,
 };
 
+const findCategoryNode = (items = [], categoryId, parentChain = []) => {
+  const target = String(categoryId);
+  for (const item of items || []) {
+    if (String(item.id) === target) return { node: item, parents: parentChain };
+    const found = findCategoryNode(item.children || [], target, [...parentChain, item]);
+    if (found) return found;
+  }
+  return null;
+};
+
+const collectCategoryIds = (category) => [String(category.id), ...(category.children || []).flatMap(collectCategoryIds)];
+
+const syncParentCategorySelection = (selectedIds, categories = []) => {
+  const selectedSet = new Set(selectedIds.map(String));
+  const visit = (category) => {
+    const children = category.children || [];
+    children.forEach(visit);
+    if (!children.length) return;
+    const hasSelectedChild = children.some((child) => selectedSet.has(String(child.id)) || collectCategoryIds(child).some((id) => selectedSet.has(id)));
+    if (hasSelectedChild) selectedSet.add(String(category.id));
+    else selectedSet.delete(String(category.id));
+  };
+  (categories || []).forEach(visit);
+  return Array.from(selectedSet);
+};
+
 const SearchFilterPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [layout, setLayout] = useState('grid');
+  const [resultView, setResultView] = useState('providers');
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [servicesLoading, setServicesLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState({ items: [], totalItems: 0, page: 0, size: 12, hasNext: false, filterOptions: null });
+  const [activeServices, setActiveServices] = useState([]);
   const [filterOptions, setFilterOptions] = useState({ serviceCategories: [], cities: [], sortOptions: [], timeOfDayOptions: [] });
   const [favorites, setFavorites] = useState(loadFavoriteProviderIds());
   const [location, setLocation] = useState({ latitude: '', longitude: '', enabled: false, loading: false, label: 'Chưa lấy vị trí' });
@@ -63,6 +91,7 @@ const SearchFilterPage = () => {
 
     return {
       query: searchParams.get('query') || searchParams.get('q') || '',
+      partnerName: searchParams.get('partnerName') || '',
       city: searchParams.get('city') || '',
       serviceCategoryIds,
       minPrice: searchParams.get('minPrice') || '',
@@ -91,7 +120,7 @@ const SearchFilterPage = () => {
   }, []);
 
   const buildParams = (page = 0) => ({
-    query: filters.query || undefined,
+    query: [filters.query, filters.partnerName].filter(Boolean).join(' ') || undefined,
     city: filters.city || undefined,
     serviceCategoryIds: filters.serviceCategoryIds.length ? filters.serviceCategoryIds.join(',') : undefined,
     minPrice: filters.minPrice || undefined,
@@ -110,6 +139,7 @@ const SearchFilterPage = () => {
   const syncSearchParams = () => {
     const params = new URLSearchParams();
     if (filters.query) params.set('query', filters.query);
+    if (filters.partnerName) params.set('partnerName', filters.partnerName);
     if (filters.city) params.set('city', filters.city);
     if (filters.serviceCategoryIds.length) params.set('serviceCategoryIds', filters.serviceCategoryIds.join(','));
     if (filters.minPrice) params.set('minPrice', filters.minPrice);
@@ -143,10 +173,23 @@ const SearchFilterPage = () => {
     }
   };
 
+  const fetchActiveServices = async () => {
+    setServicesLoading(true);
+    try {
+      const data = await getActiveProviderServices(buildParams(0));
+      setActiveServices(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setActiveServices([]);
+    } finally {
+      setServicesLoading(false);
+    }
+  };
+
   useEffect(() => {
     syncSearchParams();
     const timer = setTimeout(() => {
       fetchResults(0, false);
+      fetchActiveServices();
     }, 350);
 
     return () => clearTimeout(timer);
@@ -155,12 +198,23 @@ const SearchFilterPage = () => {
 
   const handleCategoryChange = (categoryId) => {
     const value = String(categoryId);
-    setFilters((prev) => ({
-      ...prev,
-      serviceCategoryIds: prev.serviceCategoryIds.includes(value)
-        ? prev.serviceCategoryIds.filter((item) => item !== value)
-        : [...prev.serviceCategoryIds, value],
-    }));
+    const found = findCategoryNode(filterOptions.serviceCategories || [], value);
+    if (!found?.node) return;
+    const targetIds = collectCategoryIds(found.node);
+    setFilters((prev) => {
+      const selectedSet = new Set(prev.serviceCategoryIds.map(String));
+      const shouldSelect = !selectedSet.has(value);
+      if (shouldSelect) {
+        targetIds.forEach((id) => selectedSet.add(id));
+        found.parents.forEach((parent) => selectedSet.add(String(parent.id)));
+      } else {
+        targetIds.forEach((id) => selectedSet.delete(id));
+      }
+      return {
+        ...prev,
+        serviceCategoryIds: syncParentCategorySelection(Array.from(selectedSet), filterOptions.serviceCategories || []),
+      };
+    });
   };
 
   const handleToggleFavorite = (providerId) => {
@@ -203,100 +257,69 @@ const SearchFilterPage = () => {
     return appliedCategories + appliedExtras + (filters.featuredOnly ? 1 : 0);
   }, [filters]);
 
+  const serviceResults = useMemo(() => activeServices.map((service) => ({
+    ...service,
+    provider: {
+      id: service.providerId,
+      name: service.providerName,
+      image: service.providerImage,
+      address: service.providerAddress,
+    },
+  })), [activeServices]);
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex justify-between items-center">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="bg-orange-500 p-2 rounded-xl">
-              <PawPrint className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-black text-gray-900 tracking-tight">
-              Pet<span className="text-orange-500">Go</span>
-            </span>
-          </div>
-
-          <nav className="hidden lg:flex items-center gap-8 text-sm font-bold text-gray-500">
-            <Link to="/" className="hover:text-orange-600 transition-colors">Home</Link>
-            <Link to="/search" className="text-orange-600">Services</Link>
-            <Link to="/providers" className="hover:text-orange-600 transition-colors">Providers</Link>
-            <Link to="/nearby" className="hover:text-orange-600 transition-colors">Nearby</Link>
-            <div
-              className="w-9 h-9 rounded-full bg-orange-100 border-2 border-white shadow-sm flex items-center justify-center cursor-pointer"
-              onClick={() => navigate('/profile')}
-            >
-              <User className="w-4 h-4 text-orange-600" />
-            </div>
-          </nav>
-
-          <button className="lg:hidden p-2" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-            {isMenuOpen ? <X /> : <Menu />}
-          </button>
-        </div>
-
-        {isMenuOpen && (
-          <div className="lg:hidden px-4 pb-4 flex flex-col gap-3 text-sm font-medium text-gray-600">
-            <Link to="/">Home</Link>
-            <Link to="/providers">Providers</Link>
-            <Link to="/nearby">Nearby</Link>
-          </div>
-        )}
-      </header>
-
-      <section className="bg-white border-b border-gray-100 py-10 sm:py-16">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h1 className="text-3xl sm:text-4xl font-black text-gray-900 mb-8 tracking-tight">
-            Tìm dịch vụ hoàn hảo cho thú cưng
-          </h1>
-          <div className="relative group max-w-2xl mx-auto">
-            <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
-              <Search className="w-6 h-6 text-gray-400 group-focus-within:text-orange-500 transition-colors" />
-            </div>
-            <input
-              type="text"
-              value={filters.query}
-              onChange={(e) => setFilters((prev) => ({ ...prev, query: e.target.value }))}
-              placeholder="Search by provider name or service"
-              className="w-full pl-16 pr-6 py-5 bg-gray-50 border-2 border-transparent rounded-[2.5rem] text-lg font-bold focus:bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-50 transition-all outline-none shadow-inner"
-            />
-            {loading && (
-              <div className="absolute right-6 top-1/2 -translate-y-1/2">
-                <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
-              </div>
-            )}
-          </div>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm">
-            <button
-              onClick={requestLocation}
-              disabled={location.loading}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-700 font-semibold hover:bg-blue-100 disabled:opacity-60"
-            >
-              <Navigation className="w-4 h-4" /> {location.loading ? 'Đang lấy vị trí...' : 'Dùng vị trí hiện tại'}
-            </button>
-            <button
-              onClick={() => navigate('/nearby')}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-50 text-orange-700 font-semibold hover:bg-orange-100"
-            >
-              <MapPin className="w-4 h-4" /> Xem gần bạn
-            </button>
-            <span className="text-gray-500 font-medium">{location.label}</span>
-          </div>
-        </div>
-      </section>
-
       <main className="max-w-7xl mx-auto px-4 py-10">
-        <div className="flex flex-col lg:flex-row gap-10">
-          <aside className="lg:w-80 shrink-0 space-y-8">
-            <div className="flex items-center justify-between lg:justify-start gap-2 mb-2">
-              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-orange-500" /> Bộ lọc nâng cao
+        <div className="grid gap-8 lg:grid-cols-[340px_1fr]">
+          <aside className="lg:sticky lg:top-24 lg:self-start rounded-[2rem] border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-2 mb-5 border-b border-gray-100 pb-4">
+              <h3
+                className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 cursor-pointer lg:cursor-auto"
+                onClick={() => setMobileFiltersOpen((v) => !v)}
+                aria-expanded={mobileFiltersOpen}
+              >
+                <SlidersHorizontal className="w-4 h-4 text-orange-500" /> Bộ lọc
+                <ChevronDown className={`w-4 h-4 ml-1 transition-transform lg:hidden ${mobileFiltersOpen ? 'rotate-180' : ''}`} />
               </h3>
               <button className="text-xs font-bold text-orange-600" onClick={clearFilters}>
                 Xóa tất cả
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
+            <div className={`${mobileFiltersOpen ? 'block' : 'hidden'} lg:block space-y-4 max-h-[calc(100vh-9rem)] overflow-y-auto pr-1`}>
+              <FilterGroup label="Tìm kiếm">
+                <div className="space-y-3">
+                  <div className="relative group">
+                    <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500" />
+                    <input
+                      type="text"
+                      value={filters.query}
+                      onChange={(e) => setFilters((prev) => ({ ...prev, query: e.target.value }))}
+                      placeholder="Tên dịch vụ, từ khóa..."
+                      className="w-full rounded-2xl border border-gray-200 bg-white py-3.5 pl-11 pr-4 text-sm font-bold outline-none focus:border-orange-500"
+                    />
+                  </div>
+                  {loading && (
+                    <div className="flex items-center gap-2 text-xs font-semibold text-orange-600">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Đang cập nhật kết quả...
+                    </div>
+                  )}
+                </div>
+              </FilterGroup>
+
+              <FilterGroup label="Danh mục dịch vụ" collapsible>
+                <div className="space-y-3 max-h-64 overflow-auto pr-1">
+                  {(filterOptions.serviceCategories || []).map((item) => (
+                    <CategoryFilterNode
+                      key={item.id}
+                      category={item}
+                      selectedIds={filters.serviceCategoryIds}
+                      onChange={handleCategoryChange}
+                    />
+                  ))}
+                </div>
+              </FilterGroup>
+
               <FilterGroup label="Vị trí">
                 <select
                   value={filters.city}
@@ -308,18 +331,21 @@ const SearchFilterPage = () => {
                     <option key={item} value={item}>{item}</option>
                   ))}
                 </select>
-              </FilterGroup>
-
-              <FilterGroup label="Loại dịch vụ">
-                <div className="space-y-3 max-h-56 overflow-auto pr-1">
-                  {(filterOptions.serviceCategories || []).map((item) => (
-                    <CategoryFilterNode
-                      key={item.id}
-                      category={item}
-                      selectedIds={filters.serviceCategoryIds}
-                      onChange={handleCategoryChange}
-                    />
-                  ))}
+                <div className="mt-3 flex flex-col gap-2 text-sm">
+                  <button
+                    onClick={requestLocation}
+                    disabled={location.loading}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 py-3 font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+                  >
+                    <Navigation className="w-4 h-4" /> {location.loading ? 'Đang lấy vị trí...' : 'Dùng vị trí hiện tại'}
+                  </button>
+                  <button
+                    onClick={() => navigate('/nearby')}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-orange-50 px-4 py-3 font-semibold text-orange-700 hover:bg-orange-100"
+                  >
+                    <MapPin className="w-4 h-4" /> Xem gần bạn
+                  </button>
+                  <span className="text-xs font-medium text-gray-500">{location.label}</span>
                 </div>
               </FilterGroup>
 
@@ -385,8 +411,8 @@ const SearchFilterPage = () => {
                       type="button"
                       onClick={() => setFilters((prev) => ({ ...prev, timeOfDay: prev.timeOfDay === value ? '' : value }))}
                       className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all border ${filters.timeOfDay === value
-                          ? 'bg-gray-900 text-white border-gray-900'
-                          : 'bg-gray-50 border-transparent hover:border-orange-200 hover:bg-white'
+                        ? 'bg-gray-900 text-white border-gray-900'
+                        : 'bg-gray-50 border-transparent hover:border-orange-200 hover:bg-white'
                         }`}
                     >
                       {mapTimeOfDayLabel(value)}
@@ -411,7 +437,7 @@ const SearchFilterPage = () => {
             </div>
           </aside>
 
-          <div className="flex-1">
+          <div className="min-w-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
               <div>
                 <h2 className="text-xl font-black text-gray-900">
@@ -423,6 +449,27 @@ const SearchFilterPage = () => {
               </div>
 
               <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 rounded-2xl border bg-white px-3 py-2 shadow-sm" aria-label="Chuyển kiểu kết quả">
+                  <button
+                    type="button"
+                    onClick={() => setResultView('providers')}
+                    title="Xem nhà cung cấp"
+                    aria-label="Xem nhà cung cấp"
+                    className={`text-sm font-bold transition-colors ${resultView === 'providers' ? 'text-orange-600' : 'text-gray-500 hover:text-gray-900'}`}
+                  >
+                    Nhà cung cấp
+                  </button>
+                  <span className="h-4 w-px bg-gray-200" aria-hidden="true"></span>
+                  <button
+                    type="button"
+                    onClick={() => setResultView('services')}
+                    title="Xem dịch vụ"
+                    aria-label="Xem dịch vụ"
+                    className={`text-sm font-bold transition-colors ${resultView === 'services' ? 'text-orange-600' : 'text-gray-500 hover:text-gray-900'}`}
+                  >
+                    Dịch vụ
+                  </button>
+                </div>
                 <div className="flex bg-white border rounded-2xl p-1">
                   <button
                     onClick={() => setLayout('grid')}
@@ -455,18 +502,24 @@ const SearchFilterPage = () => {
               </div>
             )}
 
-            {loading && result.items.length === 0 ? (
+            {(resultView === 'services' ? servicesLoading && serviceResults.length === 0 : loading && result.items.length === 0) ? (
               <div className="py-20 flex items-center justify-center gap-3 text-gray-500">
                 <Loader2 className="w-5 h-5 animate-spin" /> Đang tìm kiếm...
               </div>
-            ) : result.items.length === 0 ? (
+            ) : result.items.length === 0 || (resultView === 'services' && serviceResults.length === 0) ? (
               <div className="bg-white rounded-3xl border p-10 text-center text-gray-500">
-                Không có nhà cung cấp phù hợp với bộ lọc này.
+                {resultView === 'services' ? 'Không có dịch vụ phù hợp với bộ lọc này.' : 'Không có nhà cung cấp phù hợp với bộ lọc này.'}
               </div>
             ) : (
               <>
                 <div className={layout === 'grid' ? 'grid grid-cols-1 xl:grid-cols-2 gap-6' : 'space-y-5'}>
-                  {result.items.map((provider) => (
+                  {resultView === 'services' ? serviceResults.map((service) => (
+                    <ServiceResultCard
+                      key={`${service.provider?.id}-${service.id}`}
+                      service={service}
+                      layout={layout}
+                    />
+                  )) : result.items.map((provider) => (
                     <ProviderResultCard
                       key={provider.id}
                       provider={provider}
@@ -499,19 +552,50 @@ const SearchFilterPage = () => {
           </div>
         </div>
       </main>
+      <footer className="border-t border-gray-100 bg-white py-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+          <div className="flex items-center justify-center gap-2 sm:justify-start">
+            <div className="rounded-lg bg-orange-500 p-1.5">
+              <PawPrint className="h-4 w-4 text-white" />
+            </div>
+            <span className="font-black text-gray-900">Pet<span className="text-orange-500">Go</span></span>
+          </div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">© 2025 PetGo Platform. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   );
 };
 
-const FilterGroup = ({ label, children }) => (
-  <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-    <div className="flex items-center justify-between mb-4">
-      <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">{label}</h3>
-      <Info className="w-4 h-4 text-gray-300" />
+const FilterGroup = ({ label, children, collapsible = false, defaultOpen = true }) => {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <div className="bg-gray-50/70 p-4 rounded-3xl border border-gray-100">
+      <div className="flex items-center justify-between mb-4">
+        {collapsible ? (
+          <h3
+            className="flex items-center gap-2 text-sm font-black text-gray-900 uppercase tracking-wider cursor-pointer"
+            onClick={() => setOpen((v) => !v)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(v => !v); } }}
+            aria-expanded={open}
+          >
+            <span>{label}</span>
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform lg:hidden ${open ? '' : 'rotate-180'}`} />
+          </h3>
+        ) : (
+          <>
+            <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">{label}</h3>
+            <Info className="w-4 h-4 text-gray-300" />
+          </>
+        )}
+      </div>
+      {collapsible ? (open ? children : null) : children}
     </div>
-    {children}
-  </div>
-);
+  );
+};
 
 const CategoryFilterNode = ({ category, selectedIds, onChange, level = 0 }) => {
   const value = String(category.id);
@@ -524,7 +608,7 @@ const CategoryFilterNode = ({ category, selectedIds, onChange, level = 0 }) => {
           type="checkbox"
           checked={selectedIds.includes(value)}
           onChange={() => onChange(value)}
-          className="w-5 h-5 rounded-lg border-2 border-gray-200 text-orange-500 focus:ring-0 cursor-pointer transition-all"
+          className="w-5 h-5 min-w-5 min-h-5 shrink-0 rounded-lg border-2 border-gray-200 text-orange-500 focus:ring-0 cursor-pointer transition-all"
         />
         <span className="text-sm font-bold text-gray-500 group-hover:text-gray-900 transition-colors">
           {category.name}
@@ -549,6 +633,7 @@ const CategoryFilterNode = ({ category, selectedIds, onChange, level = 0 }) => {
 
 const ProviderResultCard = ({ provider, layout, isFavorite, onToggleFavorite }) => {
   const navigate = useNavigate();
+  const providerDetailPath = `/providers/${provider.id}`;
   const cardLayoutClass = layout === 'grid'
     ? 'bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden'
     : 'bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden flex flex-col md:flex-row';
@@ -556,11 +641,18 @@ const ProviderResultCard = ({ provider, layout, isFavorite, onToggleFavorite }) 
   return (
     <div className={cardLayoutClass}>
       <div className={layout === 'grid' ? 'relative' : 'relative md:w-72 shrink-0'}>
-        <img
-          src={pickProviderImage(provider)}
-          alt={provider.name}
-          className={layout === 'grid' ? 'w-full h-56 object-cover' : 'w-full h-56 md:h-full object-cover'}
-        />
+        <button
+          type="button"
+          onClick={() => navigate(providerDetailPath)}
+          className="block h-full w-full overflow-hidden text-left group/image"
+          aria-label={`Xem chi tiết nhà cung cấp ${provider.name}`}
+        >
+          <img
+            src={pickProviderImage(provider)}
+            alt={provider.name}
+            className={`${layout === 'grid' ? 'w-full h-56 object-cover' : 'w-full h-56 md:h-full object-cover'} transition-transform duration-500 group-hover/image:scale-105`}
+          />
+        </button>
         <button
           onClick={() => onToggleFavorite(provider.id)}
           className="absolute top-4 right-4 p-2 rounded-full bg-white/90 shadow-sm"
@@ -572,7 +664,13 @@ const ProviderResultCard = ({ provider, layout, isFavorite, onToggleFavorite }) 
       <div className="p-5 flex-1">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="font-black text-xl text-gray-900 leading-tight">{provider.name}</h3>
+            <button
+              type="button"
+              onClick={() => navigate(providerDetailPath)}
+              className="block text-left text-2xl font-black text-gray-900 transition-colors hover:text-orange-600"
+            >
+              {provider.name}
+            </button>
             <p className="text-sm font-semibold text-orange-600 mt-1">{provider.featuredService || provider.headline || 'Dịch vụ nổi bật'}</p>
           </div>
           <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-700 text-sm font-bold shrink-0">
@@ -602,7 +700,7 @@ const ProviderResultCard = ({ provider, layout, isFavorite, onToggleFavorite }) 
 
         <div className="mt-4 flex flex-wrap gap-2">
           {(provider.categorySlugs || []).map((item) => (
-            <span key={item} className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold uppercase">
+            <span key={item} className="text-xl font-black text-gray-900 text-xs font-bold uppercase">
               {item}
             </span>
           ))}
@@ -618,21 +716,69 @@ const ProviderResultCard = ({ provider, layout, isFavorite, onToggleFavorite }) 
             <p className="text-xs uppercase tracking-widest text-gray-400 font-black">Giá từ</p>
             <p className="text-2xl font-black text-gray-900">{formatCurrencyVnd(provider.priceFrom)}đ</p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => navigate(`/booking?providerId=${provider.id}`)}
-              className="px-4 py-2 rounded-2xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600"
-            >
-              Book now
-            </button>
-            <button
-              onClick={() => navigate(`/providers/${provider.id}`)}
-              className="px-4 py-2 rounded-2xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800"
-            >
-              Details
-            </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ServiceResultCard = ({ service, layout }) => {
+  const navigate = useNavigate();
+  const provider = service.provider || {};
+  const serviceId = service.providerServiceId || service.id;
+  const bookingParams = new URLSearchParams();
+  if (provider.id) bookingParams.set('providerId', provider.id);
+  if (serviceId && !String(serviceId).startsWith('provider-')) bookingParams.set('serviceId', serviceId);
+  const serviceImage = service.photoUrls?.[0] || service.imageUrl || service.thumbnailUrl || pickProviderImage(provider);
+  const categoryName = service.categoryName || service.categories?.[0]?.name;
+  const duration = service.duration || (service.durationMinutes ? `${service.durationMinutes} phút` : 'Theo lịch hẹn');
+  const priceValue = service.priceDisplay || `${formatCurrencyVnd(service.price)}đ`;
+  const description = service.description || service.shortDescription || service.desc || 'Đang cập nhật mô tả dịch vụ.';
+
+  return (
+    <div className={layout === 'grid'
+      ? 'bg-white rounded-[2rem] border border-gray-100 shadow-sm p-5'
+      : 'bg-white rounded-[2rem] border border-gray-100 shadow-sm p-5 flex flex-col md:flex-row md:items-center gap-5'}>
+      <div className={layout === 'grid' ? 'flex items-start gap-4' : 'flex items-start gap-4 flex-1'}>
+        <img
+          src={serviceImage}
+          alt={service.name}
+          className="w-20 h-20 rounded-3xl object-cover shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-black uppercase tracking-widest text-orange-500 mb-1">Dịch vụ</p>
+          <h3 className="font-black text-xl text-gray-900 leading-tight">{service.name}</h3>
+          <p className="text-sm font-semibold text-gray-500 mt-1 truncate">Tại {provider.name}</p>
+          <p className="text-sm text-gray-500 font-medium mt-2 line-clamp-2">{description}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 text-xs font-semibold">
+              {duration}
+            </span>
+            {categoryName && (
+              <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold">
+                {categoryName}
+              </span>
+            )}
+            {(provider.categorySlugs || []).slice(0, categoryName ? 2 : 3).map((item) => (
+              <span key={item} className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold uppercase">
+                {item}
+              </span>
+            ))}
           </div>
         </div>
+      </div>
+
+      <div className={layout === 'grid' ? 'mt-5 pt-4 border-t flex items-end justify-between gap-3' : 'md:w-56 shrink-0 flex md:flex-col items-end justify-between gap-3'}>
+        <div className="text-right md:text-left">
+          <p className="text-xs uppercase tracking-widest text-gray-400 font-black">Giá từ</p>
+          <p className="text-2xl font-black text-gray-900">{priceValue}</p>
+        </div>
+        <button
+          onClick={() => navigate(`/booking?${bookingParams.toString()}`)}
+          className="px-4 py-2 rounded-2xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 whitespace-nowrap"
+        >
+          Đặt dịch vụ
+        </button>
       </div>
     </div>
   );

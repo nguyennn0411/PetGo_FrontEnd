@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, CheckCircle2, NotebookPen, Play, Save, X, XCircle } from 'lucide-react';
 import PartnerLayout from '../../components/partner/PartnerLayout';
-import { PartnerErrorState, PartnerLoadingState, PartnerStatusBadge } from '../../components/partner/PartnerStates';
+import { PartnerErrorState, PartnerLoadingState, PartnerNotice, PartnerStatusBadge, getPartnerErrorMessage, usePartnerToast } from '../../components/partner/PartnerStates';
 import { cancelPartnerBooking, completePartnerBooking, confirmPartnerBooking, getPartnerBookingDetail, startPartnerBooking, updatePartnerBookingInternalNote } from '../../api/partner';
 
 const PartnerBookingDetailPage = () => {
@@ -17,6 +17,7 @@ const PartnerBookingDetailPage = () => {
     const [cancelOpen, setCancelOpen] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
     const [cancelError, setCancelError] = useState('');
+    const { showToast } = usePartnerToast();
 
     const loadDetail = async () => {
         try {
@@ -26,7 +27,9 @@ const PartnerBookingDetailPage = () => {
             setBooking(data);
             setNote(data?.internalNote || '');
         } catch (err) {
-            setError(err.response?.data?.message || 'Không thể tải chi tiết booking.');
+            const message = getPartnerErrorMessage(err, 'Không thể tải chi tiết booking.');
+            setError(message);
+            showToast({ tone: 'error', title: 'Không tải được chi tiết booking', message });
         } finally {
             setLoading(false);
         }
@@ -43,10 +46,13 @@ const PartnerBookingDetailPage = () => {
             await action();
             await loadDetail();
             setSuccess(successMessage);
+            showToast({ tone: 'success', title: 'Đã cập nhật booking', message: successMessage });
             return true;
         } catch (err) {
-            setError(err.response?.data?.message || 'Thao tác booking thất bại.');
+            const message = getPartnerErrorMessage(err, 'Thao tác booking thất bại.');
+            setError(message);
             setSuccess('');
+            showToast({ tone: 'error', title: 'Thao tác booking thất bại', message });
             return false;
         } finally {
             setMutating(false);
@@ -58,7 +64,9 @@ const PartnerBookingDetailPage = () => {
     const submitCancel = async () => {
         const normalized = cancelReason.trim();
         if (normalized.length < 5) {
-            setCancelError('Vui lòng nhập lý do hủy tối thiểu 5 ký tự.');
+            const message = 'Vui lòng nhập lý do hủy tối thiểu 5 ký tự.';
+            setCancelError(message);
+            showToast({ tone: 'warning', title: 'Lý do hủy chưa hợp lệ', message });
             return;
         }
         const succeeded = await runAction(
@@ -77,7 +85,7 @@ const PartnerBookingDetailPage = () => {
             <div className="space-y-6">
                 <button onClick={() => navigate('/partner/bookings')} className="px-4 py-2 rounded-xl bg-white border border-gray-100 text-gray-500 font-black flex items-center gap-2"><ArrowLeft className="w-4 h-4" /> Quay lại</button>
                 {error && <PartnerErrorState message={error} onRetry={loadDetail} />}
-                {success && !error && <div className="bg-green-50 border border-green-100 text-green-700 rounded-[1.5rem] p-4 font-bold">{success}</div>}
+                {success && !error && <PartnerNotice tone="success" title="Đã cập nhật booking" message={success} onDismiss={() => setSuccess('')} />}
                 {loading ? <PartnerLoadingState /> : booking && (
                     <>
                         <section className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm">
@@ -130,7 +138,7 @@ const PartnerBookingDetailPage = () => {
 
                         <section className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm space-y-4">
                             <h3 className="text-xl font-black flex items-center gap-2"><NotebookPen className="w-5 h-5 text-orange-500" /> Ghi chú nội bộ</h3>
-                            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} className="w-full px-4 py-3 rounded-2xl bg-gray-50 border border-gray-100 font-semibold" placeholder="Ghi chú chỉ shop nhìn thấy" />
+                            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} className="w-full px-4 py-3 rounded-2xl bg-gray-50 border border-gray-100 font-semibold" placeholder="Ghi chú chỉ nhà cung cấp nhìn thấy" />
                             <button onClick={saveNote} disabled={mutating} className="px-5 py-3 rounded-2xl bg-gray-900 text-white font-black flex items-center gap-2"><Save className="w-4 h-4" /> Lưu ghi chú</button>
                         </section>
 
@@ -155,7 +163,7 @@ const PartnerBookingDetailPage = () => {
                                         <button onClick={() => setCancelOpen(false)} className="p-2 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-500"><X className="w-5 h-5" /></button>
                                     </div>
                                     <p className="text-sm text-gray-500 font-semibold">Lý do sẽ được lưu vào lịch sử booking để admin/customer support theo dõi khi cần.</p>
-                                    <textarea value={cancelReason} onChange={(event) => { setCancelReason(event.target.value); setCancelError(''); }} rows={4} className="w-full px-4 py-3 rounded-2xl bg-gray-50 border border-gray-100 font-semibold" placeholder="Ví dụ: Shop hết slot do nhân sự nghỉ đột xuất, đã liên hệ khách để hỗ trợ đặt lại lịch..." />
+                                    <textarea value={cancelReason} onChange={(event) => { setCancelReason(event.target.value); setCancelError(''); }} rows={4} className="w-full px-4 py-3 rounded-2xl bg-gray-50 border border-gray-100 font-semibold" placeholder="Ví dụ: Provider hết slot do nhân sự nghỉ đột xuất, đã liên hệ khách để hỗ trợ đặt lại lịch..." />
                                     {cancelError && <p className="text-sm font-bold text-red-600">{cancelError}</p>}
                                     <div className="flex flex-wrap justify-end gap-3">
                                         <button onClick={() => setCancelOpen(false)} className="px-5 py-3 rounded-2xl bg-gray-50 text-gray-600 font-black">Đóng</button>

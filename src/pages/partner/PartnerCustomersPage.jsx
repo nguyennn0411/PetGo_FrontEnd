@@ -50,7 +50,7 @@ const PartnerCustomersPage = () => {
     };
 
     return (
-        <PartnerLayout title="Khách hàng" subtitle="Danh sách khách đã từng booking tại shop" providerName={payload?.businessName}>
+        <PartnerLayout title="Khách hàng" subtitle="Danh sách khách đã từng booking bên provider" providerName={payload?.businessName}>
             <div className="space-y-6">
                 {error && <PartnerErrorState message={error} onRetry={() => loadCustomers(page)} />}
 
@@ -101,7 +101,7 @@ const PartnerCustomersPage = () => {
                         </section>
                         <Pagination payload={payload} page={page} onPage={loadCustomers} />
                     </>
-                ) : <PartnerEmptyState title="Chưa có khách hàng phù hợp" message="Khách hàng sẽ xuất hiện khi có booking thuộc shop hiện tại." action={<button onClick={() => loadCustomers(0)} className="px-4 py-2 rounded-xl bg-orange-50 text-orange-600 font-black flex items-center gap-2 mx-auto"><RefreshCw className="w-4 h-4" /> Refresh</button>} />}
+                ) : <PartnerEmptyState title="Chưa có khách hàng phù hợp" message="Khách hàng sẽ xuất hiện khi có booking thuộc provider hiện tại." action={<button onClick={() => loadCustomers(0)} className="px-4 py-2 rounded-xl bg-orange-50 text-orange-600 font-black flex items-center gap-2 mx-auto"><RefreshCw className="w-4 h-4" /> Refresh</button>} />}
 
                 {(selectedCustomer || detailLoading) && <CustomerDetailModal customer={selectedCustomer} loading={detailLoading} onClose={() => setSelectedCustomer(null)} />}
             </div>
@@ -144,7 +144,7 @@ const CustomerDetailModal = ({ customer, loading, onClose }) => (
                         </div>
                     </section>
                     <section className="space-y-3">
-                        <h3 className="font-black flex items-center gap-2"><CalendarDays className="w-4 h-4 text-orange-500" /> Booking tại shop</h3>
+                        <h3 className="font-black flex items-center gap-2"><CalendarDays className="w-4 h-4 text-orange-500" /> Booking tại provider</h3>
                         {(customer.bookings || []).map((booking) => (
                             <Link key={booking.bookingId} to={`/partner/bookings/${booking.bookingId}`} onClick={onClose} className="block p-4 rounded-2xl bg-gray-50 border border-gray-100 hover:bg-orange-50">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">

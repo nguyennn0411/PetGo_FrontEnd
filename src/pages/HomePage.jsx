@@ -1,7 +1,6 @@
-import React, { useContext, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Search,
-  MapPin,
   Star,
   Heart,
   Calendar,
@@ -9,13 +8,9 @@ import {
   PawPrint,
   ChevronRight,
   ShieldCheck,
-  Clock,
   BadgeCheck,
   Zap,
   Tag,
-  MessageCircle,
-  Menu,
-  X,
   Navigation,
   Scissors,
   Stethoscope,
@@ -24,42 +19,111 @@ import {
   Crown,
   Check,
   ArrowRight,
-  CheckCircle,
-  LogOut,
-  Smile,
   Quote,
-  Bell
+  ChevronLeft,
 } from 'lucide-react';
-import { AuthContext } from '../context/AuthContext';
-import { getRoleLandingPath, hasAdminRole, hasPartnerRole } from '../utils/partnerAccess';
+import { getProviderFilterOptions } from '../api/providers';
+import { getHomePage } from '../api/home';
+
+const categoryMarqueeStyles = `
+  @keyframes petgoCategoryMarquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+`;
 
 const App = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const { account, loadingAccount, logout } = useContext(AuthContext);
-  const canViewDashboard = account && (hasAdminRole(account) || hasPartnerRole(account));
-  const dashboardPath = canViewDashboard ? getRoleLandingPath(account, '/profile') : '/profile';
+  const [serviceCategories, setServiceCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [sliders, setSliders] = useState([]);
+  const [activeSlide, setActiveSlide] = useState(0);
 
-  const handleProfileMenuNavigate = (path) => {
-    setIsProfileMenuOpen(false);
-    window.location.href = path;
-  };
+  useEffect(() => {
+    const loadCategories = async () => {
+      setLoadingCategories(true);
+      try {
+        const data = await getProviderFilterOptions();
+        setServiceCategories(Array.isArray(data?.serviceCategories) ? data.serviceCategories : []);
+      } catch {
+        setServiceCategories([]);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
 
-  const handleLogout = () => {
-    setIsProfileMenuOpen(false);
-    logout?.();
-    window.location.href = '/login';
-  };
+    loadCategories();
+  }, []);
 
-  // Danh mục dịch vụ
-  const categories = [
-    { name: 'Pet Spa', icon: <PawPrint className="w-6 h-6" />, slug: 'spa', color: 'bg-orange-100 text-orange-600' },
-    { name: 'Grooming', icon: <Scissors className="w-6 h-6" />, slug: 'grooming', color: 'bg-blue-100 text-blue-600' },
-    { name: 'Veterinary', icon: <Stethoscope className="w-6 h-6" />, slug: 'clinic', color: 'bg-red-100 text-red-600' },
-    { name: 'Pet Boarding', icon: <Hotel className="w-6 h-6" />, slug: 'boarding', color: 'bg-green-100 text-green-600' },
-    { name: 'Pet Training', icon: <Award className="w-6 h-6" />, slug: 'training', color: 'bg-yellow-100 text-yellow-600' },
-    { name: 'Pet Walking', icon: <Navigation className="w-6 h-6" />, slug: 'walking', color: 'bg-purple-100 text-purple-600' },
+  useEffect(() => {
+    const loadHome = async () => {
+      try {
+        const data = await getHomePage();
+        setSliders(Array.isArray(data?.sliders) ? data.sliders : []);
+      } catch {
+        setSliders([]);
+      }
+    };
+
+    loadHome();
+  }, []);
+
+  const fallbackSliders = [
+    {
+      id: 'fallback-1',
+      title: 'PetGo - chăm sóc thú cưng trong một chạm',
+      subtitle: '',
+      imageUrl: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&q=80&w=1600',
+      ctaLabel: 'Khám phá PetGo',
+      ctaUrl: '/search',
+    },
   ];
+
+  const homeSliders = sliders.length ? sliders : fallbackSliders;
+
+  useEffect(() => {
+    if (homeSliders.length <= 1) return undefined;
+    const timer = window.setInterval(() => {
+      setActiveSlide((current) => (current + 1) % homeSliders.length);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [homeSliders.length]);
+
+  const goToSlide = (index) => setActiveSlide((index + homeSliders.length) % homeSliders.length);
+
+  const flattenCategories = (categories = [], parentName = '') => categories.flatMap((category) => {
+    const current = {
+      ...category,
+      displayName: parentName ? `${parentName} / ${category?.name || 'Dịch vụ'}` : category?.name,
+      isChild: Boolean(parentName),
+    };
+    return [current, ...flattenCategories(category?.children || [], category?.name || parentName)];
+  });
+
+  const visibleCategories = useMemo(() => flattenCategories(serviceCategories).slice(0, 12), [serviceCategories]);
+  const marqueeCategories = useMemo(() => [...visibleCategories, ...visibleCategories], [visibleCategories]);
+
+  const introSteps = [
+    { title: 'Tìm dịch vụ phù hợp', desc: 'Lọc spa, thú y, khách sạn thú cưng hoặc dịch vụ theo nhu cầu của bé.', icon: <Search className="w-5 h-5" /> },
+    { title: 'So sánh đối tác', desc: 'Xem đánh giá, khoảng cách, giá tham khảo và thông tin cửa hàng trước khi chọn.', icon: <BadgeCheck className="w-5 h-5" /> },
+    { title: 'Đặt lịch & theo dõi', desc: 'Quản lý lịch hẹn, thanh toán, hóa đơn và nhắc lịch trong cùng một tài khoản.', icon: <Calendar className="w-5 h-5" /> },
+  ];
+
+  const audienceCards = [
+    { title: 'Dành cho chủ nuôi', desc: 'Một nơi để tìm dịch vụ đáng tin cậy, lưu địa điểm yêu thích và chăm sóc thú cưng đều đặn hơn.', cta: 'Khám phá dịch vụ', href: '/search', icon: <User className="w-6 h-6" /> },
+    { title: 'Dành cho đối tác', desc: 'Cửa hàng có thể giới thiệu hồ sơ, quản lý dịch vụ, lịch làm việc và booking từ khách hàng.', cta: 'Đăng ký đối tác', href: '/partner-registration/provider', icon: <PawPrint className="w-6 h-6" /> },
+  ];
+
+  const getCategoryIcon = (categoryName = '') => {
+    const normalizedName = categoryName.toLowerCase();
+    if (normalizedName.includes('groom')) return <Scissors className="w-5 h-5" />;
+    if (normalizedName.includes('clinic') || normalizedName.includes('vet')) return <Stethoscope className="w-5 h-5" />;
+    if (normalizedName.includes('board') || normalizedName.includes('hotel')) return <Hotel className="w-5 h-5" />;
+    if (normalizedName.includes('train')) return <Award className="w-5 h-5" />;
+    if (normalizedName.includes('walk')) return <Navigation className="w-5 h-5" />;
+    return <PawPrint className="w-5 h-5" />;
+  };
+
+  const getCategorySearchValue = (category) => category?.id ?? category?.slug ?? category?.name;
 
   // Nhà cung cấp gần đây
   const nearbyProviders = [
@@ -76,197 +140,181 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-800">
-      {/* Header */}
-      <header className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex justify-between items-center">
-          {/* Logo */}
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.location.href = '/'}>
-            <div className="bg-orange-500 p-1.5 rounded-lg shadow-lg">
-              <PawPrint className="w-6 h-6 text-white" />
+      <style>{categoryMarqueeStyles}</style>
+      {/* Home Slider */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-orange-50/80 via-white to-white pt-6 pb-8 sm:pt-10 sm:pb-12">
+        <div className="absolute -top-24 right-[-6rem] h-80 w-80 rounded-full bg-orange-200/40 blur-[120px]"></div>
+        <div className="max-w-7xl mx-auto px-4 relative z-10">
+          <div className="relative overflow-hidden rounded-[2.5rem] border border-orange-100 bg-white shadow-2xl shadow-orange-100/60">
+            <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${activeSlide * 100}%)` }}>
+              {homeSliders.map((slide) => (
+                <div key={slide.id} className="min-w-full">
+                  <button
+                    type="button"
+                    onClick={() => { if (slide.ctaUrl) window.location.href = slide.ctaUrl; }}
+                    className="group relative block h-[340px] w-full overflow-hidden text-left sm:h-[430px] lg:h-[520px]"
+                    aria-label={slide.ctaLabel || slide.title || 'PetGo banner'}
+                  >
+                    <img
+                      src={slide.imageUrl}
+                      alt={slide.title || 'PetGo banner'}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-[1200ms] group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-gray-950/80 via-gray-950/35 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-gray-950/60 to-transparent" />
+                    <div className="relative z-10 flex h-full max-w-3xl flex-col justify-center px-6 py-10 sm:px-10 lg:px-14">
+                      <h1 className="max-w-3xl text-4xl font-black leading-tight tracking-tight text-white drop-shadow sm:text-5xl lg:text-6xl">
+                        {slide.title}
+                      </h1>
+                      {slide.subtitle && (
+                        <p className="mt-5 max-w-2xl text-base font-semibold leading-8 text-white/85 sm:text-lg">
+                          {slide.subtitle}
+                        </p>
+                      )}
+                      <span className="mt-8 inline-flex w-fit items-center gap-2 rounded-2xl bg-orange-500 px-7 py-4 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-orange-950/20 transition-all group-hover:bg-white group-hover:text-orange-600">
+                        {slide.ctaLabel || 'Khám phá ngay'} <ArrowRight className="h-4 w-4" />
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              ))}
             </div>
-            <span className="text-2xl font-black text-gray-900 tracking-tighter">Pet<span className="text-orange-500">Go</span></span>
-          </div>
-
-          {/* Quick Search */}
-          <div className="hidden lg:flex flex-1 max-w-sm mx-8">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Tìm spa, thú y..."
-                className="w-full pl-10 pr-4 py-2 bg-gray-100 border-none rounded-full text-sm outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
-              />
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <nav className="hidden lg:flex items-center gap-8 text-sm font-black uppercase tracking-widest text-gray-500">
-            <a href="/" className="text-orange-600">Home</a>
-            <a href="/shop" className="hover:text-orange-600 transition-colors">Store</a>
-            <a href="/my-orders" className="hover:text-orange-600 transition-colors">My orders</a>
-            <a href="/search" className="hover:text-orange-600 transition-colors">Services</a>
-
-            <a href="/my-bookings" className="hover:text-orange-600 transition-colors">My Bookings</a>
-            <a href="/favorites" className="hover:text-orange-600 transition-colors">favorites</a>
-            <a href="/membership" className="hover:text-orange-600 transition-colors flex items-center gap-1.5">
-              <Crown className="w-4 h-4 text-orange-500" /> Membership
-            </a>
-            {account && (
-              <a href="/notifications" className="hover:text-orange-600 transition-colors flex items-center gap-1.5">
-                <Bell className="w-4 h-4 text-orange-500" /> Notifications
-              </a>
-            )}
-            {loadingAccount ? (
-              <div className="h-9 w-24 rounded-full bg-gray-100 animate-pulse" aria-label="Đang kiểm tra đăng nhập" />
-            ) : account ? (
-              <div className="relative">
-                <button
-                  type="button"
-                  className="w-9 h-9 rounded-full bg-orange-100 border-2 border-white flex items-center justify-center shadow-sm cursor-pointer hover:bg-orange-200 transition-colors"
-                  onClick={() => setIsProfileMenuOpen((open) => !open)}
-                  aria-label="Mở menu tài khoản"
-                >
-                  <User className="w-5 h-5 text-orange-600" />
+            {homeSliders.length > 1 && (
+              <>
+                <button type="button" onClick={() => goToSlide(activeSlide - 1)} className="absolute left-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-900 shadow-lg transition hover:bg-orange-500 hover:text-white sm:flex" aria-label="Slider trước">
+                  <ChevronLeft className="h-5 w-5" />
                 </button>
-                {isProfileMenuOpen && (
-                  <div className="absolute right-0 top-full mt-3 w-56 rounded-2xl bg-white border border-gray-100 shadow-2xl p-2 z-[60] normal-case tracking-normal text-left">
-                    <button
-                      type="button"
-                      onClick={() => handleProfileMenuNavigate('/profile')}
-                      className="w-full px-4 py-3 rounded-xl hover:bg-orange-50 transition-colors text-left"
-                    >
-                      <span className="block text-sm font-black text-gray-900">Profile</span>
-                      <span className="block text-[11px] font-semibold text-gray-400 mt-0.5">Thông tin cá nhân</span>
-                    </button>
-                    {canViewDashboard && (
-                      <button
-                        type="button"
-                        onClick={() => handleProfileMenuNavigate(dashboardPath)}
-                        className="w-full px-4 py-3 rounded-xl hover:bg-orange-50 transition-colors text-left"
-                      >
-                        <span className="block text-sm font-black text-gray-900">Dashboard</span>
-                        <span className="block text-[11px] font-semibold text-gray-400 mt-0.5">Khu vực quản lý theo tài khoản</span>
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="mt-2 flex w-full items-center gap-3 rounded-xl border-t border-gray-100 px-4 py-3 text-left text-red-500 transition-colors hover:bg-red-50"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span className="text-sm font-black">Đăng xuất</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <a
-                href="/login"
-                className="inline-flex items-center justify-center rounded-full bg-orange-500 px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-orange-100 transition-all hover:bg-orange-600 hover:shadow-orange-200"
-              >
-                Đăng nhập
-              </a>
+                <button type="button" onClick={() => goToSlide(activeSlide + 1)} className="absolute right-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-900 shadow-lg transition hover:bg-orange-500 hover:text-white sm:flex" aria-label="Slider sau">
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+                <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-2">
+                  {homeSliders.map((slide, index) => (
+                    <button key={`dot-${slide.id}`} type="button" onClick={() => goToSlide(index)} className={`h-2.5 rounded-full transition-all ${index === activeSlide ? 'w-8 bg-orange-500' : 'w-2.5 bg-white/80'}`} aria-label={`Chuyển đến slider ${index + 1}`} />
+                  ))}
+                </div>
+              </>
             )}
-          </nav>
-
-          {!loadingAccount && !account && (
-            <a
-              href="/login"
-              className="lg:hidden ml-auto mr-2 inline-flex items-center justify-center rounded-full bg-orange-500 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-md shadow-orange-100 transition-all hover:bg-orange-600"
-            >
-              Đăng nhập
-            </a>
-          )}
-
-          <button className="lg:hidden p-2" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-            {isMenuOpen ? <X /> : <Menu />}
-          </button>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-20 sm:pt-48 sm:pb-32 overflow-hidden bg-gradient-to-b from-orange-50/50 to-white">
-        <div className="absolute top-20 left-10 w-64 h-64 bg-orange-200 rounded-full blur-[100px] opacity-20 -z-10"></div>
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <h1 className="text-4xl sm:text-7xl font-black text-gray-900 mb-6 leading-tight tracking-tighter">
-            Find the best <span className="text-orange-500">pet care</span> <br /> services near you
-          </h1>
-          <p className="text-gray-500 max-w-2xl mx-auto text-lg mb-10 font-medium">
-            Book trusted pet grooming, spa and veterinary services in seconds. <br className="hidden sm:block" />
-            Trusted by 50,000+ pet parents nationwide.
-          </p>
-
-          {/* Large Search Bar */}
-          <div className="max-w-3xl mx-auto flex flex-col sm:flex-row gap-4 p-3 bg-white rounded-[2.5rem] shadow-2xl border border-gray-50 mb-12">
-            <div className="flex-[1.5] flex items-center px-4 gap-3 border-r border-gray-100">
-              <Search className="text-orange-500 w-5 h-5" />
-              <input type="text" placeholder="Search pet services, spa or clinic" className="w-full bg-transparent outline-none font-bold text-sm" />
-            </div>
-            <div className="flex-1 flex items-center px-4 gap-3">
-              <MapPin className="text-orange-500 w-5 h-5" />
-              <input type="text" placeholder="Hồ Chí Minh" className="w-full bg-transparent outline-none font-bold text-sm" />
-            </div>
-            <button
-              onClick={() => window.location.href = '/search'}
-              className="bg-gray-900 text-white px-10 py-4 rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-orange-500 transition-all"
-            >
-              Search
-            </button>
           </div>
+        </div>
+      </section>
 
-          <div className="flex flex-wrap justify-center gap-4">
-            <button
-              onClick={() => window.location.href = '/search'}
-              className="px-10 py-5 bg-orange-500 text-white font-black rounded-2xl shadow-xl shadow-orange-100 hover:scale-105 transition-all uppercase tracking-widest text-xs flex items-center gap-2"
-            >
-              Book a Service <ArrowRight className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => window.location.href = '/membership'}
-              className="px-10 py-5 bg-white text-gray-900 font-black rounded-2xl border-2 border-gray-100 hover:border-orange-500 hover:text-orange-600 transition-all uppercase tracking-widest text-xs"
-            >
-              Explore Membership
-            </button>
+      {/* Introduction */}
+      <section className="py-18 bg-white">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500 mb-3">PetGo là gì?</p>
+              <h2 className="text-3xl font-black tracking-tight text-gray-950 sm:text-5xl">
+                Nền tảng kết nối chủ nuôi với dịch vụ chăm sóc thú cưng đáng tin cậy.
+              </h2>
+              <p className="mt-5 text-base font-medium leading-8 text-gray-500">
+                PetGo giúp bạn tìm kiếm, so sánh, đặt lịch và quản lý các nhu cầu chăm sóc thú cưng hằng ngày — từ grooming, khám thú y đến khách sạn lưu trú.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {introSteps.map((step, index) => (
+                <div key={step.title} className="rounded-[2rem] border border-orange-100 bg-orange-50/40 p-6">
+                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-orange-500 shadow-sm">
+                    {step.icon}
+                  </div>
+                  <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-orange-500">Bước {index + 1}</p>
+                  <h3 className="text-lg font-black text-gray-950">{step.title}</h3>
+                  <p className="mt-3 text-sm font-medium leading-6 text-gray-500">{step.desc}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* Service Categories */}
-      <section className="py-20 bg-gray-50/50">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <h2 className="text-2xl font-black text-gray-900 uppercase tracking-widest mb-12 italic">Popular Categories</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
-            {categories.map((cat, i) => (
-              <div
-                key={i}
-                onClick={() => window.location.href = `/search?category=${cat.slug}`}
-                className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all cursor-pointer group"
-              >
-                <div className={`${cat.color} w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform`}>
-                  {cat.icon}
-                </div>
-                <span className="font-black text-gray-700 text-sm">{cat.name}</span>
+      <section id="services" className="py-16 bg-white scroll-mt-24">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-3xl font-black tracking-tight text-gray-900 sm:text-4xl">Danh mục dịch vụ</h2>
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-gray-100 bg-gray-50/60 p-4 sm:p-6">
+            {loadingCategories ? (
+              <div className="flex gap-4 overflow-hidden">
+                {[...Array(8)].map((_, index) => (
+                  <div key={index} className="h-52 min-w-[260px] rounded-3xl bg-white animate-pulse sm:min-w-[300px]" />
+                ))}
               </div>
-            ))}
+            ) : visibleCategories.length ? (
+              <div className="group relative overflow-hidden py-2">
+                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-gray-50 via-gray-50/90 to-transparent" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-gray-50 via-gray-50/90 to-transparent" />
+                <div
+                  className="flex w-max gap-4 motion-reduce:animate-none group-hover:[animation-play-state:paused]"
+                  style={{ animation: 'petgoCategoryMarquee 32s linear infinite' }}
+                >
+                  {marqueeCategories.map((cat, index) => (
+                    <button
+                      type="button"
+                      key={`${getCategorySearchValue(cat)}-${index}`}
+                      onClick={() => window.location.href = `/search?serviceCategoryIds=${getCategorySearchValue(cat)}`}
+                      className="group/card min-w-[260px] rounded-3xl border border-gray-100 bg-white p-5 text-left transition-all hover:-translate-y-1 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-100/60 sm:min-w-[300px] lg:min-w-[320px]"
+                    >
+                      <span className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-500 transition-all group-hover/card:bg-orange-500 group-hover/card:text-white">
+                        {getCategoryIcon(cat?.name)}
+                      </span>
+                      <span className="block min-h-10 text-sm font-black leading-5 text-gray-900 group-hover/card:text-orange-600">
+                        {cat?.displayName || cat?.name || 'Dịch vụ'}
+                      </span>
+                      {cat?.description ? (
+                        <span className="mt-2 block line-clamp-2 text-xs font-medium leading-5 text-gray-500">{cat.description}</span>
+                      ) : (
+                        <span className="mt-2 block text-xs font-bold text-gray-400">Xem nhà cung cấp phù hợp</span>
+                      )}
+                      <span className="mt-5 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-orange-500">
+                        Khám phá <ChevronRight className="h-3.5 w-3.5" />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center">
+                <p className="text-sm font-bold text-gray-500">Chưa có dữ liệu danh mục dịch vụ.</p>
+                <button
+                  onClick={() => window.location.href = '/#services'}
+                  className="mt-4 rounded-xl bg-orange-500 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white"
+                >
+                  Đi tới tìm kiếm
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      {/* Nearby Services */}
-      <section className="py-24 max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between mb-12">
-          <div>
-            <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Pet Services Near You</h2>
-            <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.2em] mt-2">Dựa trên vị trí hiện tại của bạn</p>
+      {/* Audiences */}
+      <section className="py-20 bg-gray-50/70">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="mb-10 max-w-3xl">
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500 mb-3">PetGo dành cho ai?</p>
+            <h2 className="text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">Một hệ sinh thái cho cả chủ nuôi và đơn vị chăm sóc thú cưng.</h2>
           </div>
-          <button onClick={() => window.location.href = '/search'} className="text-sm font-black text-orange-600 hover:underline flex items-center gap-1">
-            See All <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-          {nearbyProviders.map((p) => (
-            <ProviderCard key={p.id} provider={p} badge="Nearby" />
-          ))}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {audienceCards.map((card) => (
+              <div key={card.title} className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-500">
+                  {card.icon}
+                </div>
+                <h3 className="text-2xl font-black text-gray-950">{card.title}</h3>
+                <p className="mt-3 text-sm font-medium leading-7 text-gray-500">{card.desc}</p>
+                <button
+                  onClick={() => window.location.href = card.href}
+                  className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-gray-950 px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-orange-500"
+                >
+                  {card.cta} <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -369,10 +417,10 @@ const App = () => {
             <p className="text-orange-100 text-lg font-medium opacity-90">Dành riêng cho khách hàng đặt lịch qua ứng dụng PetGo.</p>
           </div>
           <button
-            onClick={() => window.location.href = '/search'}
+            onClick={() => window.location.href = '/#services'}
             className="px-12 py-5 bg-white text-orange-600 font-black rounded-2xl shadow-xl hover:scale-105 transition-all uppercase tracking-widest text-sm"
           >
-            Book Now
+            Đặt lịch ngay
           </button>
         </div>
       </section>
@@ -380,12 +428,12 @@ const App = () => {
       {/* Why Choose PetGo */}
       <section className="py-24 bg-white text-center">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-3xl sm:text-5xl font-black text-gray-900 mb-20 uppercase italic">Why Choose PetGo</h2>
+          <h2 className="text-3xl sm:text-5xl font-black text-gray-900 mb-20 uppercase italic">Vì sao chọn PetGo?</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12">
-            <Feature icon={<ShieldCheck className="w-10 h-10" />} title="Verified providers" desc="100% đối tác được kiểm duyệt kỹ lưỡng." />
-            <Feature icon={<BadgeCheck className="w-10 h-10" />} title="Transparent pricing" desc="Giá cả công khai, không phí ẩn." />
-            <Feature icon={<Quote className="w-10 h-10" />} title="Real reviews" desc="Đánh giá từ khách hàng thực tế." />
-            <Feature icon={<Zap className="w-10 h-10" />} title="Easy booking" desc="Đặt lịch nhanh chóng trong 30s." />
+            <Feature icon={<ShieldCheck className="w-10 h-10" />} title="Đối tác đã xác minh" desc="100% đối tác được kiểm duyệt kỹ lưỡng." />
+            <Feature icon={<BadgeCheck className="w-10 h-10" />} title="Giá cả minh bạch" desc="Giá cả công khai, không phí ẩn." />
+            <Feature icon={<Quote className="w-10 h-10" />} title="Đánh giá thật" desc="Đánh giá từ khách hàng thực tế." />
+            <Feature icon={<Zap className="w-10 h-10" />} title="Đặt lịch dễ dàng" desc="Đặt lịch nhanh chóng trong 30 giây." />
           </div>
         </div>
       </section>
@@ -470,13 +518,13 @@ const ProviderCard = ({ provider, badge }) => (
           onClick={() => window.location.href = '/providers/1'}
           className="py-3 px-2 bg-gray-100 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all"
         >
-          Details
+          Chi tiết
         </button>
         <button
           onClick={() => window.location.href = '/booking'}
           className="py-3 px-2 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-500 transition-all"
         >
-          Book Now
+          Đặt lịch ngay
         </button>
       </div>
     </div>

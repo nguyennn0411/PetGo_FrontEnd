@@ -12,7 +12,7 @@ const fallbackOptions = {
         { value: 'SEASONAL', label: 'Theo mùa/sự kiện' },
         { value: 'BUNDLE', label: 'Combo/bundle' },
         { value: 'FREE_SERVICE', label: 'Tặng dịch vụ' },
-        { value: 'PARTNER_EXCLUSIVE', label: 'Riêng cho shop' },
+        { value: 'PARTNER_EXCLUSIVE', label: 'Riêng cho nhà cung cấp' },
     ],
     targetTypes: [
         { value: 'BOOKING', label: 'Booking dịch vụ' },
@@ -421,13 +421,13 @@ const PromotionManager = ({
         }
     };
 
-    const canEditPromotion = (promotion) => partnerMode || promotion.ownerType === 'ADMIN';
+    const canEditPromotion = (promotion) => partnerMode || promotion.userType === 'ADMIN';
 
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <MetricCard label="Đang chạy" value={metrics.active} hint="Ưu đãi active hiện tại" />
-                <MetricCard label="Tổng ưu đãi" value={promotions.length} hint={partnerMode ? 'Do shop của bạn tạo' : 'Do admin tạo'} />
+                <MetricCard label="Tổng ưu đãi" value={promotions.length} hint={partnerMode ? 'Do nhà cung cấp của bạn tạo' : 'Do admin tạo'} />
                 <MetricCard label="Lượt sử dụng" value={metrics.totalUsage} hint="Tổng redemption ghi nhận" />
             </div>
 
@@ -458,7 +458,8 @@ const PromotionManager = ({
             </div>
 
             {showForm && (
-                <form onSubmit={handleSubmit} className="bg-white border border-orange-100 rounded-[2rem] p-5 shadow-sm space-y-5">
+                <div className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto bg-gray-900/60 px-4 py-6 backdrop-blur-sm" onMouseDown={(event) => event.target === event.currentTarget && resetForm()}>
+                <form onSubmit={handleSubmit} className="w-full max-w-5xl bg-white border border-orange-100 rounded-[2rem] p-5 shadow-2xl space-y-5" onMouseDown={(event) => event.stopPropagation()}>
                     <div className="flex items-start justify-between gap-4">
                         <div>
                             <p className="text-[10px] uppercase tracking-[0.18em] text-orange-500 font-black">{form.id ? 'Update promotion' : 'New promotion'}</p>
@@ -597,7 +598,7 @@ const PromotionManager = ({
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {!partnerMode && form.targetType !== 'MEMBERSHIP' && (
-                                        <MultiSelect label="Giới hạn shop/provider" value={form.providerIds} onChange={(event) => handleMultiSelect('providerIds', event)} options={(mergedOptions.providers || []).map((item) => ({ value: item.id, label: item.name }))} />
+                                        <MultiSelect label="Giới hạn nhà cung cấp" value={form.providerIds} onChange={(event) => handleMultiSelect('providerIds', event)} options={(mergedOptions.providers || []).map((item) => ({ value: item.id, label: item.name }))} />
                                     )}
                                     {form.targetType !== 'MEMBERSHIP' && (
                                         <>
@@ -636,6 +637,7 @@ const PromotionManager = ({
                         </button>
                     </div>
                 </form>
+                </div>
             )}
 
             <div className="space-y-4">

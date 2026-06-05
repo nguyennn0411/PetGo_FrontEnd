@@ -213,13 +213,13 @@ const App = () => {
                           onClick={() => window.location.href = `/booking?providerId=${provider.id}`}
                           className="w-full py-4 bg-gray-900 text-white font-black rounded-2xl shadow-lg hover:bg-orange-500 transition-all uppercase tracking-widest text-[10px]"
                         >
-                          Book Now
+                          Đặt lịch ngay
                         </button>
                         <button 
                           onClick={() => window.location.href = `/providers/${provider.id}`}
                           className="w-full py-4 bg-white border border-gray-200 text-gray-500 font-black rounded-2xl hover:border-orange-500 hover:text-orange-600 transition-all uppercase tracking-widest text-[10px]"
                         >
-                          View Details
+                          Chi tiết
                         </button>
                       </>
                     )}
