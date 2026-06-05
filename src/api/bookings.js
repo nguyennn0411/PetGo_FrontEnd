@@ -1,18 +1,20 @@
 import api from './axios';
 
+const unwrapPayload = (data) => data?.result || data;
+
 export const getBookingCreateContext = async (params = {}) => {
   const response = await api.get('/bookings/create-context', { params });
-  return response.data;
+  return unwrapPayload(response.data);
 };
 
 export const createBooking = async (payload) => {
   const response = await api.post('/bookings', payload);
-  return response.data;
+  return unwrapPayload(response.data);
 };
 
 export const getBookingSummary = async (bookingId) => {
   const response = await api.get(`/bookings/${bookingId}/summary`);
-  return response.data;
+  return unwrapPayload(response.data);
 };
 
 export const getMyBookings = async (userId, status = 'ALL') => {

@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Bell, Calendar, Crown, Heart, LogOut, Menu, PawPrint, Search, ShoppingBag, User, X } from 'lucide-react';
+import { Bell, Calendar, Crown, Heart, LogOut, Menu, PawPrint, Search, ShoppingBag, User, Wallet, X } from 'lucide-react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { getRoleLandingPath, hasAdminRole, hasPartnerRole } from '../utils/partnerAccess';
@@ -10,6 +10,7 @@ const navItems = [
     { to: '/shop', label: 'Cửa hàng', icon: ShoppingBag },
     { to: '/my-bookings', label: 'Booking', icon: Calendar },
     { to: '/favorites', label: 'Yêu thích', icon: Heart },
+    { to: '/wallet', label: 'Ví', icon: Wallet },
 ];
 
 const UserNav = ({ activePath = '' }) => {
@@ -91,6 +92,7 @@ const UserNav = ({ activePath = '' }) => {
                             {profileOpen && (
                                 <div className="absolute right-0 mt-3 w-60 rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-gray-200/70">
                                     <button onClick={() => { setProfileOpen(false); navigate('/profile'); }} className="w-full rounded-2xl px-4 py-3 text-left text-sm font-black hover:bg-orange-50">Hồ sơ cá nhân</button>
+                                    <button onClick={() => { setProfileOpen(false); navigate('/wallet'); }} className="w-full rounded-2xl px-4 py-3 text-left text-sm font-black hover:bg-orange-50">Ví PetGo</button>
                                     {canViewDashboard && <button onClick={() => { setProfileOpen(false); navigate(dashboardPath); }} className="w-full rounded-2xl px-4 py-3 text-left text-sm font-black hover:bg-orange-50">Dashboard</button>}
                                     <button onClick={handleLogout} className="mt-1 flex w-full items-center gap-2 rounded-2xl px-4 py-3 text-left text-sm font-black text-red-500 hover:bg-red-50"><LogOut className="h-4 w-4" /> Đăng xuất</button>
                                 </div>

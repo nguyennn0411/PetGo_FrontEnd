@@ -165,13 +165,13 @@ const FavoritesPage = () => {
                         onClick={() => navigate(`/providers/${item.providerId}`)}
                         className="px-5 py-3 bg-gray-100 text-gray-600 font-black rounded-2xl hover:bg-gray-200 transition-all uppercase tracking-widest text-[10px]"
                       >
-                        Details
+                        Chi tiết
                       </button>
                       <button
                         onClick={() => navigate(`/booking?providerId=${item.providerId}`)}
                         className="px-6 py-3 bg-gray-900 text-white font-black rounded-2xl shadow-lg hover:bg-orange-500 transition-all uppercase tracking-widest text-[10px] flex items-center gap-2"
                       >
-                        Book Now <Calendar className="w-3.5 h-3.5" />
+                        Đặt lịch ngay <Calendar className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>

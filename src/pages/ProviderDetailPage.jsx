@@ -138,7 +138,7 @@ const ProviderDetailPage = () => {
 
   const galleryImages = useMemo(() => {
     if (!provider) return [];
-    const images = [provider.bannerImage, provider.mainImage, ...(provider.gallery || [])].filter(Boolean);
+    const images = [...(provider.gallery || [])].filter(Boolean);
     return Array.from(new Set(images));
   }, [provider]);
 
@@ -308,7 +308,7 @@ const ProviderDetailPage = () => {
         </div>
       </section>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 relative z-10">
         <div className="grid lg:grid-cols-[1fr_400px] gap-8 items-start">
           <div className="space-y-8">
             <section className="bg-white rounded-[2.5rem] p-6 sm:p-8 border border-gray-100 shadow-sm">
@@ -341,13 +341,6 @@ const ProviderDetailPage = () => {
                     <SummaryTile label="Hủy miễn phí" value={`${provider.summary?.cancellationFreeHours || 0}h`} />
                     <SummaryTile label="Tình trạng" value={provider.summary?.openNow ? 'Đang mở' : 'Ngoài giờ'} accent={provider.summary?.openNow ? 'green' : 'gray'} />
                   </div>
-
-                  <div className="flex flex-wrap gap-3">
-                    <PrimaryAction onClick={() => navigate(buildBookingQuery({ providerId: provider.id }))}>
-                      Đặt lịch ngay
-                    </PrimaryAction>
-                    <SecondaryAction onClick={() => navigate('/search')}>Xem nhà cung cấp khác</SecondaryAction>
-                  </div>
                 </div>
               </div>
             </section>
@@ -356,7 +349,6 @@ const ProviderDetailPage = () => {
               <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
                 <div>
                   <h2 className="text-2xl font-black text-gray-900 mb-1">Ảnh giới thiệu</h2>
-                  <p className="text-sm font-medium text-gray-500">{provider.summary?.totalGalleryImages || galleryImages.length} ảnh được hiển thị từ backend</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -426,7 +418,7 @@ const ProviderDetailPage = () => {
                           onClick={() => openBookingForService(service.id)}
                           className="px-8 py-4 bg-gray-900 text-white text-[10px] font-black rounded-[1.5rem] hover:bg-orange-500 hover:shadow-lg transition-all uppercase tracking-widest"
                         >
-                          Book Now
+                          Đặt lịch ngay
                         </button>
                       </div>
                     </div>
@@ -458,7 +450,7 @@ const ProviderDetailPage = () => {
                       <div className="flex justify-between items-start gap-4 mb-4 flex-wrap">
                         <div className="flex items-center gap-4 min-w-0">
                           <img
-                            src={review.avatar || 'https://i.pravatar.cc/150?img=12'}
+                            src={review.avatar || providerFallbackImage}
                             alt={review.user}
                             className="w-14 h-14 rounded-2xl object-cover border-2 border-white shadow-sm"
                           />

@@ -633,6 +633,7 @@ const CategoryFilterNode = ({ category, selectedIds, onChange, level = 0 }) => {
 
 const ProviderResultCard = ({ provider, layout, isFavorite, onToggleFavorite }) => {
   const navigate = useNavigate();
+  const providerDetailPath = `/providers/${provider.id}`;
   const cardLayoutClass = layout === 'grid'
     ? 'bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden'
     : 'bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden flex flex-col md:flex-row';
@@ -640,11 +641,18 @@ const ProviderResultCard = ({ provider, layout, isFavorite, onToggleFavorite }) 
   return (
     <div className={cardLayoutClass}>
       <div className={layout === 'grid' ? 'relative' : 'relative md:w-72 shrink-0'}>
-        <img
-          src={pickProviderImage(provider)}
-          alt={provider.name}
-          className={layout === 'grid' ? 'w-full h-56 object-cover' : 'w-full h-56 md:h-full object-cover'}
-        />
+        <button
+          type="button"
+          onClick={() => navigate(providerDetailPath)}
+          className="block h-full w-full overflow-hidden text-left group/image"
+          aria-label={`Xem chi tiết nhà cung cấp ${provider.name}`}
+        >
+          <img
+            src={pickProviderImage(provider)}
+            alt={provider.name}
+            className={`${layout === 'grid' ? 'w-full h-56 object-cover' : 'w-full h-56 md:h-full object-cover'} transition-transform duration-500 group-hover/image:scale-105`}
+          />
+        </button>
         <button
           onClick={() => onToggleFavorite(provider.id)}
           className="absolute top-4 right-4 p-2 rounded-full bg-white/90 shadow-sm"
@@ -656,7 +664,13 @@ const ProviderResultCard = ({ provider, layout, isFavorite, onToggleFavorite }) 
       <div className="p-5 flex-1">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="font-black text-xl text-gray-900 leading-tight">{provider.name}</h3>
+            <button
+              type="button"
+              onClick={() => navigate(providerDetailPath)}
+              className="block text-left text-2xl font-black text-gray-900 transition-colors hover:text-orange-600"
+            >
+              {provider.name}
+            </button>
             <p className="text-sm font-semibold text-orange-600 mt-1">{provider.featuredService || provider.headline || 'Dịch vụ nổi bật'}</p>
           </div>
           <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-700 text-sm font-bold shrink-0">
@@ -686,7 +700,7 @@ const ProviderResultCard = ({ provider, layout, isFavorite, onToggleFavorite }) 
 
         <div className="mt-4 flex flex-wrap gap-2">
           {(provider.categorySlugs || []).map((item) => (
-            <span key={item} className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold uppercase">
+            <span key={item} className="text-xl font-black text-gray-900 text-xs font-bold uppercase">
               {item}
             </span>
           ))}
@@ -701,20 +715,6 @@ const ProviderResultCard = ({ provider, layout, isFavorite, onToggleFavorite }) 
           <div>
             <p className="text-xs uppercase tracking-widest text-gray-400 font-black">Giá từ</p>
             <p className="text-2xl font-black text-gray-900">{formatCurrencyVnd(provider.priceFrom)}đ</p>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => navigate(`/booking?providerId=${provider.id}`)}
-              className="px-4 py-2 rounded-2xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600"
-            >
-              Book now
-            </button>
-            <button
-              onClick={() => navigate(`/providers/${provider.id}`)}
-              className="px-4 py-2 rounded-2xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800"
-            >
-              Details
-            </button>
           </div>
         </div>
       </div>

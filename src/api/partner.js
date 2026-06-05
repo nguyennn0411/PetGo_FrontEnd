@@ -15,6 +15,14 @@ export const updatePartnerProfile = async (payload) => {
     return response.data?.result || response.data;
 };
 
+export const uploadPartnerProfileImage = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/partner/services/images', formData);
+    const payload = response.data?.result || response.data;
+    return payload?.imageUrl || payload?.url || payload;
+};
+
 export const getPartnerServices = async () => {
     const response = await api.get('/partner/services');
     return response.data?.result || response.data;

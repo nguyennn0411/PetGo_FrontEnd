@@ -420,7 +420,7 @@ const App = () => {
             onClick={() => window.location.href = '/#services'}
             className="px-12 py-5 bg-white text-orange-600 font-black rounded-2xl shadow-xl hover:scale-105 transition-all uppercase tracking-widest text-sm"
           >
-            Book Now
+            Đặt lịch ngay
           </button>
         </div>
       </section>
@@ -518,13 +518,13 @@ const ProviderCard = ({ provider, badge }) => (
           onClick={() => window.location.href = '/providers/1'}
           className="py-3 px-2 bg-gray-100 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all"
         >
-          Details
+          Chi tiết
         </button>
         <button
           onClick={() => window.location.href = '/booking'}
           className="py-3 px-2 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-500 transition-all"
         >
-          Book Now
+          Đặt lịch ngay
         </button>
       </div>
     </div>

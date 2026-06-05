@@ -26,6 +26,7 @@ import RegisterPage from './pages/RegisterPage';
 import OtpVerificationPage from './pages/OtpVerificationPage';
 import ProfilePage from './pages/ProfilePage';
 import AddPetPage from './pages/AddPetPage';
+import WalletPage from './pages/WalletPage';
 
 import MembershipPage from './pages/MembershipPage';
 import MembershipPaymentPage from './pages/MembershipPaymentPage';
@@ -41,6 +42,7 @@ import AdminContent from './pages/admin/AdminContent';
 import AdminNotifications from './pages/admin/AdminNotifications';
 import AdminLogs from './pages/admin/AdminLogs';
 import AdminReports from './pages/admin/AdminReports';
+import AdminWallet from './pages/admin/AdminWallet';
 import HelpCenterPage from './pages/HelpCenterPage';
 import ShopHomePage from './pages/shop/ShopHomePage';
 import ShopCatalogPage from './pages/shop/ShopCatalogPage';
@@ -103,6 +105,7 @@ export default function App() {
         <Route path='/register' element={<RegisterPage />} />
         <Route path='/verify-otp' element={<OtpVerificationPage />} />
         <Route path='/profile' element={withUserShell(<ProfilePage />, '/profile')} />
+        <Route path='/wallet' element={withUserShell(<WalletPage />, '/wallet')} />
         <Route path='/add-pet' element={withUserShell(<AddPetPage />, '/profile')} />
 
         <Route path='/membership' element={withUserShell(<MembershipPage />, '/membership')} />
@@ -129,6 +132,7 @@ export default function App() {
         <Route path='/admin/notifications' element={<AdminNotifications />} />
         <Route path='/admin/logs' element={<AdminLogs />} />
         <Route path='/admin/reports' element={<AdminReports />} />
+        <Route path='/admin/wallet' element={<AdminWallet />} />
         <Route path='/admin/products' element={<AdminProducts />} />
         <Route path='/admin/shop-orders' element={<AdminShopOrders />} />
 

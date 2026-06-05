@@ -19,6 +19,20 @@ import { AuthContext } from '../context/AuthContext';
 import { getBookingCreateContext, createBooking } from '../api/bookings';
 import { resolveUserId } from '../utils/userIdentity';
 
+const toIsoDate = (value) => {
+  if (!value) return '';
+  const normalized = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return normalized;
+
+  const viDateMatch = normalized.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (viDateMatch) {
+    const [, day, month, year] = viDateMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  return normalized;
+};
+
 const STEP_TITLES = [
   'Chọn thú cưng',
   'Chọn dịch vụ',
@@ -58,7 +72,7 @@ const BookingPage = () => {
   const userId = resolveUserId(account);
   const providerId = Number(searchParams.get('providerId') || '');
   const initialProviderServiceId = searchParams.get('providerServiceId') || searchParams.get('serviceId');
-  const initialSlotDate = searchParams.get('slotDate') || '';
+  const initialSlotDate = toIsoDate(searchParams.get('slotDate') || '');
   const initialTime = searchParams.get('time') || '';
 
   const [step, setStep] = useState(1);
@@ -86,24 +100,34 @@ const BookingPage = () => {
     setError('');
     try {
       const data = await getBookingCreateContext({
-        userId,
+        ownerUserId: userId,
         providerId,
         providerServiceId: providerServiceId || undefined,
         slotDate: keepDate ? formData.appointmentDate || initialSlotDate || undefined : initialSlotDate || undefined,
         time: keepTime ? formData.startTime || initialTime || undefined : initialTime || undefined,
       });
 
-      setContextData(data);
+      const normalizedData = {
+        ...data,
+        selectedDate: toIsoDate(data.selectedDate),
+        slots: (data.slots || []).map((slot) => ({
+          ...slot,
+          date: toIsoDate(slot.date),
+        })),
+        availableDates: (data.availableDates || []).map(toIsoDate),
+      };
+
+      setContextData(normalizedData);
       setFormData((prev) => ({
         ...prev,
-        providerServiceId: String(data.selectedProviderServiceId || providerServiceId || prev.providerServiceId || ''),
+        providerServiceId: String(normalizedData.selectedProviderServiceId || providerServiceId || prev.providerServiceId || ''),
         appointmentDate: keepDate
-          ? prev.appointmentDate || data.selectedDate || ''
-          : data.selectedDate || '',
+          ? prev.appointmentDate || normalizedData.selectedDate || ''
+          : normalizedData.selectedDate || '',
         startTime: keepTime
-          ? prev.startTime || data.selectedTime || ''
-          : data.selectedTime || '',
-        slotId: data.selectedSlotId ? String(data.selectedSlotId) : '',
+          ? prev.startTime || normalizedData.selectedTime || ''
+          : normalizedData.selectedTime || '',
+        slotId: normalizedData.selectedSlotId ? String(normalizedData.selectedSlotId) : '',
       }));
     } catch (err) {
       setError(getErrorMessage(err, 'Không tải được dữ liệu đặt lịch.'));
@@ -220,7 +244,7 @@ const BookingPage = () => {
     setError('');
     try {
       const booking = await createBooking({
-        userId,
+        ownerUserId: userId,
         petId: Number(formData.petId),
         providerId,
         providerServiceId: Number(formData.providerServiceId),

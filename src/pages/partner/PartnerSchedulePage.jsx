@@ -44,8 +44,8 @@ const PartnerSchedulePage = () => {
                         weekday: existing.weekday,
                         opensAt: existing.opensAt || '',
                         closesAt: existing.closesAt || '',
-                        breakStartsAt: '',
-                        breakEndsAt: '',
+                        breakStartsAt: existing.breakStartsAt || '',
+                        breakEndsAt: existing.breakEndsAt || '',
                         closed: Boolean(existing.closed),
                     } : day;
                 }));
@@ -104,6 +104,14 @@ const PartnerSchedulePage = () => {
             const close = toMinutes(day.closesAt);
             if (open === null || close === null) return `${labels[day.weekday]} cần giờ mở cửa và đóng cửa hợp lệ.`;
             if (open >= close) return `${labels[day.weekday]}: giờ mở cửa phải trước giờ đóng cửa.`;
+            const breakStart = toMinutes(day.breakStartsAt);
+            const breakEnd = toMinutes(day.breakEndsAt);
+            if ((day.breakStartsAt && breakStart === null) || (day.breakEndsAt && breakEnd === null)) return `${labels[day.weekday]} có giờ nghỉ không hợp lệ.`;
+            if ((breakStart !== null) !== (breakEnd !== null)) return `${labels[day.weekday]} cần nhập đủ giờ bắt đầu và kết thúc nghỉ.`;
+            if (breakStart !== null) {
+                if (breakStart >= breakEnd) return `${labels[day.weekday]}: giờ bắt đầu nghỉ phải trước giờ kết thúc nghỉ.`;
+                if (breakStart < open || breakEnd > close) return `${labels[day.weekday]}: giờ nghỉ phải nằm trong giờ mở cửa.`;
+            }
         }
         return '';
     };
@@ -124,8 +132,8 @@ const PartnerSchedulePage = () => {
                 weekday: day.weekday,
                 opensAt: day.closed ? '' : day.opensAt,
                 closesAt: day.closed ? '' : day.closesAt,
-                breakStartsAt: '',
-                breakEndsAt: '',
+                breakStartsAt: day.closed ? '' : day.breakStartsAt,
+                breakEndsAt: day.closed ? '' : day.breakEndsAt,
                 closed: day.closed,
             }));
             await updatePartnerWeeklySchedule(payload);
@@ -166,7 +174,7 @@ const PartnerSchedulePage = () => {
                 {loading ? <PartnerLoadingState /> : (
                     <form onSubmit={handleSubmit} className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm space-y-4">
                         {weeklyHours.map((day) => (
-                            <div key={day.weekday} className={`grid grid-cols-1 md:grid-cols-[1fr_130px_1fr_1fr] gap-3 items-center p-4 rounded-2xl border ${day.closed ? 'bg-gray-50 border-gray-100' : 'bg-orange-50/50 border-orange-100'}`}>
+                            <div key={day.weekday} className={`grid grid-cols-1 md:grid-cols-[1fr_130px_repeat(4,1fr)] gap-3 items-center p-4 rounded-2xl border ${day.closed ? 'bg-gray-50 border-gray-100' : 'bg-orange-50/50 border-orange-100'}`}>
                                 <div>
                                     <p className="font-black text-gray-900">{labels[day.weekday]}</p>
                                     <p className="text-xs text-gray-500 font-semibold">{day.closed ? 'Không nhận booking' : `${day.opensAt || '--:--'} - ${day.closesAt || '--:--'}`}</p>
@@ -181,6 +189,14 @@ const PartnerSchedulePage = () => {
                                 <label className="space-y-1">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Đến</span>
                                     <input type="time" disabled={day.closed} value={day.closesAt} onChange={(e) => updateDay(day.weekday, 'closesAt', e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-gray-100 font-bold disabled:opacity-50" />
+                                </label>
+                                <label className="space-y-1">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Nghỉ từ</span>
+                                    <input type="time" disabled={day.closed} value={day.breakStartsAt} onChange={(e) => updateDay(day.weekday, 'breakStartsAt', e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-gray-100 font-bold disabled:opacity-50" />
+                                </label>
+                                <label className="space-y-1">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Nghỉ đến</span>
+                                    <input type="time" disabled={day.closed} value={day.breakEndsAt} onChange={(e) => updateDay(day.weekday, 'breakEndsAt', e.target.value)} className="w-full px-3 py-2 rounded-xl bg-white border border-gray-100 font-bold disabled:opacity-50" />
                                 </label>
                             </div>
                         ))}
