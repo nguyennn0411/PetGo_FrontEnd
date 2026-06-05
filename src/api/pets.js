@@ -1,26 +1,26 @@
 import api from './axios';
 
-export const getOwnerPets = async (ownerUserId) => {
-  const response = await api.get(`/users/${ownerUserId}/pets`);
+export const getUserPets = async (userId) => {
+  const response = await api.get(`/users/${userId}/pets`);
   return response.data;
 };
 
-export const getPetDetail = async (ownerUserId, petId) => {
-  const response = await api.get(`/users/${ownerUserId}/pets/${petId}`);
+export const getPetDetail = async (userId, petId) => {
+  const response = await api.get(`/users/${userId}/pets/${petId}`);
   return response.data;
 };
 
-export const createPet = async (ownerUserId, payload) => {
-  const response = await api.post(`/users/${ownerUserId}/pets`, payload);
+export const createPet = async (userId, payload) => {
+  const response = await api.post(`/users/${userId}/pets`, payload);
   return response.data;
 };
 
-export const updatePet = async (ownerUserId, petId, payload) => {
-  const response = await api.put(`/users/${ownerUserId}/pets/${petId}`, payload);
+export const updatePet = async (userId, petId, payload) => {
+  const response = await api.put(`/users/${userId}/pets/${petId}`, payload);
   return response.data;
 };
 
-export const deletePet = async (ownerUserId, petId) => {
-  const response = await api.delete(`/users/${ownerUserId}/pets/${petId}`);
+export const deletePet = async (userId, petId) => {
+  const response = await api.delete(`/users/${userId}/pets/${petId}`);
   return response.data;
 };

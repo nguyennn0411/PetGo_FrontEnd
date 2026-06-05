@@ -109,11 +109,11 @@ const AdminPartners = () => {
       const data = await getAdminProviderDetail(providerId);
       setSelectedProvider(data);
     } catch (error) {
-      console.error('Lỗi khi lấy chi tiết shop:', error);
+      console.error('Lỗi khi lấy chi tiết nhà cung cấp:', error);
       showToast({
         tone: 'error',
-        title: 'Không mở được chi tiết shop',
-        message: getAdminErrorMessage(error, 'Không thể tải chi tiết shop.'),
+        title: 'Không mở được chi tiết nhà cung cấp',
+        message: getAdminErrorMessage(error, 'Không thể tải chi tiết nhà cung cấp.'),
       });
       closeModal();
     } finally {
@@ -163,7 +163,7 @@ const AdminPartners = () => {
       showToast({
         tone: 'success',
         title: 'Đã duyệt hồ sơ partner',
-        message: 'Partner sẽ nhận được thông báo và có thể tiếp tục thiết lập shop.',
+        message: 'Partner sẽ nhận được thông báo và có thể tiếp tục thiết lập nhà cung cấp.',
       });
       closeModal();
       fetchData();
@@ -244,9 +244,9 @@ const AdminPartners = () => {
 
     const accepted = await confirmDialog({
       tone: isLocked ? 'success' : 'error',
-      title: isLocked ? 'Mở khóa shop?' : 'Khóa shop?',
-      message: `Bạn có chắc muốn ${isLocked ? 'mở khóa' : 'khóa'} shop này?`,
-      confirmLabel: isLocked ? 'Mở khóa shop' : 'Khóa shop',
+      title: isLocked ? 'Mở khóa nhà cung cấp?' : 'Khóa nhà cung cấp?',
+      message: `Bạn có chắc muốn ${isLocked ? 'mở khóa' : 'khóa'} provider này?`,
+      confirmLabel: isLocked ? 'Mở khóa nhà cung cấp' : 'Khóa nhà cung cấp',
       cancelLabel: 'Hủy',
     });
     if (!accepted) return;
@@ -255,8 +255,8 @@ const AdminPartners = () => {
       await updateProviderAccountStatus(providerId, newStatus);
       showToast({
         tone: 'success',
-        title: 'Đã cập nhật trạng thái shop',
-        message: isLocked ? 'Shop đã được mở khóa và có thể hoạt động lại.' : 'Shop đã được khóa/tạm dừng thành công.',
+        title: 'Đã cập nhật trạng thái nhà cung cấp',
+        message: isLocked ? 'Nhà cung cấp đã được mở khóa và có thể hoạt động lại.' : 'Nhà cung cấp đã được khóa/tạm dừng thành công.',
       });
       fetchData(); // Refresh list
     } catch (error) {
@@ -376,7 +376,7 @@ const AdminPartners = () => {
   const buildSearchFields = ({
     code,
     title,
-    ownerName,
+    userName,
     email,
     phone,
     address,
@@ -390,13 +390,13 @@ const AdminPartners = () => {
   }) => ({
     CODE: buildSearchBlob([code]),
     NAME: buildSearchBlob([title]),
-    OWNER: buildSearchBlob([ownerName]),
+    OWNER: buildSearchBlob([userName]),
     EMAIL: buildSearchBlob([email]),
     PHONE: buildSearchBlob([phone]),
     ADDRESS: buildSearchBlob([address]),
     STATUS: buildSearchBlob([rawStatus, accountStatus, statusGroup, statusLabel, statusAliases]),
     SOURCE: buildSearchBlob([sourceLabel, sourceAliases]),
-    ALL: buildSearchBlob([code, title, ownerName, email, phone, address, rawStatus, accountStatus, statusGroup, statusLabel, sourceLabel, sourceAliases, statusAliases]),
+    ALL: buildSearchBlob([code, title, userName, email, phone, address, rawStatus, accountStatus, statusGroup, statusLabel, sourceLabel, sourceAliases, statusAliases]),
   });
 
   const handleSearchChange = (event) => {
@@ -420,8 +420,8 @@ const AdminPartners = () => {
       entity: provider,
       id: provider.id,
       code: provider.providerCode,
-      title: provider.businessName || 'Partner shop',
-      ownerName: provider.ownerName,
+      title: provider.businessName || 'Partner nhà cung cấp',
+      userName: provider.userName,
       email: provider.email,
       phone: provider.phoneNumber,
       address: provider.address,
@@ -435,7 +435,7 @@ const AdminPartners = () => {
       ...row,
       searchFields: buildSearchFields({
         ...row,
-        sourceAliases: 'provider da tao doi tac shop cua hang',
+        sourceAliases: 'provider da tao dich vu',
         statusAliases: [
           statusGroup === 'VERIFIED' ? 'verified da xac minh hoat dong active' : '',
           statusGroup === 'PENDING' ? 'pending cho duyet dang cho xu ly' : '',
@@ -445,12 +445,12 @@ const AdminPartners = () => {
       primarySearchBlob: buildPrimarySearchBlob([
         row.code,
         row.title,
-        row.ownerName,
+        row.userName,
         row.email,
         row.rawStatus,
         row.accountStatus,
         row.sourceLabel,
-        'provider da tao doi tac shop cua hang',
+        'provider da tao dich vu',
         statusGroup === 'VERIFIED' ? 'verified da xac minh hoat dong active' : '',
         statusGroup === 'PENDING' ? 'pending cho duyet dang cho xu ly' : '',
         statusGroup === 'CANCEL' ? 'cancel huy khoa tu choi rejected inactive locked' : '',
@@ -460,14 +460,14 @@ const AdminPartners = () => {
         row.id,
         row.code,
         row.title,
-        row.ownerName,
+        row.userName,
         row.email,
         row.phone,
         row.address,
         row.rawStatus,
         row.accountStatus,
         row.sourceLabel,
-        'provider da tao doi tac shop cua hang',
+        'provider da tao dich vu',
         statusGroup === 'VERIFIED' ? 'verified da xac minh hoat dong active' : '',
         statusGroup === 'PENDING' ? 'pending cho duyet dang cho xu ly' : '',
         statusGroup === 'CANCEL' ? 'cancel huy khoa tu choi rejected inactive locked' : '',
@@ -489,7 +489,7 @@ const AdminPartners = () => {
         id: application.id,
         code: `APP-${application.id}`,
         title: application.businessName || 'Partner application',
-        ownerName: application.userName,
+        userName: application.userName,
         email: application.businessEmail || application.userEmail,
         phone: application.businessPhone || application.userPhone,
         address: application.businessAddress,
@@ -514,7 +514,7 @@ const AdminPartners = () => {
         primarySearchBlob: buildPrimarySearchBlob([
           row.code,
           row.title,
-          row.ownerName,
+          row.userName,
           row.email,
           row.rawStatus,
           row.sourceLabel,
@@ -530,7 +530,7 @@ const AdminPartners = () => {
           row.id,
           row.code,
           row.title,
-          row.ownerName,
+          row.userName,
           row.email,
           row.phone,
           row.address,
@@ -585,7 +585,7 @@ const AdminPartners = () => {
       filter: 'VERIFIED',
       label: 'Đã xác minh',
       value: verifiedCount,
-      description: 'Shop đủ điều kiện hoạt động',
+      description: 'Nhà cung cấp đủ điều kiện hoạt động',
       icon: '✅',
       tone: 'success',
     },
@@ -601,7 +601,7 @@ const AdminPartners = () => {
       filter: 'CANCEL',
       label: 'Tạm dừng / từ chối',
       value: cancelCount,
-      description: 'Shop đã khóa hoặc hồ sơ bị từ chối',
+      description: 'Nhà cung cấp đã khóa hoặc hồ sơ bị từ chối',
       icon: '⛔',
       tone: 'danger',
     },
@@ -677,7 +677,7 @@ const AdminPartners = () => {
             style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, borderRight: 0, minWidth: 150 }}
           >
             <option value="ALL">Tìm tất cả</option>
-            <option value="NAME">Tên shop</option>
+            <option value="NAME">Tên nhà cung cấp</option>
             <option value="CODE">Mã hồ sơ/code</option>
             <option value="EMAIL">Email</option>
             <option value="PHONE">Số điện thoại</option>
@@ -762,7 +762,7 @@ const AdminPartners = () => {
                     <span className="text-tiny" style={{ whiteSpace: 'nowrap' }}>{formatDateTime(row.date)}</span>
                   </div>
                   <div className="partner-meta">
-                    {row.code || `#${row.id}`} · {row.email || 'Chưa có email'} · {row.ownerName || 'Chưa có chủ sở hữu'}
+                    {row.code || `#${row.id}`} · {row.email || 'Chưa có email'} · {row.userName || 'Chưa có chủ sở hữu'}
                   </div>
                   <div className="partner-meta">
                     {row.phone ? `SĐT: ${row.phone}` : 'Chưa có SĐT'} · {row.address || 'Chưa có địa chỉ'} · Trạng thái gốc: {rawStatusLabel}
@@ -808,7 +808,7 @@ const AdminPartners = () => {
         </div>
       </div>
 
-      {/* SHOP DETAIL MODAL */}
+      {/* PROVIDER DETAIL MODAL */}
       {showModal && (
         <div className="modal-overlay" style={{
           position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
@@ -819,11 +819,11 @@ const AdminPartners = () => {
             overflowY: 'auto', animation: 'modalFadeIn 0.3s ease'
           }} onClick={e => e.stopPropagation()}>
             {fetchingDetail ? (
-              <div style={{ padding: 40, textAlign: 'center' }}>Đang tải chi tiết shop...</div>
+              <div style={{ padding: 40, textAlign: 'center' }}>Đang tải chi tiết nhà cung cấp...</div>
             ) : selectedProvider ? (
               <>
                 <div className="modal-header" style={{ padding: '20px 24px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontWeight: 700, fontSize: 18 }}>Chi tiết cửa hàng</div>
+                  <div style={{ fontWeight: 700, fontSize: 18 }}>Chi tiết nhà cung cấp</div>
                   <button onClick={handleCloseModal} style={{ border: 'none', background: 'none', fontSize: 24, cursor: 'pointer', color: '#999' }}>✕</button>
                 </div>
                 <div className="modal-body" style={{ padding: 24 }}>
@@ -896,15 +896,15 @@ const AdminPartners = () => {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
                     <div className="info-item">
-                      <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>SĐT shop</label>
+                      <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>SĐT nhà cung cấp</label>
                       <div style={{ fontSize: 14 }}>{selectedApplication.businessPhone || '—'}</div>
                     </div>
                     <div className="info-item">
-                      <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>Email shop</label>
+                      <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>Email nhà cung cấp</label>
                       <div style={{ fontSize: 14 }}>{selectedApplication.businessEmail || '—'}</div>
                     </div>
                     <div className="info-item" style={{ gridColumn: '1 / -1' }}>
-                      <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>Địa chỉ shop</label>
+                      <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4 }}>Địa chỉ nhà cung cấp</label>
                       <div style={{ fontSize: 14 }}>{selectedApplication.businessAddress || '—'}</div>
                     </div>
                     <div className="info-item">

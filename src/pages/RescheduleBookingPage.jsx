@@ -13,13 +13,13 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { getBookingRescheduleContext, rescheduleBooking } from '../api/bookings';
-import { resolveOwnerUserId } from '../utils/ownerUser';
+import { resolveUserId } from '../utils/userIdentity';
 
 const RescheduleBookingPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { account } = useContext(AuthContext);
-  const ownerUserId = resolveOwnerUserId(account);
+  const userId = resolveUserId(account);
 
   const [contextData, setContextData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -30,16 +30,16 @@ const RescheduleBookingPage = () => {
   const [note, setNote] = useState('');
 
   const loadContext = async () => {
-    if (!ownerUserId) {
+    if (!userId) {
       setLoading(false);
-      setError('Chưa xác định được ownerUserId để đổi lịch.');
+      setError('Chưa xác định được userId để đổi lịch.');
       return;
     }
 
     setLoading(true);
     setError('');
     try {
-      const data = await getBookingRescheduleContext(ownerUserId, id);
+      const data = await getBookingRescheduleContext(userId, id);
       setContextData(data);
       setSelectedDate(data.availableDates?.[0] || '');
     } catch (err) {
@@ -53,7 +53,7 @@ const RescheduleBookingPage = () => {
   useEffect(() => {
     loadContext();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerUserId, id]);
+  }, [userId, id]);
 
   const visibleSlots = useMemo(
     () => (contextData?.slots || []).filter((slot) => slot.date === selectedDate),
@@ -61,12 +61,12 @@ const RescheduleBookingPage = () => {
   );
 
   const handleSubmit = async () => {
-    if (!selectedSlotId || !ownerUserId) return;
+    if (!selectedSlotId || !userId) return;
     setSubmitting(true);
     setError('');
     try {
-      const result = await rescheduleBooking(ownerUserId, id, {
-        ownerUserId,
+      const result = await rescheduleBooking(userId, id, {
+        userId,
         newSlotId: Number(selectedSlotId),
         note,
       });

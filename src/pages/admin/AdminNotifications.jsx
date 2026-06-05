@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { getAdminUsers } from '../../api/admin';
 import { createAdminNotification, getAdminNotifications } from '../../api/notifications';
 import AdminLayout from '../../components/AdminLayout';
-import { AdminToastStack, getAdminErrorMessage, useAdminToast } from '../../components/admin/AdminFeedback';
+import { getAdminErrorMessage, useAdminToast } from '../../components/admin/AdminFeedback';
 
 const initialForm = {
   title: '',
@@ -38,7 +38,7 @@ const AdminNotifications = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('ALL');
   const [userStatusFilter, setUserStatusFilter] = useState('ALL');
-  const { toasts, showToast, dismissToast } = useAdminToast();
+  const { showToast } = useAdminToast();
 
   const loadData = async () => {
     try {
@@ -204,8 +204,6 @@ const AdminNotifications = () => {
 
   return (
     <AdminLayout title="Quản lý thông báo">
-      <AdminToastStack toasts={toasts} onDismiss={dismissToast} />
-
       <div className="metrics metrics-3">
         <Metric label="Thông báo đã gửi" value={notifications.length} hint="" />
         <Metric label="Tổng lượt nhận" value={metrics.totalRecipients} hint="Bao gồm user và partner" />

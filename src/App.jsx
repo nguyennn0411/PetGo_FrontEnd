@@ -26,6 +26,7 @@ import RegisterPage from './pages/RegisterPage';
 import OtpVerificationPage from './pages/OtpVerificationPage';
 import ProfilePage from './pages/ProfilePage';
 import AddPetPage from './pages/AddPetPage';
+import WalletPage from './pages/WalletPage';
 
 import MembershipPage from './pages/MembershipPage';
 import MembershipPaymentPage from './pages/MembershipPaymentPage';
@@ -35,11 +36,13 @@ import AdminPartners from './pages/admin/AdminPartners';
 import AdminBookings from './pages/admin/AdminBookings';
 import AdminVouchers from './pages/admin/AdminVouchers';
 import AdminServices from './pages/admin/AdminServices';
+import AdminPartnerServiceRequests from './pages/admin/AdminPartnerServiceRequests';
 import AdminReviews from './pages/admin/AdminReviews';
 import AdminContent from './pages/admin/AdminContent';
 import AdminNotifications from './pages/admin/AdminNotifications';
 import AdminLogs from './pages/admin/AdminLogs';
 import AdminReports from './pages/admin/AdminReports';
+import AdminWallet from './pages/admin/AdminWallet';
 import HelpCenterPage from './pages/HelpCenterPage';
 import ShopHomePage from './pages/shop/ShopHomePage';
 import ShopCatalogPage from './pages/shop/ShopCatalogPage';
@@ -49,20 +52,41 @@ import CheckoutPage from './pages/shop/CheckoutPage';
 import ShopOrdersPage from './pages/shop/ShopOrdersPage';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminShopOrders from './pages/admin/AdminShopOrders';
+import PartnerProviderRegistrationPage from './pages/PartnerProviderRegistrationPage';
+import PartnerDashboardPage from './pages/partner/PartnerDashboardPage';
+import PartnerProfilePage from './pages/partner/PartnerProfilePage';
+import PartnerServicesPage from './pages/partner/PartnerServicesPage';
+import PartnerSchedulePage from './pages/partner/PartnerSchedulePage';
+import PartnerBookingsPage from './pages/partner/PartnerBookingsPage';
+import PartnerBookingDetailPage from './pages/partner/PartnerBookingDetailPage';
+import PartnerCustomersPage from './pages/partner/PartnerCustomersPage';
+import PartnerPromotionsPage from './pages/partner/PartnerPromotionsPage';
+import PartnerRevenuePage from './pages/partner/PartnerRevenuePage';
+import PartnerReviewsPage from './pages/partner/PartnerReviewsPage';
+import PartnerNotificationsPage from './pages/partner/PartnerNotificationsPage';
+import PartnerPlaceholderPage from './pages/partner/PartnerPlaceholderPage';
+import UserNav from './components/UserNav';
+
+const withUserShell = (element, activePath = '') => (
+  <div className='petgo-user-shell min-h-screen'>
+    <UserNav activePath={activePath} />
+    {element}
+  </div>
+);
 
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path='/' element={<HomePage />} />
+        <Route path='/' element={withUserShell(<HomePage />, '/')} />
 
-        <Route path='/providers' element={<ProviderListPage />} />
-        <Route path='/providers/:id' element={<ProviderDetailPage />} />
-        <Route path='/search' element={<SearchFilterPage />} />
-        <Route path='/compare' element={<CompareProvidersPage />} />
-        <Route path='/nearby' element={<NearbyProvidersPage />} />
-        <Route path='/favorites' element={<FavoritesPage />} />
+        <Route path='/providers' element={withUserShell(<ProviderListPage />, '/search')} />
+        <Route path='/providers/:id' element={withUserShell(<ProviderDetailPage />, '/search')} />
+        <Route path='/search' element={withUserShell(<SearchFilterPage />, '/search')} />
+        <Route path='/compare' element={withUserShell(<CompareProvidersPage />, '/search')} />
+        <Route path='/nearby' element={withUserShell(<NearbyProvidersPage />, '/search')} />
+        <Route path='/favorites' element={withUserShell(<FavoritesPage />, '/favorites')} />
 
         <Route path='/booking' element={<BookingPage />} />
         <Route path='/payment' element={<PaymentPage />} />
@@ -71,27 +95,28 @@ export default function App() {
         <Route path='/booking-success' element={<BookingSuccessPage />} />
         <Route path='/invoice' element={<InvoicePage />} />
 
-        <Route path='/my-bookings' element={<MyBookingsPage />} />
-        <Route path='/bookings/:id' element={<BookingDetailPage />} />
-        <Route path='/reschedule/:id' element={<RescheduleBookingPage />} />
-        <Route path='/cancel-booking/:id' element={<CancelBookingPage />} />
-        <Route path='/reviews/create/:bookingId' element={<ReviewPage />} />
+        <Route path='/my-bookings' element={withUserShell(<MyBookingsPage />, '/my-bookings')} />
+        <Route path='/bookings/:id' element={withUserShell(<BookingDetailPage />, '/my-bookings')} />
+        <Route path='/reschedule/:id' element={withUserShell(<RescheduleBookingPage />, '/my-bookings')} />
+        <Route path='/cancel-booking/:id' element={withUserShell(<CancelBookingPage />, '/my-bookings')} />
+        <Route path='/reviews/create/:bookingId' element={withUserShell(<ReviewPage />, '/my-bookings')} />
 
         <Route path='/login' element={<LoginPage />} />
         <Route path='/register' element={<RegisterPage />} />
         <Route path='/verify-otp' element={<OtpVerificationPage />} />
-        <Route path='/profile' element={<ProfilePage />} />
-        <Route path='/add-pet' element={<AddPetPage />} />
+        <Route path='/profile' element={withUserShell(<ProfilePage />, '/profile')} />
+        <Route path='/wallet' element={withUserShell(<WalletPage />, '/wallet')} />
+        <Route path='/add-pet' element={withUserShell(<AddPetPage />, '/profile')} />
 
-        <Route path='/membership' element={<MembershipPage />} />
-        <Route path='/membership-payment' element={<MembershipPaymentPage />} />
+        <Route path='/membership' element={withUserShell(<MembershipPage />, '/membership')} />
+        <Route path='/membership-payment' element={withUserShell(<MembershipPaymentPage />, '/membership')} />
 
-        <Route path='/shop' element={<ShopHomePage />} />
-        <Route path='/shop/category' element={<ShopCatalogPage />} />
-        <Route path='/shop/product/:slug' element={<ShopProductDetailPage />} />
-        <Route path='/cart' element={<CartPage />} />
-        <Route path='/checkout' element={<CheckoutPage />} />
-        <Route path='/my-orders' element={<ShopOrdersPage />} />
+        <Route path='/shop' element={withUserShell(<ShopHomePage />, '/shop')} />
+        <Route path='/shop/category' element={withUserShell(<ShopCatalogPage />, '/shop')} />
+        <Route path='/shop/product/:slug' element={withUserShell(<ShopProductDetailPage />, '/shop')} />
+        <Route path='/cart' element={withUserShell(<CartPage />, '/shop')} />
+        <Route path='/checkout' element={withUserShell(<CheckoutPage />, '/shop')} />
+        <Route path='/my-orders' element={withUserShell(<ShopOrdersPage />, '/shop')} />
 
 
         {/* Admin Routes */}
@@ -101,18 +126,37 @@ export default function App() {
         <Route path='/admin/bookings' element={<AdminBookings />} />
         <Route path='/admin/vouchers' element={<AdminVouchers />} />
         <Route path='/admin/services' element={<AdminServices />} />
+        <Route path='/admin/partner-service-requests' element={<AdminPartnerServiceRequests />} />
         <Route path='/admin/reviews' element={<AdminReviews />} />
         <Route path='/admin/content' element={<AdminContent />} />
         <Route path='/admin/notifications' element={<AdminNotifications />} />
         <Route path='/admin/logs' element={<AdminLogs />} />
         <Route path='/admin/reports' element={<AdminReports />} />
+        <Route path='/admin/wallet' element={<AdminWallet />} />
         <Route path='/admin/products' element={<AdminProducts />} />
         <Route path='/admin/shop-orders' element={<AdminShopOrders />} />
 
-        <Route path='/help-center' element={<HelpCenterPage />} />
+        {/* Partner Routes */}
+        <Route path='/partner-registration/shop' element={<Navigate to='/partner-registration/provider' replace />} />
+        <Route path='/partner-registration/provider' element={<PartnerProviderRegistrationPage />} />
+        <Route path='/partner' element={<Navigate to='/partner/dashboard' replace />} />
+        <Route path='/partner/dashboard' element={<PartnerDashboardPage />} />
+        <Route path='/partner/profile' element={<PartnerProfilePage />} />
+        <Route path='/partner/services' element={<PartnerServicesPage />} />
+        <Route path='/partner/schedule' element={<PartnerSchedulePage />} />
+        <Route path='/partner/bookings' element={<PartnerBookingsPage />} />
+        <Route path='/partner/bookings/:id' element={<PartnerBookingDetailPage />} />
+        <Route path='/partner/customers' element={<PartnerCustomersPage />} />
+        <Route path='/partner/promotions' element={<PartnerPromotionsPage />} />
+        <Route path='/partner/revenue' element={<PartnerRevenuePage />} />
+        <Route path='/partner/reviews' element={<PartnerReviewsPage />} />
+        <Route path='/partner/notifications' element={<PartnerNotificationsPage />} />
+        <Route path='/partner/support' element={<PartnerPlaceholderPage type='support' />} />
+
+        <Route path='/help-center' element={withUserShell(<HelpCenterPage />, '')} />
 
         <Route path='/home' element={<Navigate to='/' replace />} />
-        <Route path='/services' element={<Navigate to='/search' replace />} />
+        <Route path='/services' element={<Navigate to='/' replace />} />
         <Route path='*' element={<Navigate to='/' replace />} />
       </Routes>
     </BrowserRouter>

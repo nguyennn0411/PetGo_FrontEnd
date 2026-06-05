@@ -1,6 +1,17 @@
-export const resolveOwnerUserId = (account) => {
+export const resolveUserId = (account) => {
+  const roles = account?.roles || account?.user?.roles || account?.authorities || [];
+  const roleList = Array.isArray(roles) ? roles : [roles];
+  const hasPartnerRole = roleList.some((role) => {
+    const normalized = typeof role === 'string'
+      ? role.toUpperCase()
+      : String(role?.code?.code || role?.code || role?.roleCode || role?.name || role?.authority || role?.role || '').toUpperCase();
+    return ['SHOP', 'PARTNER', 'PROVIDER'].includes(normalized);
+  });
+
+  if (hasPartnerRole) return null;
+
   const candidates = [
-    account?.ownerUserId,
+    account?.userId,
     account?.userId,
     account?.id,
     account?.accountId,
@@ -9,7 +20,7 @@ export const resolveOwnerUserId = (account) => {
   ];
 
   const localCandidate = typeof window !== 'undefined'
-    ? window.localStorage.getItem('petgo_owner_user_id')
+    ? window.localStorage.getItem('petgo_user_id')
     : null;
 
   for (const candidate of [...candidates, localCandidate]) {

@@ -1,5 +1,15 @@
 import React from 'react';
 import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
+import { AppInlineNotice, getAppErrorMessage, useAppToast } from '../AppFeedback';
+
+export const usePartnerToast = useAppToast;
+export const getPartnerErrorMessage = getAppErrorMessage;
+
+export const PartnerNotice = ({ tone = 'info', title, message, children, onDismiss }) => (
+    <AppInlineNotice tone={tone} title={title} onDismiss={onDismiss}>
+        {children || message}
+    </AppInlineNotice>
+);
 
 export const PartnerLoadingState = ({ message = 'Đang tải dữ liệu partner...' }) => (
     <div className="bg-white border border-gray-100 rounded-[2rem] p-10 text-center shadow-sm">
@@ -20,13 +30,18 @@ export const PartnerEmptyState = ({ title = 'Chưa có dữ liệu', message = '
 );
 
 export const PartnerErrorState = ({ message = 'Không thể tải dữ liệu.', onRetry }) => (
-    <div className="bg-red-50 border border-red-100 rounded-[2rem] p-6 text-red-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3 font-bold">
-            <AlertTriangle className="w-5 h-5" />
-            {message}
+    <div className="app-notice app-notice-error flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-3 min-w-0">
+            <div className="app-notice-icon shrink-0">
+                <AlertTriangle size={20} strokeWidth={2.5} />
+            </div>
+            <div className="app-notice-content">
+                <div className="app-notice-title">Không thể hoàn tất</div>
+                <div className="app-notice-message">{message}</div>
+            </div>
         </div>
         {onRetry && (
-            <button onClick={onRetry} className="px-4 py-2 rounded-xl bg-white text-red-600 text-xs font-black uppercase tracking-widest border border-red-100 flex items-center justify-center gap-2">
+            <button onClick={onRetry} className="btn btn-sm btn-danger flex items-center justify-center gap-2 shrink-0">
                 <RefreshCw className="w-4 h-4" />
                 Thử lại
             </button>

@@ -352,7 +352,7 @@ const MembershipPage = () => {
 
                     <div className="pt-6 space-y-3">
                       <h3 className="text-2xl font-black text-gray-900 tracking-tight">{plan.name}</h3>
-                      <p className="text-sm text-gray-500 font-medium min-h-12">{plan.description || 'Quyền lợi membership dành cho pet owner thường xuyên sử dụng dịch vụ.'}</p>
+                      <p className="text-sm text-gray-500 font-medium min-h-12">{plan.description || 'Quyền lợi membership dành cho pet user thường xuyên sử dụng dịch vụ.'}</p>
                       <div className="flex items-end gap-1">
                         <span className="text-4xl font-black text-gray-900">{currency(plan.priceAmount)}</span>
                         <span className="text-sm font-bold text-gray-400 pb-1">/ {billingCycleLabel(plan.billingCycle)}</span>

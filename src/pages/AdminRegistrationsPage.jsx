@@ -319,9 +319,9 @@ const RegistrationDetail = ({ detail, loading, mutating, onApprove, onReject, on
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <DetailField label="Số điện thoại shop" value={detail.businessPhone} />
-                <DetailField label="Email shop" value={detail.businessEmail} />
-                <DetailField label="Địa chỉ shop" value={detail.businessAddress} wide />
+                <DetailField label="Số điện thoại nhà cung cấp" value={detail.businessPhone} />
+                <DetailField label="Email nhà cung cấp" value={detail.businessEmail} />
+                <DetailField label="Địa chỉ nhà cung cấp" value={detail.businessAddress} wide />
                 <DetailField label="Mã số thuế" value={detail.taxCode || 'Chưa cung cấp'} />
                 <DetailField label="Người đại diện" value={detail.representativeName} />
                 <DetailField label="SĐT đại diện" value={detail.representativePhone} />
