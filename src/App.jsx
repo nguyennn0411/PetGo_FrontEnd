@@ -49,7 +49,7 @@ import CheckoutPage from './pages/shop/CheckoutPage';
 import ShopOrdersPage from './pages/shop/ShopOrdersPage';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminShopOrders from './pages/admin/AdminShopOrders';
-
+import AiChatWidget from './components/AiChatWidget';
 
 export default function App() {
   return (
@@ -115,6 +115,7 @@ export default function App() {
         <Route path='/services' element={<Navigate to='/search' replace />} />
         <Route path='*' element={<Navigate to='/' replace />} />
       </Routes>
+        <AiChatWidget />
     </BrowserRouter>
   );
 }
