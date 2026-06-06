@@ -31,13 +31,13 @@ export const formatVnd = (value) =>
 export const resolveProductPrice = (product) => Number(product?.salePriceAmount || product?.priceAmount || 0);
 
 export const getCurrentUserId = () => {
-  const stored = localStorage.getItem('petgo_owner_user_id');
+  const stored = localStorage.getItem('petgo_user_id');
   if (stored && Number(stored) > 0) return Number(stored);
   const account = localStorage.getItem('account');
   if (account) {
     try {
       const parsed = JSON.parse(account);
-      return Number(parsed.ownerUserId || parsed.userId || parsed.id || 1);
+      return Number(parsed.userId || parsed.userId || parsed.id || 1);
     } catch {
       return 1;
     }

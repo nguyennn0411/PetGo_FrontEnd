@@ -16,7 +16,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { cancelBooking, getBookingDetail } from '../api/bookings';
-import { resolveOwnerUserId } from '../utils/ownerUser';
+import { resolveUserId } from '../utils/userIdentity';
 
 const REASONS = [
   { code: 'CHANGE_OF_PLANS', label: 'Tôi thay đổi kế hoạch' },
@@ -31,7 +31,7 @@ const CancelBookingPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { account } = useContext(AuthContext);
-  const ownerUserId = resolveOwnerUserId(account);
+  const userId = resolveUserId(account);
 
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,16 +42,16 @@ const CancelBookingPage = () => {
   const [isAgreed, setIsAgreed] = useState(false);
 
   const loadBooking = async () => {
-    if (!ownerUserId) {
+    if (!userId) {
       setLoading(false);
-      setError('Chưa xác định được ownerUserId để hủy booking.');
+      setError('Chưa xác định được userId để hủy booking.');
       return;
     }
 
     setLoading(true);
     setError('');
     try {
-      const data = await getBookingDetail(ownerUserId, id);
+      const data = await getBookingDetail(userId, id);
       setBooking(data);
     } catch (err) {
       setError(err?.response?.data?.message || 'Không tải được booking để hủy.');
@@ -64,15 +64,15 @@ const CancelBookingPage = () => {
   useEffect(() => {
     loadBooking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerUserId, id]);
+  }, [userId, id]);
 
   const handleConfirmCancel = async () => {
-    if (!selectedReason || !isAgreed || !ownerUserId) return;
+    if (!selectedReason || !isAgreed || !userId) return;
     setSubmitting(true);
     setError('');
     try {
-      const result = await cancelBooking(ownerUserId, id, {
-        ownerUserId,
+      const result = await cancelBooking(userId, id, {
+        userId,
         reasonCode: selectedReason,
         reasonText: selectedReason === 'OTHER' ? reasonText : reasonText || undefined,
       });

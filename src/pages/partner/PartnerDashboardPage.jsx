@@ -36,7 +36,7 @@ const PartnerDashboardPage = () => {
     useEffect(() => { loadSummary(); }, []);
 
     return (
-        <PartnerLayout title="Partner Dashboard" subtitle="Tổng quan vận hành shop" providerName={summary?.businessName}>
+        <PartnerLayout title="Partner Dashboard" subtitle="Tổng quan vận hành provider" providerName={summary?.businessName}>
             <div className="space-y-6">
                 {loading ? <PartnerLoadingState /> : error ? <PartnerErrorState message={error} onRetry={loadSummary} /> : (
                     <>
@@ -45,7 +45,7 @@ const PartnerDashboardPage = () => {
                             <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
                                 <div>
                                     <p className="text-orange-300 font-black uppercase tracking-widest text-xs mb-3">Partner workspace</p>
-                                    <h2 className="text-3xl font-black mb-2">{summary?.businessName || 'Shop của bạn'}</h2>
+                                    <h2 className="text-3xl font-black mb-2">{summary?.businessName || 'Dịch vụ của bạn'}</h2>
                                     <div className="flex flex-wrap items-center gap-3 text-sm font-bold text-gray-300">
                                         <PartnerStatusBadge status={summary?.verificationStatus || 'VERIFIED'} />
                                         <span>{summary?.status || 'ACTIVE'}</span>
@@ -58,17 +58,6 @@ const PartnerDashboardPage = () => {
                                 </div>
                             </div>
                         </section>
-
-                        {summary?.warnings?.length > 0 && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {summary.warnings.map((warning) => (
-                                    <div key={warning} className="p-5 rounded-[1.5rem] bg-yellow-50 border border-yellow-100 text-yellow-800 font-bold flex gap-3">
-                                        <AlertTriangle className="w-5 h-5 shrink-0" />
-                                        <span>{warning}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
 
                         <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                             {metricConfig.map(([key, label, Icon, cls]) => (

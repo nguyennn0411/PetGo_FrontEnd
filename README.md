@@ -47,5 +47,5 @@ Frontend gọi API qua:
 - một số phần trình bày trong `HomePage.jsx`, `HelpCenterPage.jsx`
 
 ## Ghi chú
-- Một vài màn vẫn giữ fallback `localStorage.petgo_owner_user_id` để hỗ trợ test nhanh khi backend auth chưa hoàn chỉnh.
+- Một vài màn vẫn giữ fallback `localStorage.petgo_user_id` để hỗ trợ test nhanh khi backend auth chưa hoàn chỉnh.
 - `NearbyProvidersPage` dùng bản đồ mô phỏng vị trí marker, nhưng dữ liệu danh sách nearby lấy từ API thật.

@@ -21,7 +21,7 @@ import {
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { getBookingDetail } from '../api/bookings';
-import { resolveOwnerUserId } from '../utils/ownerUser';
+import { resolveUserId } from '../utils/userIdentity';
 
 const STATUS_STYLES = {
   PENDING_PAYMENT: 'bg-orange-50 text-orange-600 border-orange-100',
@@ -39,23 +39,23 @@ const BookingDetailPage = () => {
   const location = useLocation();
   const { id } = useParams();
   const { account } = useContext(AuthContext);
-  const ownerUserId = resolveOwnerUserId(account);
+  const userId = resolveUserId(account);
 
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const loadBooking = async () => {
-    if (!ownerUserId) {
+    if (!userId) {
       setLoading(false);
-      setError('Chưa xác định được ownerUserId để đọc booking detail.');
+      setError('Chưa xác định được userId để đọc booking detail.');
       return;
     }
 
     setLoading(true);
     setError('');
     try {
-      const data = await getBookingDetail(ownerUserId, id);
+      const data = await getBookingDetail(userId, id);
       setBooking(data);
     } catch (err) {
       setError(err?.response?.data?.message || 'Không tải được chi tiết booking.');
@@ -68,7 +68,7 @@ const BookingDetailPage = () => {
   useEffect(() => {
     loadBooking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerUserId, id]);
+  }, [userId, id]);
 
   const flash = location.state?.flash;
 

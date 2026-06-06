@@ -17,7 +17,21 @@ import {
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { getBookingCreateContext, createBooking } from '../api/bookings';
-import { resolveOwnerUserId } from '../utils/ownerUser';
+import { resolveUserId } from '../utils/userIdentity';
+
+const toIsoDate = (value) => {
+  if (!value) return '';
+  const normalized = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return normalized;
+
+  const viDateMatch = normalized.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (viDateMatch) {
+    const [, day, month, year] = viDateMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  return normalized;
+};
 
 const STEP_TITLES = [
   'Chọn thú cưng',
@@ -55,10 +69,10 @@ const BookingPage = () => {
   const [searchParams] = useSearchParams();
   const { account } = useContext(AuthContext);
 
-  const ownerUserId = resolveOwnerUserId(account);
+  const userId = resolveUserId(account);
   const providerId = Number(searchParams.get('providerId') || '');
   const initialProviderServiceId = searchParams.get('providerServiceId') || searchParams.get('serviceId');
-  const initialSlotDate = searchParams.get('slotDate') || '';
+  const initialSlotDate = toIsoDate(searchParams.get('slotDate') || '');
   const initialTime = searchParams.get('time') || '';
 
   const [step, setStep] = useState(1);
@@ -77,7 +91,7 @@ const BookingPage = () => {
   });
 
   const loadContext = async ({ providerServiceId, keepDate = false, keepTime = false } = {}) => {
-    if (!ownerUserId || !providerId) {
+    if (!userId || !providerId) {
       setLoading(false);
       return;
     }
@@ -86,24 +100,34 @@ const BookingPage = () => {
     setError('');
     try {
       const data = await getBookingCreateContext({
-        ownerUserId,
+        ownerUserId: userId,
         providerId,
         providerServiceId: providerServiceId || undefined,
         slotDate: keepDate ? formData.appointmentDate || initialSlotDate || undefined : initialSlotDate || undefined,
         time: keepTime ? formData.startTime || initialTime || undefined : initialTime || undefined,
       });
 
-      setContextData(data);
+      const normalizedData = {
+        ...data,
+        selectedDate: toIsoDate(data.selectedDate),
+        slots: (data.slots || []).map((slot) => ({
+          ...slot,
+          date: toIsoDate(slot.date),
+        })),
+        availableDates: (data.availableDates || []).map(toIsoDate),
+      };
+
+      setContextData(normalizedData);
       setFormData((prev) => ({
         ...prev,
-        providerServiceId: String(data.selectedProviderServiceId || providerServiceId || prev.providerServiceId || ''),
+        providerServiceId: String(normalizedData.selectedProviderServiceId || providerServiceId || prev.providerServiceId || ''),
         appointmentDate: keepDate
-          ? prev.appointmentDate || data.selectedDate || ''
-          : data.selectedDate || '',
+          ? prev.appointmentDate || normalizedData.selectedDate || ''
+          : normalizedData.selectedDate || '',
         startTime: keepTime
-          ? prev.startTime || data.selectedTime || ''
-          : data.selectedTime || '',
-        slotId: data.selectedSlotId ? String(data.selectedSlotId) : '',
+          ? prev.startTime || normalizedData.selectedTime || ''
+          : normalizedData.selectedTime || '',
+        slotId: normalizedData.selectedSlotId ? String(normalizedData.selectedSlotId) : '',
       }));
     } catch (err) {
       setError(getErrorMessage(err, 'Không tải được dữ liệu đặt lịch.'));
@@ -116,7 +140,7 @@ const BookingPage = () => {
   useEffect(() => {
     loadContext({ providerServiceId: initialProviderServiceId, keepDate: false, keepTime: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerUserId, providerId]);
+  }, [userId, providerId]);
 
   const selectedService = useMemo(
     () => contextData?.services?.find((service) => String(service.id) === String(formData.providerServiceId)) || null,
@@ -214,13 +238,13 @@ const BookingPage = () => {
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
   const handleSubmit = async () => {
-    if (!validateStep() || !ownerUserId || !providerId) return;
+    if (!validateStep() || !userId || !providerId) return;
 
     setSubmitting(true);
     setError('');
     try {
       const booking = await createBooking({
-        ownerUserId,
+        ownerUserId: userId,
         petId: Number(formData.petId),
         providerId,
         providerServiceId: Number(formData.providerServiceId),
@@ -230,7 +254,7 @@ const BookingPage = () => {
         customerNote: formData.customerNote || undefined,
       });
 
-      navigate(`/payment?bookingId=${booking.bookingId}`, {
+      navigate(`/booking-success?bookingId=${booking.bookingId}`, {
         replace: true,
         state: { bookingId: booking.bookingId, booking },
       });
@@ -256,20 +280,19 @@ const BookingPage = () => {
     );
   }
 
-  if (!ownerUserId) {
+  if (!userId) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
         <div className="max-w-xl w-full bg-white rounded-[2rem] p-8 border border-orange-100 shadow-sm text-center">
           <ShieldCheck className="w-10 h-10 text-orange-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-black text-gray-900 mb-2">Cần ownerUserId để tạo booking</h1>
-          <p className="text-sm text-gray-500 font-medium mb-3">Hiện front end đang dò `ownerUserId` từ tài khoản đăng nhập hoặc `localStorage.petgo_owner_user_id`.</p>
-          <p className="text-xs text-gray-400 font-medium mb-6">Bạn có thể đăng nhập lại hoặc tạm set giá trị test trong localStorage để nối backend khi chưa làm auth hoàn chỉnh.</p>
+          <h1 className="text-2xl font-black text-gray-900 mb-2">Bạn chưa đăng nhập</h1>
+          <p className="text-sm text-gray-500 font-medium mb-3">Bạn cần đăng nhập để tiếp tục.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link to="/login" className="px-5 py-3 rounded-2xl bg-orange-500 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-600">
-              Đi tới đăng nhập
+              Đăng nhập
             </Link>
             <Link to={`/providers/${providerId}`} className="px-5 py-3 rounded-2xl bg-gray-100 text-gray-700 font-black text-xs uppercase tracking-widest hover:bg-gray-200">
-              Quay lại provider
+              Quay lại
             </Link>
           </div>
         </div>
@@ -552,7 +575,7 @@ const BookingPage = () => {
                   className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-orange-500 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-600 shadow-lg shadow-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  {submitting ? 'Đang tạo booking...' : 'Tạo booking và tới thanh toán'}
+                  {submitting ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu đặt lịch'}
                 </button>
               )}
             </div>
@@ -589,9 +612,9 @@ const BookingPage = () => {
             <div className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm">
               <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">Lưu ý</h3>
               <ul className="space-y-3 text-sm text-gray-500 font-medium">
-                <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" /> Backend sẽ kiểm tra lại slot còn chỗ trước khi tạo booking.</li>
-                <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" /> Booking mới sẽ được lưu với trạng thái <strong className="text-gray-800">PENDING_PAYMENT</strong>.</li>
-                <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" /> Ở bước chức năng kế tiếp, bạn có thể nối booking vừa tạo sang Payment/Invoice.</li>
+                <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" /> Backend sẽ kiểm tra lại dịch vụ, thú cưng và khung giờ trước khi tạo yêu cầu.</li>
+                <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" /> Yêu cầu mới sẽ ở trạng thái <strong className="text-gray-800">PENDING_CONFIRMATION</strong> để provider duyệt/xếp lịch.</li>
+                <li className="flex gap-3"><CheckCircle2 className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" /> Bạn chỉ thanh toán trước nếu provider hoặc dịch vụ yêu cầu; nếu không, thanh toán sau khi provider nhận lịch.</li>
               </ul>
             </div>
           </aside>

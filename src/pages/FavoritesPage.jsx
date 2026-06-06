@@ -7,16 +7,14 @@ import {
   Info,
   Loader2,
   MapPin,
-  PawPrint,
   Search,
   Star,
   Trash2,
-  User,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { getFavorites, removeFavoriteProvider } from '../api/favorites';
-import { resolveOwnerUserId } from '../utils/ownerUser';
+import { resolveUserId } from '../utils/userIdentity';
 
 const getCurrentPosition = () =>
   new Promise((resolve) => {
@@ -37,7 +35,7 @@ const getCurrentPosition = () =>
 const FavoritesPage = () => {
   const navigate = useNavigate();
   const { account } = useContext(AuthContext);
-  const ownerUserId = useMemo(() => resolveOwnerUserId(account), [account]);
+  const userId = useMemo(() => resolveUserId(account), [account]);
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +44,7 @@ const FavoritesPage = () => {
   const [removingId, setRemovingId] = useState(null);
 
   const loadData = async () => {
-    if (!ownerUserId) {
+    if (!userId) {
       setError('Không xác định được tài khoản người dùng để tải danh sách yêu thích.');
       setLoading(false);
       return;
@@ -57,7 +55,7 @@ const FavoritesPage = () => {
     try {
       const position = await getCurrentPosition();
       setCoords(position);
-      const data = await getFavorites(ownerUserId, position || {});
+      const data = await getFavorites(userId, position || {});
       setItems(data?.items || []);
     } catch (err) {
       setError(err?.response?.data?.message || 'Không tải được danh sách yêu thích.');
@@ -70,13 +68,13 @@ const FavoritesPage = () => {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerUserId]);
+  }, [userId]);
 
   const handleRemove = async (providerId) => {
-    if (!ownerUserId) return;
+    if (!userId) return;
     try {
       setRemovingId(providerId);
-      await removeFavoriteProvider(ownerUserId, providerId);
+      await removeFavoriteProvider(userId, providerId);
       setItems((prev) => prev.filter((item) => item.providerId !== providerId));
     } catch (err) {
       window.alert(err?.response?.data?.message || 'Không thể xóa khỏi danh sách yêu thích.');
@@ -87,27 +85,6 @@ const FavoritesPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800 pb-20">
-      <header className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex justify-between items-center">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="bg-orange-500 p-1.5 rounded-lg shadow-lg shadow-orange-100">
-              <PawPrint className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-black text-gray-900 tracking-tight">Pet<span className="text-orange-500">Go</span></span>
-          </div>
-
-          <nav className="hidden md:flex items-center gap-8 text-sm font-bold text-gray-500">
-            <button onClick={() => navigate('/')} className="hover:text-orange-600 transition-colors">Home</button>
-            <button onClick={() => navigate('/search')} className="hover:text-orange-600 transition-colors">Services</button>
-            <button onClick={() => navigate('/my-bookings')} className="hover:text-orange-600 transition-colors">My Booking</button>
-            <button onClick={() => navigate('/favorites')} className="text-orange-600">Favorites</button>
-            <div className="w-10 h-10 rounded-full bg-orange-100 border-2 border-white flex items-center justify-center shadow-sm" onClick={() => navigate('/profile')}>
-              <User className="w-5 h-5 text-orange-600" />
-            </div>
-          </nav>
-        </div>
-      </header>
-
       <main className="max-w-6xl mx-auto px-4 py-10 sm:py-16">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12">
           <div>
@@ -188,13 +165,13 @@ const FavoritesPage = () => {
                         onClick={() => navigate(`/providers/${item.providerId}`)}
                         className="px-5 py-3 bg-gray-100 text-gray-600 font-black rounded-2xl hover:bg-gray-200 transition-all uppercase tracking-widest text-[10px]"
                       >
-                        Details
+                        Chi tiết
                       </button>
                       <button
                         onClick={() => navigate(`/booking?providerId=${item.providerId}`)}
                         className="px-6 py-3 bg-gray-900 text-white font-black rounded-2xl shadow-lg hover:bg-orange-500 transition-all uppercase tracking-widest text-[10px] flex items-center gap-2"
                       >
-                        Book Now <Calendar className="w-3.5 h-3.5" />
+                        Đặt lịch ngay <Calendar className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>

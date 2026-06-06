@@ -31,6 +31,40 @@ const flattenCategories = (items = [], level = 0, parentNames = []) => (items ||
 
 const requestCategoryLabel = (categories = []) => categories.map((category) => category.name).filter(Boolean).join(', ') || 'Chờ admin phân loại';
 
+const buildCategoryTree = (items = [], level = 0) => (items || [])
+    .filter((item) => item.active !== false)
+    .map((item) => ({
+        ...item,
+        level,
+        children: buildCategoryTree(item.children || [], level + 1),
+    }));
+
+const findCategoryNode = (items = [], categoryId, parentChain = []) => {
+    const target = String(categoryId);
+    for (const item of items || []) {
+        if (String(item.id) === target) return { node: item, parents: parentChain };
+        const found = findCategoryNode(item.children || [], target, [...parentChain, item]);
+        if (found) return found;
+    }
+    return null;
+};
+
+const collectCategoryIds = (category) => [String(category.id), ...(category.children || []).flatMap(collectCategoryIds)];
+
+const syncParentCategorySelection = (selectedIds, categories = []) => {
+    const selectedSet = new Set(selectedIds.map(String));
+    const visit = (category) => {
+        const children = category.children || [];
+        children.forEach(visit);
+        if (!children.length) return;
+        const hasSelectedChild = children.some((child) => selectedSet.has(String(child.id)) || collectCategoryIds(child).some((id) => selectedSet.has(id)));
+        if (hasSelectedChild) selectedSet.add(String(category.id));
+        else selectedSet.delete(String(category.id));
+    };
+    (categories || []).forEach(visit);
+    return Array.from(selectedSet);
+};
+
 const AdminPartnerServiceRequests = () => {
     const [requests, setRequests] = useState([]);
     const [status, setStatus] = useState('PENDING_REVIEW');
@@ -38,7 +72,7 @@ const AdminPartnerServiceRequests = () => {
     const [detail, setDetail] = useState(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [categories, setCategories] = useState([]);
-    const [reviewCategoryId, setReviewCategoryId] = useState('');
+    const [reviewCategoryIds, setReviewCategoryIds] = useState([]);
     const [reviewCategoryError, setReviewCategoryError] = useState('');
     const { toasts, showToast, dismissToast } = useAdminToast();
     const { dialog, promptDialog, closeDialog } = useAdminDialog();
@@ -47,6 +81,7 @@ const AdminPartnerServiceRequests = () => {
         () => flattenCategories(categories).filter((item) => item.active !== false),
         [categories],
     );
+    const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
 
     const counts = useMemo(() => ({
         pending: requests.filter((item) => item.status === 'PENDING_REVIEW').length,
@@ -92,7 +127,7 @@ const AdminPartnerServiceRequests = () => {
             const data = await getPartnerServiceRequestDetail(id);
             setDetail(data);
             const existingCategoryIds = data?.categoryIds || [];
-            setReviewCategoryId(existingCategoryIds.length ? String(existingCategoryIds[existingCategoryIds.length - 1]) : '');
+            setReviewCategoryIds(existingCategoryIds.map((categoryId) => String(categoryId)));
             setReviewCategoryError('');
         } catch (error) {
             showToast({
@@ -106,9 +141,9 @@ const AdminPartnerServiceRequests = () => {
     };
 
     const handleApprove = async (id) => {
-        const categoryId = Number(reviewCategoryId);
-        if (!Number.isFinite(categoryId) || categoryId <= 0) {
-            setReviewCategoryError('Vui lòng chọn loại dịch vụ từ service_categories trước khi duyệt.');
+        const categoryIds = reviewCategoryIds.map((value) => Number(value)).filter((categoryId) => Number.isFinite(categoryId) && categoryId > 0);
+        if (categoryIds.length === 0) {
+            setReviewCategoryError('Vui lòng chọn ít nhất một loại dịch vụ từ service_categories trước khi duyệt.');
             return;
         }
         const message = await promptDialog({
@@ -122,10 +157,10 @@ const AdminPartnerServiceRequests = () => {
         });
         if (message === null) return;
         try {
-            const updated = await approvePartnerServiceRequest(id, { message, categoryId, categoryIds: [categoryId] });
+            const updated = await approvePartnerServiceRequest(id, { message, categoryId: categoryIds[categoryIds.length - 1], categoryIds });
             setDetail(updated);
             const updatedCategoryIds = updated?.categoryIds || [];
-            setReviewCategoryId(updatedCategoryIds.length ? String(updatedCategoryIds[updatedCategoryIds.length - 1]) : '');
+            setReviewCategoryIds(updatedCategoryIds.map((categoryId) => String(categoryId)));
             setReviewCategoryError('');
             await loadRequests();
             showToast({
@@ -174,6 +209,25 @@ const AdminPartnerServiceRequests = () => {
                 message: getAdminErrorMessage(error, 'Từ chối yêu cầu thất bại.'),
             });
         }
+    };
+
+    const toggleReviewCategory = (categoryId) => {
+        const value = String(categoryId);
+        const found = findCategoryNode(categoryTree, value);
+        if (!found?.node) return;
+        const targetIds = collectCategoryIds(found.node);
+        setReviewCategoryIds((current) => {
+            const selectedSet = new Set(current.map(String));
+            const shouldSelect = !selectedSet.has(value);
+            if (shouldSelect) {
+                targetIds.forEach((id) => selectedSet.add(id));
+                found.parents.forEach((parent) => selectedSet.add(String(parent.id)));
+            } else {
+                targetIds.forEach((id) => selectedSet.delete(id));
+            }
+            return syncParentCategorySelection(Array.from(selectedSet), categoryTree);
+        });
+        setReviewCategoryError('');
     };
 
     return (
@@ -237,19 +291,20 @@ const AdminPartnerServiceRequests = () => {
                         <div className="modal-body" style={{ padding: 24 }}>
                             {detail.status === 'PENDING_REVIEW' && (
                                 <div className="info-item" style={{ marginBottom: 16, padding: 14, borderRadius: 14, background: '#f0f9ff', border: '1px solid #bae6fd' }}>
-                                    <label style={{ display: 'block', fontSize: 12, color: '#0369a1', fontWeight: 800, marginBottom: 8 }}>Loại dịch vụ admin phân loại *</label>
-                                    <select
-                                        value={reviewCategoryId}
-                                        onChange={(event) => { setReviewCategoryId(event.target.value); setReviewCategoryError(''); }}
-                                        style={{ width: '100%', borderColor: reviewCategoryError ? '#fecaca' : undefined, background: reviewCategoryError ? '#fef2f2' : undefined }}
-                                    >
-                                        <option value="">Chọn từ bảng service_categories</option>
-                                        {categoryOptions.map((category) => (
-                                            <option key={category.id} value={category.id}>{`${'— '.repeat(category.level)}${category.pathLabel}`}</option>
-                                        ))}
-                                    </select>
+                                    <label style={{ display: 'block', fontSize: 12, color: '#0369a1', fontWeight: 800, marginBottom: 8 }}>Chọn danh mục cho dịch vụ</label>
+                                    <div className="space-y-3 max-h-64 overflow-auto pr-1 rounded-2xl bg-white p-3" style={{ border: `1px solid ${reviewCategoryError ? '#fecaca' : '#bae6fd'}`, background: reviewCategoryError ? '#fef2f2' : '#fff' }}>
+                                        {categoryTree.length ? categoryTree.map((category) => (
+                                            <AdminCategoryNode
+                                                key={category.id}
+                                                category={category}
+                                                selectedIds={reviewCategoryIds}
+                                                onChange={toggleReviewCategory}
+                                            />
+                                        )) : <div className="text-tiny text-muted" style={{ padding: 10 }}>Chưa có loại dịch vụ khả dụng.</div>}
+                                    </div>
+                                    <div className="text-tiny text-muted" style={{ marginTop: 8 }}>Đã chọn {reviewCategoryIds.length} loại dịch vụ.</div>
                                     {reviewCategoryError && <div style={{ marginTop: 6, fontSize: 12, color: '#dc2626', fontWeight: 700 }}>{reviewCategoryError}</div>}
-                                    <div className="text-tiny text-muted" style={{ marginTop: 8 }}>Partner không chọn loại dịch vụ; admin bắt buộc phân loại tại bước duyệt.</div>
+                                    <div className="text-tiny text-muted" style={{ marginTop: 8 }}>Partner không chọn loại dịch vụ; admin bắt buộc phân loại một hoặc nhiều loại tại bước duyệt.</div>
                                 </div>
                             )}
                             {detailLoading ? <p>Đang tải...</p> : <ServiceRequestPreview detail={detail} />}
@@ -263,6 +318,40 @@ const AdminPartnerServiceRequests = () => {
                 </div>
             )}
         </AdminLayout>
+    );
+};
+
+const AdminCategoryNode = ({ category, selectedIds, onChange, level = 0 }) => {
+    const value = String(category.id);
+    const children = Array.isArray(category.children) ? category.children : [];
+
+    return (
+        <div>
+            <label className="flex items-center gap-3 cursor-pointer group" style={{ paddingLeft: level * 16 }}>
+                <input
+                    type="checkbox"
+                    checked={selectedIds.includes(value)}
+                    onChange={() => onChange(value)}
+                    className="w-5 h-5 rounded-lg border-2 border-gray-200 text-orange-500 focus:ring-0 cursor-pointer transition-all"
+                />
+                <span className="text-sm font-bold text-gray-500 group-hover:text-gray-900 transition-colors">
+                    {category.name}
+                </span>
+            </label>
+            {children.length > 0 && (
+                <div className="mt-2 space-y-2 border-l border-dashed border-gray-200 ml-2 pl-2">
+                    {children.map((child) => (
+                        <AdminCategoryNode
+                            key={child.id}
+                            category={child}
+                            selectedIds={selectedIds}
+                            onChange={onChange}
+                            level={level + 1}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
     );
 };
 

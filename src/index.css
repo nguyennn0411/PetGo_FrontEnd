@@ -1,9 +1,297 @@
 @import "tailwindcss";
 
-html, body, #root {
+:root {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --petgo-bg: #fff8f1;
+  --petgo-surface: rgba(255, 255, 255, 0.86);
+  --petgo-ink: #172033;
+  --petgo-muted: #64748b;
+  --petgo-orange: #f97316;
+  --petgo-amber: #f59e0b;
+  --petgo-blue: #2563eb;
+  --petgo-green: #16a34a;
+  --petgo-border: rgba(251, 146, 60, 0.18);
+  --petgo-shadow: 0 24px 70px rgba(154, 80, 21, 0.12);
+}
+
+html,
+body,
+#root {
   height: 100%;
 }
 
 body {
   margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at top left, rgba(251, 146, 60, 0.20), transparent 34rem),
+    radial-gradient(circle at top right, rgba(96, 165, 250, 0.14), transparent 30rem),
+    linear-gradient(180deg, #fffaf5 0%, #ffffff 46%, #fff7ed 100%);
+  color: var(--petgo-ink);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: rgba(249, 115, 22, 0.22);
+  color: #111827;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.petgo-user-shell,
+.petgo-user-page,
+.min-h-screen.bg-gray-50,
+.min-h-screen.bg-white {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(251, 146, 60, 0.16), transparent 24rem),
+    radial-gradient(circle at 88% 14%, rgba(59, 130, 246, 0.12), transparent 28rem),
+    linear-gradient(180deg, #fffaf5 0%, #ffffff 42%, #fff7ed 100%) !important;
+}
+
+.petgo-glass,
+header.bg-white,
+header.bg-white\/90,
+.sticky.top-0.z-50.bg-white,
+.fixed.top-0.w-full.z-50.bg-white\/90 {
+  background: rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(20px);
+  border-color: var(--petgo-border) !important;
+  box-shadow: 0 18px 50px rgba(154, 80, 21, 0.08) !important;
+}
+
+.petgo-card,
+.bg-white.rounded-\[2\.5rem\],
+.bg-white.rounded-\[2rem\],
+.bg-white.rounded-3xl,
+.bg-white.rounded-2xl {
+  border-color: rgba(251, 146, 60, 0.14) !important;
+  box-shadow: var(--petgo-shadow) !important;
+}
+
+.petgo-gradient-text {
+  background: linear-gradient(135deg, #f97316 0%, #f59e0b 46%, #2563eb 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.petgo-focus:focus-visible,
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(249, 115, 22, 0.35);
+  outline-offset: 3px;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+
+  .petgo-user-page,
+  .petgo-user-shell,
+  .min-h-screen.bg-gray-50,
+  .min-h-screen.bg-white {
+    background: linear-gradient(180deg, #fffaf5 0%, #ffffff 54%, #fff7ed 100%) !important;
+  }
+}
+
+.app-toast-viewport,
+.admin-toast-viewport {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.app-toast,
+.admin-toast,
+.app-notice,
+.admin-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 20px 45px rgba(17, 24, 39, 0.14);
+}
+
+.app-toast,
+.admin-toast {
+  padding: 14px;
+  pointer-events: auto;
+}
+
+.app-notice,
+.admin-notice {
+  padding: 16px;
+}
+
+.app-toast-success,
+.admin-toast-success,
+.app-notice-success,
+.admin-notice-success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.app-toast-error,
+.admin-toast-error,
+.app-notice-error,
+.admin-notice-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.app-toast-warning,
+.admin-toast-warning,
+.app-notice-warning,
+.admin-notice-warning {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.app-toast-info,
+.admin-toast-info,
+.app-notice-info,
+.admin-notice-info {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.app-toast-icon,
+.admin-toast-icon,
+.app-notice-icon,
+.admin-notice-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.app-toast-success .app-toast-icon,
+.admin-toast-success .admin-toast-icon,
+.app-notice-success .app-notice-icon,
+.admin-notice-success .admin-notice-icon {
+  color: #16a34a;
+}
+
+.app-toast-error .app-toast-icon,
+.admin-toast-error .admin-toast-icon,
+.app-notice-error .app-notice-icon,
+.admin-notice-error .admin-notice-icon {
+  color: #dc2626;
+}
+
+.app-toast-warning .app-toast-icon,
+.admin-toast-warning .admin-toast-icon,
+.app-notice-warning .app-notice-icon,
+.admin-notice-warning .admin-notice-icon {
+  color: #d97706;
+}
+
+.app-toast-info .app-toast-icon,
+.admin-toast-info .admin-toast-icon,
+.app-notice-info .app-notice-icon,
+.admin-notice-info .admin-notice-icon {
+  color: #2563eb;
+}
+
+.app-toast-content,
+.admin-toast-content,
+.app-notice-content,
+.admin-notice-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-toast-title,
+.admin-toast-title,
+.app-notice-title,
+.admin-notice-title {
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.app-toast-message,
+.admin-toast-message,
+.app-notice-message,
+.admin-notice-message {
+  margin-top: 4px;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.app-toast-close,
+.admin-toast-close,
+.app-notice-close,
+.admin-notice-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.06);
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.app-toast-close:hover,
+.admin-toast-close:hover,
+.app-notice-close:hover,
+.admin-notice-close:hover {
+  background: rgba(17, 24, 39, 0.1);
+  color: #111827;
+}
+
+@media (max-width: 640px) {
+
+  .app-toast-viewport,
+  .admin-toast-viewport {
+    top: 16px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
 }

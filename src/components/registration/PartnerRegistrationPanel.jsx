@@ -35,7 +35,7 @@ import {
     getAccountDisplayName,
     getAccountEmail,
     getAccountPhone,
-} from '../../utils/ownerUser';
+} from '../../utils/userIdentity';
 
 const buildInitialForm = (account, registration) => ({
     businessName: registration?.businessName || '',
@@ -191,10 +191,10 @@ const toPayload = (form, { includeImages = true } = {}) => {
 const validateForm = (form, requireImages = true) => {
     const errors = {};
     const requiredFields = [
-        ['businessName', 'Vui lòng nhập tên shop/doanh nghiệp.'],
-        ['businessPhone', 'Vui lòng nhập số điện thoại shop.'],
-        ['businessEmail', 'Vui lòng nhập email shop.'],
-        ['businessAddress', 'Vui lòng nhập địa chỉ shop.'],
+        ['businessName', 'Vui lòng nhập tên nhà cung cấp/doanh nghiệp.'],
+        ['businessPhone', 'Vui lòng nhập số điện thoại nhà cung cấp.'],
+        ['businessEmail', 'Vui lòng nhập email nhà cung cấp.'],
+        ['businessAddress', 'Vui lòng nhập địa chỉ nhà cung cấp.'],
         ['representativeName', 'Vui lòng nhập tên người đại diện.'],
         ['representativePhone', 'Vui lòng nhập số điện thoại người đại diện.'],
         ['representativeEmail', 'Vui lòng nhập email người đại diện.'],
@@ -205,7 +205,7 @@ const validateForm = (form, requireImages = true) => {
     });
 
     if (form.businessEmail && !/^\S+@\S+\.\S+$/.test(form.businessEmail)) {
-        errors.businessEmail = 'Email shop không hợp lệ.';
+        errors.businessEmail = 'Email nhà cung cấp không hợp lệ.';
     }
     if (form.representativeEmail && !/^\S+@\S+\.\S+$/.test(form.representativeEmail)) {
         errors.representativeEmail = 'Email người đại diện không hợp lệ.';
@@ -216,9 +216,9 @@ const validateForm = (form, requireImages = true) => {
     if (requireImages) {
         const imageCount = normalizeImageList(form.locationImageUrls).length;
         if (imageCount < MIN_LOCATION_IMAGE_COUNT) {
-            errors.locationImageUrls = 'Vui lòng cung cấp tối thiểu 4 ảnh địa điểm shop.';
+            errors.locationImageUrls = 'Vui lòng cung cấp tối thiểu 4 ảnh địa điểm nhà cung cấp.';
         } else if (imageCount > MAX_LOCATION_IMAGE_COUNT) {
-            errors.locationImageUrls = 'Chỉ được cung cấp tối đa 10 ảnh địa điểm shop.';
+            errors.locationImageUrls = 'Chỉ được cung cấp tối đa 10 ảnh địa điểm nhà cung cấp.';
         }
     }
 
@@ -368,7 +368,7 @@ const PartnerRegistrationPanel = ({ account }) => {
         const currentImageCount = normalizeImageList(form.locationImageUrls).length;
         const availableSlots = Math.max(MAX_LOCATION_IMAGE_COUNT - currentImageCount, 0);
         if (availableSlots === 0) {
-            setFieldErrors((prev) => ({ ...prev, locationImageUrls: 'Chỉ được cung cấp tối đa 10 ảnh địa điểm shop.' }));
+            setFieldErrors((prev) => ({ ...prev, locationImageUrls: 'Chỉ được cung cấp tối đa 10 ảnh địa điểm nhà cung cấp.' }));
             return;
         }
 
@@ -563,7 +563,7 @@ const PartnerRegistrationPanel = ({ account }) => {
                                 <Store className="w-6 h-6" />
                             </div>
 
-                            <h2 className="text-2xl font-black">Mẫu đăng ký cho shop</h2>
+                            <h2 className="text-2xl font-black">Mẫu đăng ký cho nhà cung cấp</h2>
                         </div>
                     </div>
                     <span className={`px-4 py-2 rounded-2xl border text-xs font-black uppercase tracking-widest ${statusBadgeClass}`}>
@@ -657,14 +657,14 @@ const PartnerRegistrationForm = ({
     return (
         <div className="space-y-8">
             <section className="space-y-4">
-                <SectionTitle icon={<Building2 />} title="Thông tin shop/doanh nghiệp" />
+                <SectionTitle icon={<Building2 />} title="Thông tin nhà cung cấp/doanh nghiệp" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <FormInput label="Tên shop/doanh nghiệp" value={form.businessName} error={fieldErrors.businessName} onChange={(value) => onFieldChange('businessName', value)} required />
-                    <FormInput label="Số điện thoại shop" value={form.businessPhone} error={fieldErrors.businessPhone} onChange={(value) => onFieldChange('businessPhone', value)} icon={<Phone />} required />
-                    <FormInput label="Email shop" type="email" value={form.businessEmail} error={fieldErrors.businessEmail} onChange={(value) => onFieldChange('businessEmail', value)} icon={<Mail />} required />
+                    <FormInput label="Tên nhà cung cấp/doanh nghiệp" value={form.businessName} error={fieldErrors.businessName} onChange={(value) => onFieldChange('businessName', value)} required />
+                    <FormInput label="Số điện thoại nhà cung cấp" value={form.businessPhone} error={fieldErrors.businessPhone} onChange={(value) => onFieldChange('businessPhone', value)} icon={<Phone />} required />
+                    <FormInput label="Email nhà cung cấp" type="email" value={form.businessEmail} error={fieldErrors.businessEmail} onChange={(value) => onFieldChange('businessEmail', value)} icon={<Mail />} required />
                     <FormInput label="Mã số thuế" value={form.taxCode} onChange={(value) => onFieldChange('taxCode', value)} />
                     <div className="sm:col-span-2">
-                        <FormInput label="Địa chỉ shop" value={form.businessAddress} error={fieldErrors.businessAddress} onChange={(value) => onFieldChange('businessAddress', value)} icon={<MapPin />} required />
+                        <FormInput label="Địa chỉ nhà cung cấp" value={form.businessAddress} error={fieldErrors.businessAddress} onChange={(value) => onFieldChange('businessAddress', value)} icon={<MapPin />} required />
                     </div>
                 </div>
             </section>
@@ -681,7 +681,7 @@ const PartnerRegistrationForm = ({
             <section className="space-y-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="space-y-1">
-                        <SectionTitle icon={<Store />} title="Nhóm dịch vụ shop cung cấp" required />
+                        <SectionTitle icon={<Store />} title="Nhóm dịch vụ nhà cung cấp cung cấp" required />
                     </div>
                     {totalCategoryCount > 0 && (
                         <span className="w-fit rounded-full bg-gray-100 px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-gray-500">
@@ -732,7 +732,7 @@ const PartnerRegistrationForm = ({
                     value={form.description || ''}
                     onChange={(e) => onFieldChange('description', e.target.value)}
                     rows={5}
-                    placeholder="Mô tả kinh nghiệm, quy mô shop, thế mạnh dịch vụ..."
+                    placeholder="Mô tả kinh nghiệm, quy mô nhà cung cấp, thế mạnh dịch vụ..."
                     className="w-full px-5 py-4 bg-gray-50 border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-orange-500 transition-all outline-none font-bold resize-none"
                 />
             </section>
@@ -1169,7 +1169,7 @@ const RegistrationResultView = ({ type, registration, onRefresh }) => {
                 <h2 className="text-3xl font-black mb-2">{approved ? 'Đã duyệt' : 'Hồ sơ bị từ chối'}</h2>
                 <p className="text-gray-500 font-medium max-w-md mx-auto">
                     {approved
-                        ? 'Hồ sơ của bạn đã được duyệt. Bạn có thể vào Partner Dashboard để vận hành shop.'
+                        ? 'Hồ sơ của bạn đã được duyệt. Bạn có thể vào Partner Dashboard để vận hành nhà cung cấp.'
                         : registration?.rejectionReason || registration?.adminMessage || 'Hồ sơ của bạn đã bị từ chối.'}
                 </p>
             </div>

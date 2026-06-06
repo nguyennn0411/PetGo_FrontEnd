@@ -17,13 +17,13 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { createReview, getReviewContext } from '../api/reviews';
-import { resolveOwnerUserId } from '../utils/ownerUser';
+import { resolveUserId } from '../utils/userIdentity';
 
 const ReviewPage = () => {
   const navigate = useNavigate();
   const { bookingId } = useParams();
   const { account } = useContext(AuthContext);
-  const ownerUserId = useMemo(() => resolveOwnerUserId(account), [account]);
+  const userId = useMemo(() => resolveUserId(account), [account]);
 
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
@@ -36,7 +36,7 @@ const ReviewPage = () => {
   const [success, setSuccess] = useState('');
 
   const loadContext = async () => {
-    if (!ownerUserId) {
+    if (!userId) {
       setError('Không xác định được tài khoản người dùng để gửi review.');
       setLoading(false);
       return;
@@ -45,7 +45,7 @@ const ReviewPage = () => {
     setLoading(true);
     setError('');
     try {
-      const data = await getReviewContext(ownerUserId, bookingId);
+      const data = await getReviewContext(userId, bookingId);
       setContextData(data);
     } catch (err) {
       setError(err?.response?.data?.message || 'Không tải được dữ liệu review.');
@@ -57,7 +57,7 @@ const ReviewPage = () => {
   useEffect(() => {
     loadContext();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerUserId, bookingId]);
+  }, [userId, bookingId]);
 
   const updatePhoto = (index, value) => {
     setPhotoUrls((prev) => prev.map((item, idx) => (idx === index ? value : item)));
@@ -72,18 +72,18 @@ const ReviewPage = () => {
       window.alert('Vui lòng chọn số sao đánh giá!');
       return;
     }
-    if (!ownerUserId) return;
+    if (!userId) return;
 
     try {
       setSubmitting(true);
       setError('');
       const payload = {
-        ownerUserId,
+        userId,
         rating,
         comment,
         photoUrls: photoUrls.map((item) => item.trim()).filter(Boolean),
       };
-      const response = await createReview(ownerUserId, bookingId, payload);
+      const response = await createReview(userId, bookingId, payload);
       setSuccess(response?.message || 'Gửi đánh giá thành công');
       setTimeout(() => navigate('/my-bookings'), 1600);
     } catch (err) {

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, RefreshCw, RotateCcw, Search } from 'lucide-react';
 import PartnerLayout from '../../components/partner/PartnerLayout';
-import { PartnerEmptyState, PartnerErrorState, PartnerLoadingState, PartnerStatusBadge } from '../../components/partner/PartnerStates';
+import { PartnerEmptyState, PartnerErrorState, PartnerLoadingState, PartnerNotice, PartnerStatusBadge, getPartnerErrorMessage, usePartnerToast } from '../../components/partner/PartnerStates';
 import { getPartnerBookings, getPartnerServices } from '../../api/partner';
 
 const statuses = [
@@ -35,11 +35,14 @@ const PartnerBookingsPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const { showToast } = usePartnerToast();
 
     const validateRange = () => {
         if (from && to && new Date(from) > new Date(to)) {
-            setError('Ngày bắt đầu không được sau ngày kết thúc.');
+            const message = 'Ngày bắt đầu không được sau ngày kết thúc.';
+            setError(message);
             setSuccess('');
+            showToast({ tone: 'warning', title: 'Bộ lọc chưa hợp lệ', message });
             return false;
         }
         return true;
@@ -58,9 +61,12 @@ const PartnerBookingsPage = () => {
             };
             setPayload(await getPartnerBookings(params));
             setSuccess(showSuccess ? 'Đã cập nhật danh sách booking theo bộ lọc hiện tại.' : '');
+            if (showSuccess) showToast({ tone: 'success', title: 'Đã cập nhật danh sách', message: 'Danh sách booking đã được tải theo bộ lọc hiện tại.' });
         } catch (err) {
-            setError(err.response?.data?.message || 'Không thể tải booking partner.');
+            const message = getPartnerErrorMessage(err, 'Không thể tải booking partner.');
+            setError(message);
             setSuccess('');
+            showToast({ tone: 'error', title: 'Không tải được booking', message });
         } finally {
             setLoading(false);
         }
@@ -88,10 +94,10 @@ const PartnerBookingsPage = () => {
     };
 
     return (
-        <PartnerLayout title="Booking" subtitle="Theo dõi và xử lý booking thuộc shop">
+        <PartnerLayout title="Booking" subtitle="Theo dõi và xử lý booking thuộc provider">
             <div className="space-y-6">
                 {error && <PartnerErrorState message={error} onRetry={loadBookings} />}
-                {success && !error && <div className="bg-green-50 border border-green-100 text-green-700 rounded-[1.5rem] p-4 font-bold">{success}</div>}
+                {success && !error && <PartnerNotice tone="success" title="Đã cập nhật danh sách" message={success} onDismiss={() => setSuccess('')} />}
 
                 <section className="bg-white rounded-[2rem] border border-gray-100 p-5 shadow-sm space-y-4">
                     <div className="flex flex-wrap gap-2">
