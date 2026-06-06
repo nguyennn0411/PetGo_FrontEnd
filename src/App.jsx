@@ -26,8 +26,6 @@ import RegisterPage from './pages/RegisterPage';
 import OtpVerificationPage from './pages/OtpVerificationPage';
 import ProfilePage from './pages/ProfilePage';
 import AddPetPage from './pages/AddPetPage';
-import WalletPage from './pages/WalletPage';
-import ChatPage from './pages/ChatPage';
 
 import MembershipPage from './pages/MembershipPage';
 import MembershipPaymentPage from './pages/MembershipPaymentPage';
@@ -82,11 +80,8 @@ export default function App() {
         <Route path='/login' element={<LoginPage />} />
         <Route path='/register' element={<RegisterPage />} />
         <Route path='/verify-otp' element={<OtpVerificationPage />} />
-        <Route path='/profile' element={withUserShell(<ProfilePage />, '/profile')} />
-        <Route path='/wallet' element={withUserShell(<WalletPage />, '/wallet')} />
-        <Route path='/add-pet' element={withUserShell(<AddPetPage />, '/profile')} />
-        <Route path='/chat' element={withUserShell(<ChatPage />, '')} />
-        <Route path='/chat/:conversationId' element={withUserShell(<ChatPage />, '')} />
+        <Route path='/profile' element={<ProfilePage />} />
+        <Route path='/add-pet' element={<AddPetPage />} />
 
         <Route path='/membership' element={<MembershipPage />} />
         <Route path='/membership-payment' element={<MembershipPaymentPage />} />

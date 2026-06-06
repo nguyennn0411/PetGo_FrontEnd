@@ -24,7 +24,6 @@ import {
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getProviderDetail } from '../api/providers';
 import { addFavoriteProvider, getFavoriteProviderIds, removeFavoriteProvider } from '../api/favorites';
-import { startProviderChat } from '../api/chat';
 import { AuthContext } from '../context/AuthContext';
 import { resolveUserId } from '../utils/userIdentity';
 import { formatCurrencyVnd, providerFallbackImage } from '../utils/providerHelpers';
@@ -80,7 +79,6 @@ const ProviderDetailPage = () => {
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
   const [selectedSlotId, setSelectedSlotId] = useState(null);
-  const [chatLoading, setChatLoading] = useState(false);
 
   const fetchProviderDetail = async (coords) => {
     setLoading(true);
@@ -188,23 +186,6 @@ const ProviderDetailPage = () => {
       window.prompt('Sao chép liên kết này:', window.location.href);
     } catch {
       // ignore user cancel share
-    }
-  };
-
-  const handleStartProviderChat = async () => {
-    if (!account) {
-      navigate('/login', { state: { redirectTo: `/providers/${id}` } });
-      return;
-    }
-
-    try {
-      setChatLoading(true);
-      const conversation = await startProviderChat(id);
-      navigate(`/chat/${conversation.id}`);
-    } catch (err) {
-      window.alert(err?.response?.data?.message || 'Không thể mở chat với provider lúc này.');
-    } finally {
-      setChatLoading(false);
     }
   };
 
@@ -531,8 +512,8 @@ const ProviderDetailPage = () => {
                       <p className="text-lg font-black tracking-tight italic">{provider.emergencyPhone || 'Đang cập nhật'}</p>
                     </div>
                   </div>
-                  <button disabled={chatLoading} onClick={handleStartProviderChat} className="w-full py-5 bg-white text-gray-900 font-black rounded-2xl hover:bg-orange-500 hover:text-white transition-all shadow-xl flex items-center justify-center gap-3 uppercase tracking-widest text-xs disabled:opacity-60">
-                    {chatLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />} Chat với tư vấn viên
+                  <button className="w-full py-5 bg-white text-gray-900 font-black rounded-2xl hover:bg-orange-500 hover:text-white transition-all shadow-xl flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
+                    <MessageSquare className="w-4 h-4" /> Chat với tư vấn viên
                   </button>
                 </div>
               </div>
