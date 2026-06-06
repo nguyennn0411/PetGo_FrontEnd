@@ -26,11 +26,8 @@ import RegisterPage from './pages/RegisterPage';
 import OtpVerificationPage from './pages/OtpVerificationPage';
 import ProfilePage from './pages/ProfilePage';
 import AddPetPage from './pages/AddPetPage';
-<<<<<<< HEAD
 import WalletPage from './pages/WalletPage';
 import ChatPage from './pages/ChatPage';
-=======
->>>>>>> dba7e2dfb05c4565004b01e560d40d514fb01a72
 
 import MembershipPage from './pages/MembershipPage';
 import MembershipPaymentPage from './pages/MembershipPaymentPage';
