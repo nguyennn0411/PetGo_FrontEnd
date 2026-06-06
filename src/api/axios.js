@@ -1,11 +1,17 @@
 import axios from "axios";
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+// const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+
+// // const api = axios.create({
+// //   baseURL,
+// });
 
 const api = axios.create({
-  baseURL,
+  baseURL: import.meta.env.VITE_API_BASE_URL || "/api/v1",
+  withCredentials: true,
 });
 
+// export default api;
 api.interceptors.request.use(
   (config) => {
     const publicEndpoints = [
