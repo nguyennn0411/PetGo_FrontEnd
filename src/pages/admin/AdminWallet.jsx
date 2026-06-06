@@ -27,12 +27,14 @@ export default function AdminWallet() {
 
     const toggleAuto = async () => {
         setMessage(''); setError('');
+        if (!window.confirm(`${autoConfirm ? 'Tắt' : 'Bật'} tự động cộng tiền nạp ví?`)) return;
         try { const result = await updateAdminWalletAutoConfirm(!autoConfirm); setAutoConfirm(Boolean(result.enabled)); setMessage(`Đã ${result.enabled ? 'bật' : 'tắt'} tự động cộng tiền nạp ví.`); }
         catch (err) { setError(err.response?.data?.message || 'Không cập nhật được cấu hình.'); }
     };
 
     const review = async (id, action) => {
         const reviewNote = window.prompt(action === 'APPROVE' ? 'Ghi chú duyệt giao dịch' : 'Lý do từ chối', '') || '';
+        if (!window.confirm(`${action === 'APPROVE' ? 'Duyệt' : 'Từ chối'} giao dịch ví này?`)) return;
         setMessage(''); setError('');
         try { await reviewAdminWalletTransaction(id, { action, reviewNote }); setMessage('Đã xử lý giao dịch ví.'); await load(); }
         catch (err) { setError(err.response?.data?.message || 'Không xử lý được giao dịch.'); }
@@ -58,7 +60,6 @@ export default function AdminWallet() {
                 <select value={walletLock.status} onChange={e => setWalletLock({ ...walletLock, status: e.target.value })}>
                     <option value="ACTIVE">ACTIVE - hoạt động</option><option value="INBOUND_LOCKED">Khóa nhận/nạp</option><option value="OUTBOUND_LOCKED">Khóa chuyển/rút</option><option value="LOCKED">Khóa hoàn toàn</option>
                 </select>
-                <input placeholder="Ghi chú" value={walletLock.note} onChange={e => setWalletLock({ ...walletLock, note: e.target.value })} />
                 <button className="btn btn-primary">Cập nhật</button>
             </form>
         </div>
