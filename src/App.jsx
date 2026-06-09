@@ -66,6 +66,8 @@ import PartnerReviewsPage from './pages/partner/PartnerReviewsPage';
 import PartnerNotificationsPage from './pages/partner/PartnerNotificationsPage';
 import PartnerPlaceholderPage from './pages/partner/PartnerPlaceholderPage';
 import UserNav from './components/UserNav';
+import AiChatWidget from './components/AiChatWidget';
+import AiGroomingPage from './pages/AiGroomingPage';
 
 const withUserShell = (element, activePath = '') => (
   <div className='petgo-user-shell min-h-screen'>
@@ -160,7 +162,9 @@ export default function App() {
         <Route path='/home' element={<Navigate to='/' replace />} />
         <Route path='/services' element={<Navigate to='/' replace />} />
         <Route path='*' element={<Navigate to='/' replace />} />
+        <Route path="/ai-grooming" element={<AiGroomingPage />} />
       </Routes>
+      <AiChatWidget />
     </BrowserRouter>
   );
 }
