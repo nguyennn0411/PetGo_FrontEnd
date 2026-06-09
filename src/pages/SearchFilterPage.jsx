@@ -544,7 +544,7 @@ const SearchFilterPage = () => {
                     onClick={() => navigate('/compare')}
                     className="px-6 py-3 rounded-2xl border bg-white font-semibold hover:bg-gray-50"
                   >
-                    So sánh nhà cung cấp
+                    So sánh dịch vụ / nhà cung cấp
                   </button>
                 </div>
               </>

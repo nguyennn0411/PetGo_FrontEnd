@@ -89,7 +89,6 @@ const FavoritesPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12">
           <div>
             <h1 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">My Favorites</h1>
-            <p className="text-gray-500 font-medium italic">Danh sách nhà cung cấp bạn đã lưu từ backend thật.</p>
           </div>
           {!loading && !error && (
             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-gray-100">
@@ -196,20 +195,6 @@ const FavoritesPage = () => {
             </button>
           </div>
         )}
-
-        <div className="mt-20 flex flex-col md:flex-row items-center justify-between p-10 bg-gray-900 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
-          <div className="relative z-10 text-center md:text-left">
-            <h4 className="text-2xl font-black mb-2 italic flex items-center justify-center md:justify-start gap-3">
-              <Info className="w-6 h-6 text-orange-500" /> Favorites đã nối backend thật
-            </h4>
-            <p className="text-gray-400 font-medium max-w-lg">
-              Danh sách yêu thích giờ được lưu trong database qua bảng favorites, không còn mất khi refresh trang.
-            </p>
-          </div>
-          <button onClick={() => navigate('/search')} className="relative z-10 mt-8 md:mt-0 px-8 py-4 bg-white text-gray-900 font-black rounded-2xl hover:bg-orange-500 hover:text-white transition-all uppercase tracking-widest text-[10px]">
-            Tìm thêm dịch vụ
-          </button>
-        </div>
       </main>
     </div>
   );

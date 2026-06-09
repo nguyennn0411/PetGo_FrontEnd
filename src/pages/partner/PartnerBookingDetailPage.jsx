@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, CheckCircle2, NotebookPen, Play, Save, X, XCircle } from 'lucide-react';
 import PartnerLayout from '../../components/partner/PartnerLayout';
-import { PartnerErrorState, PartnerLoadingState, PartnerNotice, PartnerStatusBadge, getPartnerErrorMessage, usePartnerToast } from '../../components/partner/PartnerStates';
-import { cancelPartnerBooking, completePartnerBooking, confirmPartnerBooking, getPartnerBookingDetail, startPartnerBooking, updatePartnerBookingInternalNote } from '../../api/partner';
+import { PartnerErrorState, PartnerLoadingState, PartnerStatusBadge, getPartnerErrorMessage, usePartnerToast } from '../../components/partner/PartnerStates';
+import { cancelPartnerBooking, confirmCompletedByProvider, confirmPartnerBooking, getPartnerBookingDetail, rejectPartnerBooking, startPartnerBooking, updatePartnerBookingInternalNote } from '../../api/partner';
 
 const PartnerBookingDetailPage = () => {
     const { id } = useParams();
@@ -13,11 +13,17 @@ const PartnerBookingDetailPage = () => {
     const [loading, setLoading] = useState(true);
     const [mutating, setMutating] = useState(false);
     const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
     const [cancelOpen, setCancelOpen] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
     const [cancelError, setCancelError] = useState('');
+    const [rejectOpen, setRejectOpen] = useState(false);
+    const [rejectReason, setRejectReason] = useState('');
+    const [rejectError, setRejectError] = useState('');
     const { showToast } = usePartnerToast();
+
+    const normalizedStatus = String(booking?.status || '').toUpperCase();
+    const canConfirmNewBooking = booking?.canConfirm || normalizedStatus === 'PENDING_PROVIDER_CONFIRMATION';
+    const canProviderComplete = booking?.canComplete || ['IN_PROGRESS', 'AWAITING_COMPLETION_CONFIRMATION', 'COMPLETED_BY_USER'].includes(normalizedStatus);
 
     const loadDetail = async () => {
         try {
@@ -42,16 +48,13 @@ const PartnerBookingDetailPage = () => {
         try {
             setMutating(true);
             setError('');
-            setSuccess('');
             await action();
             await loadDetail();
-            setSuccess(successMessage);
             showToast({ tone: 'success', title: 'Đã cập nhật booking', message: successMessage });
             return true;
         } catch (err) {
             const message = getPartnerErrorMessage(err, 'Thao tác booking thất bại.');
             setError(message);
-            setSuccess('');
             showToast({ tone: 'error', title: 'Thao tác booking thất bại', message });
             return false;
         } finally {
@@ -80,12 +83,30 @@ const PartnerBookingDetailPage = () => {
         setCancelError('');
     };
 
+    const submitReject = async () => {
+        const normalized = rejectReason.trim();
+        if (normalized.length < 5) {
+            const message = 'Vui lòng nhập lý do từ chối tối thiểu 5 ký tự.';
+            setRejectError(message);
+            showToast({ tone: 'warning', title: 'Lý do từ chối chưa hợp lệ', message });
+            return;
+        }
+        const succeeded = await runAction(
+            () => rejectPartnerBooking(id, { reasonCode: 'PROVIDER_REJECTED', reasonText: normalized, note: normalized }),
+            null,
+            'Đã từ chối booking và hoàn tiền về ví user.'
+        );
+        if (!succeeded) return;
+        setRejectOpen(false);
+        setRejectReason('');
+        setRejectError('');
+    };
+
     return (
         <PartnerLayout title="Chi tiết booking" subtitle={booking?.bookingCode || 'Booking detail'}>
             <div className="space-y-6">
                 <button onClick={() => navigate('/partner/bookings')} className="px-4 py-2 rounded-xl bg-white border border-gray-100 text-gray-500 font-black flex items-center gap-2"><ArrowLeft className="w-4 h-4" /> Quay lại</button>
                 {error && <PartnerErrorState message={error} onRetry={loadDetail} />}
-                {success && !error && <PartnerNotice tone="success" title="Đã cập nhật booking" message={success} onDismiss={() => setSuccess('')} />}
                 {loading ? <PartnerLoadingState /> : booking && (
                     <>
                         <section className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm">
@@ -99,9 +120,10 @@ const PartnerBookingDetailPage = () => {
                                     <p className="text-orange-600 font-black text-2xl mt-2">{booking.totalAmountDisplay}</p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                    {booking.canConfirm && <button disabled={mutating} onClick={() => runAction(() => confirmPartnerBooking(id), 'Xác nhận booking này?', 'Đã xác nhận booking.')} className="px-4 py-3 rounded-2xl bg-green-50 text-green-600 font-black flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Xác nhận</button>}
+                                    {canConfirmNewBooking && <button disabled={mutating} onClick={() => runAction(() => confirmPartnerBooking(id), 'Xác nhận nhận booking mới này?', 'Đã xác nhận nhận booking.')} className="px-4 py-3 rounded-2xl bg-green-50 text-green-600 font-black flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Xác nhận nhận lịch</button>}
+                                    {canConfirmNewBooking && <button disabled={mutating} onClick={() => setRejectOpen(true)} className="px-4 py-3 rounded-2xl bg-red-50 text-red-600 font-black flex items-center gap-2"><XCircle className="w-4 h-4" /> Từ chối & hoàn tiền</button>}
                                     {booking.canStart && <button disabled={mutating} onClick={() => runAction(() => startPartnerBooking(id), 'Bắt đầu phục vụ booking này?', 'Đã chuyển booking sang đang phục vụ.')} className="px-4 py-3 rounded-2xl bg-blue-50 text-blue-600 font-black flex items-center gap-2"><Play className="w-4 h-4" /> Bắt đầu</button>}
-                                    {booking.canComplete && <button disabled={mutating} onClick={() => runAction(() => completePartnerBooking(id), 'Đánh dấu booking hoàn thành?', 'Đã hoàn thành booking.')} className="px-4 py-3 rounded-2xl bg-orange-50 text-orange-600 font-black flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Hoàn thành</button>}
+                                    {canProviderComplete && <button disabled={mutating} onClick={() => runAction(() => confirmCompletedByProvider(id), 'Xác nhận provider đã hoàn tất dịch vụ?', 'Đã ghi nhận provider xác nhận hoàn tất.')} className="px-4 py-3 rounded-2xl bg-orange-50 text-orange-600 font-black flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Xác nhận hoàn tất</button>}
                                     {booking.canCancel && <button disabled={mutating} onClick={() => setCancelOpen(true)} className="px-4 py-3 rounded-2xl bg-red-50 text-red-600 font-black flex items-center gap-2"><XCircle className="w-4 h-4" /> Hủy booking</button>}
                                 </div>
                             </div>
@@ -116,6 +138,14 @@ const PartnerBookingDetailPage = () => {
                                 </div>
                             </section>
                         )}
+
+                        <section className="bg-orange-50 rounded-[2rem] border border-orange-100 p-5 text-orange-800 flex items-start gap-3">
+                            <AlertTriangle className="w-5 h-5 mt-1 shrink-0" />
+                            <div>
+                                <p className="text-xs font-black uppercase tracking-widest">Workflow luồng mới</p>
+                                <p className="font-bold">Confirm/reject là xác nhận nhận lịch mới. Xác nhận hoàn tất là bước sau khi dịch vụ diễn ra; tiền escrow chỉ giải ngân khi đủ điều kiện.</p>
+                            </div>
+                        </section>
 
                         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm space-y-4">
@@ -168,6 +198,27 @@ const PartnerBookingDetailPage = () => {
                                     <div className="flex flex-wrap justify-end gap-3">
                                         <button onClick={() => setCancelOpen(false)} className="px-5 py-3 rounded-2xl bg-gray-50 text-gray-600 font-black">Đóng</button>
                                         <button onClick={submitCancel} disabled={mutating} className="px-5 py-3 rounded-2xl bg-red-500 text-white font-black flex items-center gap-2"><XCircle className="w-4 h-4" /> Xác nhận hủy</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {rejectOpen && (
+                            <div className="fixed inset-0 z-[80] bg-gray-900/40 p-4 flex items-center justify-center">
+                                <div className="bg-white rounded-[2rem] shadow-2xl max-w-lg w-full p-6 space-y-4">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                            <p className="text-xs font-black uppercase tracking-widest text-red-500">Từ chối booking</p>
+                                            <h3 className="text-2xl font-black">Nhập lý do từ chối</h3>
+                                        </div>
+                                        <button onClick={() => setRejectOpen(false)} className="p-2 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-500"><X className="w-5 h-5" /></button>
+                                    </div>
+                                    <p className="text-sm text-gray-500 font-semibold">Booking sẽ chuyển sang REJECTED và hệ thống hoàn khoản escrow về ví user.</p>
+                                    <textarea value={rejectReason} onChange={(event) => { setRejectReason(event.target.value); setRejectError(''); }} rows={4} className="w-full px-4 py-3 rounded-2xl bg-gray-50 border border-gray-100 font-semibold" placeholder="Ví dụ: Provider không thể nhận lịch do hết nhân sự trong khung giờ này..." />
+                                    {rejectError && <p className="text-sm font-bold text-red-600">{rejectError}</p>}
+                                    <div className="flex flex-wrap justify-end gap-3">
+                                        <button onClick={() => setRejectOpen(false)} className="px-5 py-3 rounded-2xl bg-gray-50 text-gray-600 font-black">Đóng</button>
+                                        <button onClick={submitReject} disabled={mutating} className="px-5 py-3 rounded-2xl bg-red-500 text-white font-black flex items-center gap-2"><XCircle className="w-4 h-4" /> Từ chối & hoàn tiền</button>
                                     </div>
                                 </div>
                             </div>

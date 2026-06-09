@@ -10,7 +10,12 @@ export const transferWalletMoney = async (payload) => unwrap(await api.post('/wa
 export const requestWalletWithdraw = async (payload) => unwrap(await api.post('/wallet/withdraw', payload));
 
 export const getAdminWalletPendingTransactions = async () => unwrap(await api.get('/admin/wallet/pending-transactions'));
+export const getAdminWalletFailedTopUps = async () => unwrap(await api.get('/admin/wallet/failed-top-ups'));
 export const reviewAdminWalletTransaction = async (transactionId, payload) => unwrap(await api.post(`/admin/wallet/transactions/${transactionId}/review`, payload));
+export const resolveAdminWalletFailedTopUp = async (transactionId, payload) => unwrap(await api.post(`/admin/wallet/failed-top-ups/${transactionId}/resolve`, payload));
 export const updateAdminWalletStatus = async (userId, payload) => unwrap(await api.patch(`/admin/wallet/users/${userId}/status`, payload));
 export const getAdminWalletAutoConfirm = async () => unwrap(await api.get('/admin/wallet/settings/auto-confirm-top-up'));
 export const updateAdminWalletAutoConfirm = async (enabled) => unwrap(await api.patch('/admin/wallet/settings/auto-confirm-top-up', { enabled }));
+export const getAdminBookingDisputes = async () => unwrap(await api.get('/admin/disputes'));
+export const resolveAdminBookingDispute = async (bookingId, payload) => unwrap(await api.put(`/admin/disputes/${bookingId}/resolve`, payload));
+export const openAdminBookingDisputeChat = async (bookingId) => unwrap(await api.post(`/admin/disputes/${bookingId}/chat`));

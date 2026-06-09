@@ -60,39 +60,17 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800 pb-20">
-      {/* Header PetGo */}
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-             <button 
-              onClick={() => window.location.href = '/search'}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-             >
-               <ArrowLeft className="w-5 h-5" />
-             </button>
-             <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.location.href = '/'}>
-               <div className="bg-orange-500 p-1.5 rounded-lg">
-                 <PawPrint className="w-5 h-5 text-white" />
-               </div>
-               <span className="text-xl font-black text-gray-900 tracking-tight">Pet<span className="text-orange-500">Go</span></span>
-             </div>
-          </div>
-
-          <nav className="hidden lg:flex items-center gap-8 text-sm font-bold text-gray-500">
-            <a href="/" className="hover:text-orange-600 transition-colors">Home</a>
-            <a href="/search" className="hover:text-orange-600 transition-colors">Services</a>
-            <a href="/my-bookings" className="hover:text-orange-600 transition-colors">My Booking</a>
-            <div className="w-9 h-9 rounded-full bg-orange-100 border-2 border-white shadow-sm flex items-center justify-center">
-              <User className="w-4 h-4 text-orange-600" />
-            </div>
-          </nav>
-        </div>
-      </header>
+      <button
+        onClick={() => window.location.href = '/search'}
+        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+      >
+        <ArrowLeft className="w-5 h-5" />
+      </button>
 
       <main className="max-w-7xl mx-auto px-4 py-10">
         <div className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-black text-gray-900 mb-2 tracking-tight">Compare Providers</h1>
+            <h1 className="text-3xl sm:text-4xl font-black text-gray-900 mb-2 tracking-tight">So sánh dịch vụ / nhà cung cấp</h1>
             <p className="text-gray-500 font-medium">So sánh chi tiết các lựa chọn để tìm ra dịch vụ phù hợp nhất cho thú cưng của bạn.</p>
           </div>
           
@@ -229,24 +207,6 @@ const App = () => {
             </div>
 
           </div>
-        </div>
-
-        {/* Bottom Tip */}
-        <div className="mt-12 flex flex-col sm:flex-row items-center justify-between p-8 bg-orange-50 rounded-[2rem] border border-orange-100">
-           <div className="flex items-center gap-4 mb-4 sm:mb-0">
-              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-orange-500 shadow-sm">
-                <Info className="w-6 h-6" />
-              </div>
-              <p className="text-sm font-medium text-orange-800">
-                Lựa chọn đúng giúp thú cưng của bạn có trải nghiệm chăm sóc tốt nhất và tiết kiệm chi phí tối đa.
-              </p>
-           </div>
-           <button 
-            onClick={() => window.location.href = '/search'}
-            className="px-8 py-3 bg-white text-orange-600 font-black rounded-xl border border-orange-200 hover:bg-orange-500 hover:text-white transition-all text-xs uppercase tracking-widest shadow-sm"
-           >
-             Back to Search
-           </button>
         </div>
       </main>
     </div>

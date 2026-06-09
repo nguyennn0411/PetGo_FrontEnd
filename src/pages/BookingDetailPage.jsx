@@ -15,24 +15,53 @@ import {
   RefreshCcw,
   ShieldCheck,
   StickyNote,
+  MessageSquareWarning,
   User,
   XCircle,
 } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { getBookingDetail } from '../api/bookings';
+import { confirmBookingCompletedByUser, createBookingDispute, getBookingDetail } from '../api/bookings';
 import { resolveUserId } from '../utils/userIdentity';
 
 const STATUS_STYLES = {
   PENDING_PAYMENT: 'bg-orange-50 text-orange-600 border-orange-100',
   PENDING_CONFIRMATION: 'bg-orange-50 text-orange-600 border-orange-100',
+  PENDING_PROVIDER_CONFIRMATION: 'bg-orange-50 text-orange-600 border-orange-100',
   CONFIRMED: 'bg-blue-50 text-blue-600 border-blue-100',
+  IN_PROGRESS: 'bg-blue-50 text-blue-600 border-blue-100',
+  AWAITING_COMPLETION_CONFIRMATION: 'bg-purple-50 text-purple-600 border-purple-100',
+  COMPLETED_BY_USER: 'bg-purple-50 text-purple-600 border-purple-100',
+  COMPLETED_BY_PROVIDER: 'bg-purple-50 text-purple-600 border-purple-100',
   COMPLETED: 'bg-green-50 text-green-600 border-green-100',
+  DISPUTED: 'bg-red-50 text-red-600 border-red-100',
+  ADMIN_REVIEW: 'bg-amber-50 text-amber-700 border-amber-100',
+  REJECTED: 'bg-red-50 text-red-600 border-red-100',
   CANCELLED: 'bg-red-50 text-red-600 border-red-100',
 };
 
-const fallbackProvider = 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&q=80&w=600';
-const fallbackPet = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=400';
+const STATUS_LABELS = {
+  PENDING_PROVIDER_CONFIRMATION: 'Chờ provider xác nhận',
+  ADMIN_REVIEW: 'Chờ admin xử lý',
+  AWAITING_COMPLETION_CONFIRMATION: 'Chờ xác nhận hoàn tất',
+  COMPLETED_BY_USER: 'Bạn đã xác nhận hoàn tất',
+  COMPLETED_BY_PROVIDER: 'Provider đã xác nhận hoàn tất',
+  DISPUTED: 'Đang tranh chấp',
+  REJECTED: 'Provider từ chối',
+  CANCELLED: 'Đã hủy',
+  COMPLETED: 'Hoàn thành',
+  CONFIRMED: 'Đã xác nhận',
+  IN_PROGRESS: 'Đang thực hiện',
+};
+
+const STATUS_DESCRIPTIONS = {
+  PENDING_PROVIDER_CONFIRMATION: 'Booking đã giữ tiền ví và đang chờ provider xác nhận nhận lịch. Nếu quá hạn, booking sẽ chuyển admin review theo rule mới.',
+  ADMIN_REVIEW: 'Booking cần admin xử lý trước khi tiếp tục, hoàn tiền hoặc áp dụng phương án khác.',
+  AWAITING_COMPLETION_CONFIRMATION: 'Dịch vụ đã tới giai đoạn cần user và provider cùng xác nhận hoàn tất.',
+  COMPLETED_BY_USER: 'Bạn đã xác nhận hoàn tất. PetGo đang chờ provider xác nhận để đủ điều kiện giải ngân.',
+  COMPLETED_BY_PROVIDER: 'Provider đã xác nhận hoàn tất. Bạn cần xác nhận nếu dịch vụ đã hoàn thành đúng thực tế.',
+  DISPUTED: 'Booking đang có khiếu nại, tiền escrow chưa tự động giải ngân cho tới khi admin xử lý.',
+};
 
 const BookingDetailPage = () => {
   const navigate = useNavigate();
@@ -43,7 +72,11 @@ const BookingDetailPage = () => {
 
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [mutating, setMutating] = useState(false);
   const [error, setError] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
+  const [disputeOpen, setDisputeOpen] = useState(false);
+  const [disputeReason, setDisputeReason] = useState('');
 
   const loadBooking = async () => {
     if (!userId) {
@@ -73,6 +106,48 @@ const BookingDetailPage = () => {
   const flash = location.state?.flash;
 
   const statusClass = STATUS_STYLES[booking?.status] || 'bg-gray-50 text-gray-600 border-gray-100';
+  const normalizedStatus = String(booking?.status || '').toUpperCase();
+  const statusLabel = STATUS_LABELS[normalizedStatus] || booking?.statusLabel || booking?.status;
+  const statusDescription = STATUS_DESCRIPTIONS[normalizedStatus] || 'PetGo sẽ cập nhật timeline khi booking chuyển trạng thái mới.';
+  const canConfirmCompletedByUser = ['CONFIRMED', 'IN_PROGRESS', 'AWAITING_COMPLETION_CONFIRMATION', 'COMPLETED_BY_PROVIDER'].includes(normalizedStatus);
+  const canCreateDispute = ['CONFIRMED', 'IN_PROGRESS', 'AWAITING_COMPLETION_CONFIRMATION', 'COMPLETED_BY_USER', 'COMPLETED_BY_PROVIDER'].includes(normalizedStatus);
+
+  const runUserCompletion = async () => {
+    if (!window.confirm('Xác nhận bạn đã nhận xong dịch vụ? Tiền chỉ được giải ngân khi đủ điều kiện escrow theo PetGo.')) return;
+    try {
+      setMutating(true);
+      setError('');
+      const result = await confirmBookingCompletedByUser(booking.bookingId);
+      setActionMessage(result?.message || 'Đã ghi nhận xác nhận hoàn tất của bạn.');
+      await loadBooking();
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Không thể xác nhận hoàn tất booking.');
+    } finally {
+      setMutating(false);
+    }
+  };
+
+  const submitDispute = async (event) => {
+    event.preventDefault();
+    const reason = disputeReason.trim();
+    if (reason.length < 10) {
+      setError('Vui lòng nhập lý do khiếu nại tối thiểu 10 ký tự.');
+      return;
+    }
+    try {
+      setMutating(true);
+      setError('');
+      const result = await createBookingDispute(booking.bookingId, { reason });
+      setActionMessage(result?.message || 'Đã gửi khiếu nại, booking sẽ chờ admin xử lý.');
+      setDisputeOpen(false);
+      setDisputeReason('');
+      await loadBooking();
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Không thể tạo khiếu nại cho booking này.');
+    } finally {
+      setMutating(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -133,13 +208,23 @@ const BookingDetailPage = () => {
             <CheckCircle2 className="w-5 h-5" /> {flash}
           </div>
         ) : null}
+        {actionMessage ? (
+          <div className="mb-6 rounded-[1.5rem] border border-green-100 bg-green-50 px-5 py-4 text-sm font-bold text-green-700 flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5" /> {actionMessage}
+          </div>
+        ) : null}
+        {error ? (
+          <div className="mb-6 rounded-[1.5rem] border border-red-100 bg-red-50 px-5 py-4 text-sm font-bold text-red-700 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5" /> {error}
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           <div className="lg:col-span-2 space-y-8">
             <section className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
               <div className="p-8 border-b border-gray-50 flex flex-col sm:flex-row gap-6 sm:items-center justify-between">
                 <div className="flex items-center gap-5 min-w-0">
-                  <img src={booking.providerImage || fallbackProvider} alt={booking.providerName} className="w-20 h-20 rounded-[1.5rem] object-cover border border-gray-100 shrink-0" />
+                  {booking.providerImage ? <img src={booking.providerImage} alt={booking.providerName} className="w-20 h-20 rounded-[1.5rem] object-cover border border-gray-100 shrink-0" /> : <div className="w-20 h-20 rounded-[1.5rem] bg-orange-50 border border-orange-100 shrink-0 flex items-center justify-center"><PawPrint className="w-8 h-8 text-orange-400" /></div>}
                   <div className="min-w-0">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Booking code: {booking.bookingCode}</p>
                     <h1 className="text-3xl font-black text-gray-900 leading-tight truncate">{booking.providerName}</h1>
@@ -147,8 +232,12 @@ const BookingDetailPage = () => {
                   </div>
                 </div>
                 <div className={`px-4 py-2 rounded-full border text-[10px] font-black uppercase tracking-widest self-start ${statusClass}`}>
-                  {booking.statusLabel}
+                  {statusLabel}
                 </div>
+              </div>
+
+              <div className="mx-8 mb-8 rounded-[1.5rem] border border-orange-100 bg-orange-50 px-5 py-4 text-sm font-bold leading-relaxed text-orange-800">
+                {statusDescription}
               </div>
 
               <div className="p-8 grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -162,7 +251,7 @@ const BookingDetailPage = () => {
             <section className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
               <SectionTitle title="Timeline trạng thái" />
               <div className="space-y-5">
-                {(booking.timeline || []).map((item, index) => (
+                {booking.timeline?.length ? booking.timeline.map((item, index) => (
                   <div key={`${item.createdAt}-${index}`} className="flex gap-4">
                     <div className="flex flex-col items-center">
                       <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100">
@@ -171,13 +260,13 @@ const BookingDetailPage = () => {
                       {index < booking.timeline.length - 1 ? <div className="w-px flex-1 bg-orange-100 mt-2" /> : null}
                     </div>
                     <div className="pb-6">
-                      <p className="text-sm font-black text-gray-900">{item.toStatusLabel || item.toStatus}</p>
+                      <p className="text-sm font-black text-gray-900">{item.toStatusLabel || STATUS_LABELS[item.toStatus] || item.toStatus}</p>
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">{item.createdAt}</p>
                       {item.note ? <p className="text-sm text-gray-600 font-medium mt-2 leading-relaxed">{item.note}</p> : null}
                       {item.changedBy ? <p className="text-xs font-bold text-orange-600 mt-2">By: {item.changedBy}</p> : null}
                     </div>
                   </div>
-                ))}
+                )) : <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5 text-sm font-bold text-gray-500">Backend chưa trả timeline cho booking này.</div>}
               </div>
             </section>
 
@@ -240,6 +329,24 @@ const BookingDetailPage = () => {
                       <CheckCircle2 className="w-4 h-4" /> Write Review
                     </button>
                   ) : null}
+                  {canConfirmCompletedByUser ? (
+                    <button disabled={mutating} onClick={runUserCompletion} className="w-full py-4 rounded-2xl bg-green-50 text-green-600 font-black text-xs uppercase tracking-widest hover:bg-green-100 transition-all border border-green-100 flex items-center justify-center gap-2 disabled:opacity-60">
+                      <CheckCircle2 className="w-4 h-4" /> Xác nhận đã hoàn tất
+                    </button>
+                  ) : null}
+                  {canCreateDispute ? (
+                    <button disabled={mutating} onClick={() => setDisputeOpen((value) => !value)} className="w-full py-4 rounded-2xl bg-red-50 text-red-600 font-black text-xs uppercase tracking-widest hover:bg-red-100 transition-all border border-red-100 flex items-center justify-center gap-2 disabled:opacity-60">
+                      <MessageSquareWarning className="w-4 h-4" /> Khiếu nại booking
+                    </button>
+                  ) : null}
+                  {disputeOpen ? (
+                    <form onSubmit={submitDispute} className="rounded-2xl border border-red-100 bg-red-50/60 p-4 space-y-3">
+                      <textarea value={disputeReason} onChange={(event) => setDisputeReason(event.target.value)} rows={4} placeholder="Mô tả vấn đề cần admin hỗ trợ xử lý..." className="w-full rounded-2xl border border-red-100 bg-white px-4 py-3 text-sm font-bold text-gray-700 outline-none focus:border-red-300" />
+                      <button disabled={mutating} className="w-full py-3 rounded-2xl bg-red-600 text-white font-black text-xs uppercase tracking-widest hover:bg-red-700 disabled:opacity-60">
+                        {mutating ? 'Đang gửi...' : 'Gửi khiếu nại'}
+                      </button>
+                    </form>
+                  ) : null}
                   <button onClick={() => navigate('/my-bookings')} className="w-full py-4 rounded-2xl bg-white text-gray-500 font-black text-xs uppercase tracking-widest hover:bg-gray-50 transition-all border border-gray-100 flex items-center justify-center gap-2">
                     My Bookings <ChevronRight className="w-4 h-4" />
                   </button>
@@ -248,7 +355,7 @@ const BookingDetailPage = () => {
             </div>
 
             <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6 flex items-center gap-4">
-              <img src={booking.petAvatarUrl || fallbackPet} alt={booking.petName} className="w-16 h-16 rounded-[1.25rem] object-cover border border-gray-100" />
+              {booking.petAvatarUrl ? <img src={booking.petAvatarUrl} alt={booking.petName} className="w-16 h-16 rounded-[1.25rem] object-cover border border-gray-100" /> : <div className="w-16 h-16 rounded-[1.25rem] bg-orange-50 border border-orange-100 flex items-center justify-center"><PawPrint className="w-6 h-6 text-orange-400" /></div>}
               <div>
                 <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">Pet profile</p>
                 <p className="text-lg font-black text-gray-900">{booking.petName}</p>

@@ -7,6 +7,16 @@ export const getBookingCreateContext = async (params = {}) => {
   return unwrapPayload(response.data);
 };
 
+export const getBookingAvailableDates = async (params = {}) => {
+  const response = await api.get('/bookings/availability/dates', { params });
+  return unwrapPayload(response.data);
+};
+
+export const getBookingAvailableSlots = async (params = {}) => {
+  const response = await api.get('/bookings/availability/slots', { params });
+  return unwrapPayload(response.data);
+};
+
 export const createBooking = async (payload) => {
   const response = await api.post('/bookings', payload);
   return unwrapPayload(response.data);
@@ -42,4 +52,14 @@ export const rescheduleBooking = async (userId, bookingId, payload) => {
 export const cancelBooking = async (userId, bookingId, payload) => {
   const response = await api.post(`/users/${userId}/bookings/${bookingId}/cancel`, payload);
   return response.data;
+};
+
+export const confirmBookingCompletedByUser = async (bookingId) => {
+  const response = await api.put(`/bookings/${bookingId}/confirm-completed-by-user`);
+  return unwrapPayload(response.data);
+};
+
+export const createBookingDispute = async (bookingId, payload = {}) => {
+  const response = await api.post(`/bookings/${bookingId}/disputes`, payload);
+  return unwrapPayload(response.data);
 };

@@ -70,15 +70,24 @@ const App = () => {
   const fallbackSliders = [
     {
       id: 'fallback-1',
-      title: 'PetGo - chăm sóc thú cưng trong một chạm',
+      title: 'PetGo - Chăm sóc thú cưng trong một chạm',
       subtitle: '',
       imageUrl: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&q=80&w=1600',
       ctaLabel: 'Khám phá PetGo',
       ctaUrl: '/search',
     },
+    {
+      id: 'fallback-promotion',
+      title: 'Giảm 20% dịch vụ spa thú cưng trong tháng này',
+      subtitle: 'Dành riêng cho khách hàng đặt lịch qua ứng dụng PetGo.',
+      imageUrl: 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&q=80&w=1600',
+      ctaLabel: 'Đặt lịch ngay',
+      ctaUrl: '/search',
+    },
   ];
 
-  const homeSliders = sliders.length ? sliders : fallbackSliders;
+  const promotionSlider = fallbackSliders[1];
+  const homeSliders = sliders.length ? [...sliders, promotionSlider] : fallbackSliders;
 
   useEffect(() => {
     if (homeSliders.length <= 1) return undefined;
@@ -127,9 +136,9 @@ const App = () => {
 
   // Nhà cung cấp gần đây
   const nearbyProviders = [
-    { id: 1, name: "Paws & Relax Spa", rating: 4.8, distance: "0.8 km", price: "200.000", image: "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&q=80&w=400" },
-    { id: 2, name: "Happy Tails Clinic", rating: 4.9, distance: "1.5 km", price: "150.000", image: "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&q=80&w=400" },
-    { id: 3, name: "Resort Pet Heaven", rating: 4.7, distance: "2.2 km", price: "400.000", image: "https://images.unsplash.com/photo-1591768793355-74d7ca738055?auto=format&fit=crop&q=80&w=400" }
+    { id: 1, name: "Spa Thú Cưng Paws & Relax", rating: 4.8, distance: "0.8 km", price: "200.000", image: "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&q=80&w=400" },
+    { id: 2, name: "Phòng Khám Happy Tails", rating: 4.9, distance: "1.5 km", price: "150.000", image: "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&q=80&w=400" },
+    { id: 3, name: "Khách Sạn Thú Cưng Pet Heaven", rating: 4.7, distance: "2.2 km", price: "400.000", image: "https://images.unsplash.com/photo-1591768793355-74d7ca738055?auto=format&fit=crop&q=80&w=400" }
   ];
 
   // Review khách hàng
@@ -208,7 +217,7 @@ const App = () => {
                 Nền tảng kết nối chủ nuôi với dịch vụ chăm sóc thú cưng đáng tin cậy.
               </h2>
               <p className="mt-5 text-base font-medium leading-8 text-gray-500">
-                PetGo giúp bạn tìm kiếm, so sánh, đặt lịch và quản lý các nhu cầu chăm sóc thú cưng hằng ngày — từ grooming, khám thú y đến khách sạn lưu trú.
+                PetGo giúp bạn tìm kiếm, so sánh, đặt lịch và quản lý các nhu cầu chăm sóc thú cưng hằng ngày — từ spa làm đẹp, khám thú y đến khách sạn lưu trú.
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
@@ -291,6 +300,16 @@ const App = () => {
         </div>
       </section>
 
+      {/* Featured Providers */}
+      <section className="py-24 max-w-7xl mx-auto px-4">
+        <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight mb-12">Nhà cung cấp chăm sóc thú cưng nổi bật</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+          <ProviderCard provider={nearbyProviders[0]} badge="Đánh giá cao" />
+          <ProviderCard provider={nearbyProviders[1]} badge="Phổ biến" />
+          <ProviderCard provider={nearbyProviders[2]} badge="Mới" />
+        </div>
+      </section>
+
       {/* Audiences */}
       <section className="py-20 bg-gray-50/70">
         <div className="max-w-7xl mx-auto px-4">
@@ -319,31 +338,30 @@ const App = () => {
       </section>
 
       {/* NEW SECTION: Membership Promotion */}
-      <section className="py-24 bg-blue-50 relative overflow-hidden">
+      {/* <section className="py-24 bg-blue-50 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-10 opacity-5">
           <Crown className="w-96 h-96 -rotate-12 text-blue-900" />
         </div>
         <div className="max-w-7xl mx-auto px-4 relative z-10">
           <div className="flex flex-col lg:flex-row items-center gap-16">
-            {/* Left: Info */}
             <div className="lg:w-1/2 space-y-8">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 rounded-full text-blue-700 text-[10px] font-black uppercase tracking-widest shadow-sm">
-                <Crown className="w-3.5 h-3.5 fill-current" /> Premium Benefits
+                <Crown className="w-3.5 h-3.5 fill-current" /> Quyền lợi cao cấp
               </div>
               <h2 className="text-4xl sm:text-6xl font-black text-gray-900 tracking-tighter leading-none italic">
-                Pet<span className="text-blue-600">Go</span> Membership
+                Gói hội viên Pet<span className="text-blue-600">Go</span>
               </h2>
               <p className="text-gray-500 text-xl font-medium leading-relaxed">
-                Save more and unlock exclusive benefits for your pet care bookings. Join 10,000+ happy pets today.
+                Tiết kiệm nhiều hơn và mở khóa các quyền lợi độc quyền cho mỗi lịch chăm sóc thú cưng. Tham gia cùng hơn 10.000 thú cưng hạnh phúc ngay hôm nay.
               </p>
 
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <BenefitItem text="Discount on pet services" />
-                <BenefitItem text="Monthly vouchers" />
-                <BenefitItem text="Priority booking slots" />
-                <BenefitItem text="Pet care reminders" />
-                <BenefitItem text="Exclusive deals" />
-                <BenefitItem text="VIP Support 24/7" />
+                <BenefitItem text="Giảm giá dịch vụ thú cưng" />
+                <BenefitItem text="Voucher hằng tháng" />
+                <BenefitItem text="Ưu tiên khung giờ đặt lịch" />
+                <BenefitItem text="Nhắc lịch chăm sóc thú cưng" />
+                <BenefitItem text="Ưu đãi độc quyền" />
+                <BenefitItem text="Hỗ trợ VIP 24/7" />
               </ul>
 
               <div className="flex flex-wrap gap-4 pt-4">
@@ -351,33 +369,32 @@ const App = () => {
                   onClick={() => window.location.href = '/membership'}
                   className="px-10 py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all uppercase tracking-widest text-xs"
                 >
-                  View Membership Plans
+                  Xem gói hội viên
                 </button>
                 <button
                   onClick={() => window.location.href = '/membership-payment?plan=pro'}
                   className="px-10 py-5 bg-white text-blue-600 font-black rounded-2xl border-2 border-blue-100 hover:bg-blue-50 transition-all uppercase tracking-widest text-xs"
                 >
-                  Start Membership
+                  Bắt đầu hội viên
                 </button>
               </div>
             </div>
 
-            {/* Right: Plan Teasers */}
             <div className="lg:w-1/2 grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
               <div className="bg-white p-8 rounded-[2.5rem] border-4 border-blue-600 shadow-2xl relative">
                 <div className="absolute -top-4 left-6 bg-blue-600 text-white text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-widest">
-                  Most Popular
+                  Phổ biến nhất
                 </div>
-                <h3 className="text-xl font-black text-blue-600 mb-2">PRO PLAN</h3>
+                <h3 className="text-xl font-black text-blue-600 mb-2">GÓI PRO</h3>
                 <div className="flex items-baseline gap-1 mb-6">
                   <span className="text-3xl font-black text-gray-900">99.000</span>
-                  <span className="text-xs font-bold text-gray-400">/ mo</span>
+                  <span className="text-xs font-bold text-gray-400">/ tháng</span>
                 </div>
                 <button
                   onClick={() => window.location.href = '/membership-payment?plan=pro'}
                   className="w-full py-4 bg-blue-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all"
                 >
-                  Upgrade Now
+                  Nâng cấp ngay
                 </button>
               </div>
 
@@ -385,45 +402,19 @@ const App = () => {
                 <h3 className="text-xl font-black text-orange-500 mb-2">PREMIUM</h3>
                 <div className="flex items-baseline gap-1 mb-6">
                   <span className="text-3xl font-black">199.000</span>
-                  <span className="text-xs font-bold text-gray-400">/ mo</span>
+                  <span className="text-xs font-bold text-gray-400">/ tháng</span>
                 </div>
                 <button
                   onClick={() => window.location.href = '/membership-payment?plan=premium'}
                   className="w-full py-4 bg-white text-gray-900 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all"
                 >
-                  Upgrade Now
+                  Nâng cấp ngay
                 </button>
               </div>
             </div>
           </div>
         </div>
-      </section>
-
-      {/* Featured Providers */}
-      <section className="py-24 max-w-7xl mx-auto px-4">
-        <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight mb-12">Top Rated Pet Care Providers</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-          <ProviderCard provider={nearbyProviders[0]} badge="Top Rated" />
-          <ProviderCard provider={nearbyProviders[1]} badge="Popular" />
-          <ProviderCard provider={nearbyProviders[2]} badge="New" />
-        </div>
-      </section>
-
-      {/* Promotion Banner */}
-      <section className="py-12 px-4">
-        <div className="max-w-7xl mx-auto bg-gradient-to-r from-orange-500 to-yellow-400 rounded-[3rem] p-10 sm:p-20 text-white flex flex-col md:flex-row items-center justify-between gap-10 shadow-2xl shadow-orange-100">
-          <div className="text-center md:text-left">
-            <h2 className="text-4xl sm:text-5xl font-black mb-4 tracking-tight">Get 20% off grooming <br className="hidden sm:block" /> services this month</h2>
-            <p className="text-orange-100 text-lg font-medium opacity-90">Dành riêng cho khách hàng đặt lịch qua ứng dụng PetGo.</p>
-          </div>
-          <button
-            onClick={() => window.location.href = '/#services'}
-            className="px-12 py-5 bg-white text-orange-600 font-black rounded-2xl shadow-xl hover:scale-105 transition-all uppercase tracking-widest text-sm"
-          >
-            Đặt lịch ngay
-          </button>
-        </div>
-      </section>
+      </section> */}
 
       {/* Why Choose PetGo */}
       <section className="py-24 bg-white text-center">
@@ -441,7 +432,7 @@ const App = () => {
       {/* Customer Reviews */}
       <section className="py-24 bg-gray-50/50">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-3xl font-black text-gray-900 mb-12 text-center uppercase tracking-widest">Happy Pet Parents</h2>
+          <h2 className="text-3xl font-black text-gray-900 mb-12 text-center uppercase tracking-widest">Khách hàng yêu thú cưng nói gì?</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {reviews.map((rev) => (
               <div key={rev.id} className="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm relative group hover:shadow-xl transition-all">
@@ -477,12 +468,12 @@ const App = () => {
               Dịch vụ chăm sóc thú cưng hàng đầu. Chúng tôi mang đến sự an tâm cho chủ nhân và hạnh phúc cho các bé.
             </p>
           </div>
-          <FooterGroup title="Quick Links" links={['Home', 'Services', 'Membership', 'Help Center ', 'Store', 'My orders']} />
-          <FooterGroup title="Legal" links={['Terms', 'Privacy', 'Cookie Policy']} />
-          <FooterGroup title="Contact" links={['Support: 1900 1234', 'petgo.help@gmail.com', 'Hanoi, Vietnam']} />
+          <FooterGroup title="Liên kết nhanh" links={['Trang chủ', 'Dịch vụ', 'Hội viên', 'Trung tâm hỗ trợ', 'Cửa hàng', 'Đơn hàng của tôi']} />
+          <FooterGroup title="Pháp lý" links={['Điều khoản', 'Quyền riêng tư', 'Chính sách cookie']} />
+          <FooterGroup title="Liên hệ" links={['Hỗ trợ: 1900 1234', 'petgo.help@gmail.com', 'Hà Nội, Việt Nam']} />
         </div>
         <div className="max-w-7xl mx-auto px-4 pt-12 border-t border-gray-100 text-center">
-          <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest italic">© 2025 PetGo Platform. All rights reserved.</p>
+          <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest italic">© 2025 Nền tảng PetGo. Mọi quyền được bảo lưu.</p>
         </div>
       </footer>
     </div>

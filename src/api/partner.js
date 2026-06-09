@@ -116,6 +116,61 @@ export const updatePartnerWeeklySchedule = async (weeklyHours) => {
     return response.data?.result || response.data;
 };
 
+export const getPartnerScheduleDays = async (params = {}) => {
+    const response = await api.get('/partner/schedule/days', { params });
+    return response.data?.result || response.data;
+};
+
+export const savePartnerScheduleDay = async (date, payload) => {
+    const response = await api.put(`/partner/schedule/days/${date}`, payload);
+    return response.data?.result || response.data;
+};
+
+export const deletePartnerScheduleDayOverride = async (date) => {
+    const response = await api.delete(`/partner/schedule/days/${date}/override`);
+    return response.data?.result || response.data;
+};
+
+export const copyPartnerScheduleDay = async (payload) => {
+    const response = await api.post('/partner/schedule/copy-day', payload);
+    return response.data?.result || response.data;
+};
+
+export const copyPartnerScheduleMonth = async (payload) => {
+    const response = await api.post('/partner/schedule/copy-month', payload);
+    return response.data?.result || response.data;
+};
+
+export const copyPartnerScheduleYear = async (payload) => {
+    const response = await api.post('/partner/schedule/copy-year', payload);
+    return response.data?.result || response.data;
+};
+
+export const getPartnerBookingLocks = async (params = {}) => {
+    const response = await api.get('/partner/schedule/booking-locks', { params });
+    return response.data?.result || response.data;
+};
+
+export const createPartnerBookingLock = async (payload) => {
+    const response = await api.post('/partner/schedule/booking-locks', payload);
+    return response.data?.result || response.data;
+};
+
+export const extendPartnerBookingLock = async (id, payload = {}) => {
+    const response = await api.put(`/partner/schedule/booking-locks/${id}/extend`, payload);
+    return response.data?.result || response.data;
+};
+
+export const unlockPartnerBookingLock = async (id) => {
+    const response = await api.put(`/partner/schedule/booking-locks/${id}/unlock`);
+    return response.data?.result || response.data;
+};
+
+export const deletePartnerBookingLock = async (id) => {
+    const response = await api.delete(`/partner/schedule/booking-locks/${id}`);
+    return response.data?.result || response.data;
+};
+
 export const getPartnerBookings = async (params = {}) => {
     const response = await api.get('/partner/bookings', { params });
     return response.data?.result || response.data;
@@ -127,7 +182,12 @@ export const getPartnerBookingDetail = async (id) => {
 };
 
 export const confirmPartnerBooking = async (id, payload = {}) => {
-    const response = await api.post(`/partner/bookings/${id}/confirm`, payload);
+    const response = await api.put(`/partner/bookings/${id}/confirm`, payload);
+    return response.data?.result || response.data;
+};
+
+export const rejectPartnerBooking = async (id, payload = {}) => {
+    const response = await api.put(`/partner/bookings/${id}/reject`, payload);
     return response.data?.result || response.data;
 };
 
@@ -138,6 +198,11 @@ export const startPartnerBooking = async (id, payload = {}) => {
 
 export const completePartnerBooking = async (id, payload = {}) => {
     const response = await api.post(`/partner/bookings/${id}/complete`, payload);
+    return response.data?.result || response.data;
+};
+
+export const confirmCompletedByProvider = async (id, payload = {}) => {
+    const response = await api.put(`/partner/bookings/${id}/confirm-completed-by-provider`, payload);
     return response.data?.result || response.data;
 };
 
@@ -163,6 +228,11 @@ export const getPartnerCustomerDetail = async (customerUserId) => {
 
 export const getPartnerReviews = async (params = {}) => {
     const response = await api.get('/partner/reviews', { params });
+    return response.data?.result || response.data;
+};
+
+export const replyPartnerReview = async (reviewId, reply) => {
+    const response = await api.put(`/partner/reviews/${reviewId}/reply`, { reply });
     return response.data?.result || response.data;
 };
 

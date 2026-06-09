@@ -1,22 +1,60 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
+import { getAdminBookingDisputes, openAdminBookingDisputeChat, resolveAdminBookingDispute } from '../../api/wallet';
 
 const AdminBookings = () => {
-  const bookings = [
-    { id: 'BK1024', customer: 'Nguyễn Văn A', pet: 'Mimi (Mèo)', service: 'Tắm & Spa', partner: 'Pet Spa Harmony', date: '25/03/2024', time: '14:00', amount: 250000, status: 'completed' },
-    { id: 'BK1025', customer: 'Trần Thị B', pet: 'Lu (Chó)', service: 'Cắt tỉa lông', partner: 'Pet Spa Harmony', date: '26/03/2024', time: '09:00', amount: 350000, status: 'confirmed' },
-    { id: 'BK1026', customer: 'Lê Văn C', pet: 'Kiki (Chó)', service: 'Lưu trú', partner: 'Lucky Boarding', date: '27/03/2024', time: '10:00', amount: 500000, status: 'pending' },
-  ];
+  const [disputes, setDisputes] = useState([]);
+  const [loadingDisputes, setLoadingDisputes] = useState(false);
+  const [error, setError] = useState('');
+  const [resolveForms, setResolveForms] = useState({});
+
+  const loadDisputes = async () => {
+    try {
+      setLoadingDisputes(true);
+      setError('');
+      const data = await getAdminBookingDisputes();
+      setDisputes(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Không tải được dispute/admin review.');
+    } finally {
+      setLoadingDisputes(false);
+    }
+  };
+
+  useEffect(() => { loadDisputes(); }, []);
+
+  const updateResolveForm = (bookingId, field, value) => setResolveForms((prev) => ({ ...prev, [bookingId]: { ...(prev[bookingId] || {}), [field]: value } }));
+
+  const resolveDispute = async (bookingId) => {
+    const form = resolveForms[bookingId] || {};
+    const payload = {
+      refundToUserAmount: Number(form.userRefundAmount || 0),
+      releaseToProviderAmount: Number(form.providerPayoutAmount || 0),
+      reason: form.reason || 'Admin resolve dispute/admin review',
+    };
+    await resolveAdminBookingDispute(bookingId, payload);
+    await loadDisputes();
+  };
+
+  const openChat = async (bookingId) => {
+    try {
+      const conversation = await openAdminBookingDisputeChat(bookingId);
+      const conversationId = conversation?.conversationId || conversation?.id;
+      if (conversationId) window.location.href = `/chat?conversationId=${conversationId}`;
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Không mở được chat dispute.');
+    }
+  };
 
   const fmt = (num) => num.toLocaleString('vi-VN') + 'đ';
 
   const statusBadge = (s) => {
     const map = {
-      confirmed:   ['badge-success', 'Đã xác nhận'],
-      pending:     ['badge-warning', 'Chờ xác nhận'],
-      in_progress: ['badge-info',    'Đang thực hiện'],
-      completed:   ['badge-gray',    'Hoàn thành'],
-      cancelled:   ['badge-danger',  'Đã hủy'],
+      confirmed: ['badge-success', 'Đã xác nhận'],
+      pending: ['badge-warning', 'Chờ xác nhận'],
+      in_progress: ['badge-info', 'Đang thực hiện'],
+      completed: ['badge-gray', 'Hoàn thành'],
+      cancelled: ['badge-danger', 'Đã hủy'],
     };
     const [cls, label] = map[s] || ['badge-gray', s];
     return <span className={`badge ${cls}`}>{label}</span>;
@@ -24,42 +62,35 @@ const AdminBookings = () => {
 
   return (
     <AdminLayout title="Quản lý booking toàn hệ thống">
-      <div className="search-bar">
-        <input type="text" placeholder="🔍  Tìm ID booking, tên khách..." />
-        <select>
-          <option value="">Tất cả trạng thái</option>
-          <option value="pending">Chờ xác nhận</option>
-          <option value="confirmed">Đã xác nhận</option>
-          <option value="in_progress">Đang thực hiện</option>
-          <option value="completed">Hoàn thành</option>
-          <option value="cancelled">Đã hủy</option>
-        </select>
-        <button className="btn">Xuất Excel</button>
-      </div>
-
       <div className="card mb-0">
+        <div className="d-flex justify-between align-center mb-12">
+          <div>
+            <h3>Dispute / Admin review escrow</h3>
+            <p className="text-tiny">Bảng này chỉ hiển thị dữ liệu thật từ backend. Booking thường nên dùng endpoint admin thật trong task riêng.</p>
+          </div>
+          <button className="btn btn-sm" onClick={loadDisputes}>{loadingDisputes ? 'Đang tải...' : 'Tải lại'}</button>
+        </div>
+        {error ? <p className="badge badge-danger">{error}</p> : null}
         <table>
-          <thead><tr><th>ID</th><th>Khách hàng</th><th>Thú cưng</th><th>Dịch vụ</th><th>Đối tác</th><th>Ngày giờ</th><th>Tiền</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+          <thead><tr><th>Booking</th><th>User / Provider</th><th>Escrow</th><th>Lý do</th><th>Split xử lý</th><th>Thao tác</th></tr></thead>
           <tbody>
-            {bookings.map(b => (
-              <tr key={b.id}>
-                <td className="text-tiny">{b.id}</td>
-                <td className="fw-500">{b.customer}</td>
-                <td>{b.pet}</td>
-                <td>{b.service}</td>
-                <td>{b.partner}</td>
-                <td>{b.date}<br/><span className="text-tiny">{b.time}</span></td>
-                <td className="text-orange fw-500">{fmt(b.amount)}</td>
-                <td>{statusBadge(b.status)}</td>
+            {disputes.length === 0 ? <tr><td colSpan="6" className="text-center text-tiny">Không có dispute/admin review đang chờ.</td></tr> : disputes.map((item) => {
+              const bookingId = item.bookingId || item.id;
+              return <tr key={bookingId}>
+                <td><strong>{item.bookingCode || bookingId}</strong><br /><span className="text-tiny">{statusBadge((item.status || 'DISPUTED').toLowerCase())}</span></td>
+                <td>{item.customerName || item.userName || 'User'}<br /><span className="text-tiny">{item.providerName || 'Provider'}</span></td>
+                <td className="text-orange fw-500">{item.escrowAmountDisplay || fmt(Number(item.escrowAmount || item.totalAmount || 0))}</td>
+                <td>{item.reason || item.disputeReason || item.adminReviewReason || 'Cần admin xử lý'}</td>
                 <td>
                   <div className="d-flex gap-6 flex-wrap">
-                    <button className="btn btn-sm">Chi tiết</button>
-                    {b.status === 'pending' ? <button className="btn btn-sm btn-success">Xác nhận</button> : ''}
-                    {b.status !== 'cancelled' && b.status !== 'completed' ? <button className="btn btn-sm btn-danger">Hủy</button> : ''}
+                    <input style={{ width: 120 }} type="number" placeholder="Refund user" value={resolveForms[bookingId]?.userRefundAmount || ''} onChange={(e) => updateResolveForm(bookingId, 'userRefundAmount', e.target.value)} />
+                    <input style={{ width: 120 }} type="number" placeholder="Payout provider" value={resolveForms[bookingId]?.providerPayoutAmount || ''} onChange={(e) => updateResolveForm(bookingId, 'providerPayoutAmount', e.target.value)} />
+                    <input style={{ minWidth: 180 }} placeholder="Reason" value={resolveForms[bookingId]?.reason || ''} onChange={(e) => updateResolveForm(bookingId, 'reason', e.target.value)} />
                   </div>
                 </td>
-              </tr>
-            ))}
+                <td><button className="btn btn-sm btn-success" onClick={() => resolveDispute(bookingId)}>Resolve split</button> <button className="btn btn-sm" onClick={() => openChat(bookingId)}>Mở chat</button></td>
+              </tr>;
+            })}
           </tbody>
         </table>
       </div>

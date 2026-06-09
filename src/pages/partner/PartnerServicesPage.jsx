@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Camera, Copy, Eye, FileText, ImagePlus, Loader2, Plus, Save, Scissors, Search, Send, Trash2, X } from 'lucide-react';
 import PartnerLayout from '../../components/partner/PartnerLayout';
-import { PartnerEmptyState, PartnerErrorState, PartnerLoadingState, PartnerNotice, PartnerStatusBadge, getPartnerErrorMessage, usePartnerToast } from '../../components/partner/PartnerStates';
+import { PartnerEmptyState, PartnerErrorState, PartnerLoadingState, PartnerStatusBadge, getPartnerErrorMessage, usePartnerToast } from '../../components/partner/PartnerStates';
 import {
     archivePartnerService,
     copyPartnerService,
@@ -114,7 +114,6 @@ const PartnerServicesPage = () => {
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
     const [fieldErrors, setFieldErrors] = useState({});
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState(emptyForm);
@@ -195,7 +194,6 @@ const PartnerServicesPage = () => {
         setEditing(null);
         setForm(emptyForm);
         setShowForm(true);
-        setSuccess('');
         setError('');
         setFieldErrors({});
     };
@@ -205,7 +203,6 @@ const PartnerServicesPage = () => {
         if (pendingUpdate) {
             setSelectedRequest(pendingUpdate);
             const message = 'Dịch vụ này đang có yêu cầu cập nhật chờ admin duyệt. Vui lòng xem yêu cầu hiện tại thay vì gửi trùng.';
-            setSuccess(message);
             showToast({ tone: 'info', title: 'Yêu cầu đang chờ duyệt', message });
             setError('');
             return;
@@ -222,7 +219,6 @@ const PartnerServicesPage = () => {
             description: service.description || service.shortDescription || '',
         });
         setShowForm(true);
-        setSuccess('');
         setError('');
         setFieldErrors({});
     };
@@ -241,7 +237,6 @@ const PartnerServicesPage = () => {
             description: draft.description || '',
         });
         setShowForm(true);
-        setSuccess('');
         setError('');
         setFieldErrors({});
     };
@@ -312,12 +307,10 @@ const PartnerServicesPage = () => {
         try {
             setSaving(true);
             setError('');
-            setSuccess('');
             setFieldErrors({});
             const payload = buildPayload();
             if (form.draftId) await updatePartnerServiceDraft(form.draftId, payload);
             else await savePartnerServiceDraft(payload);
-            setSuccess('Đã lưu bản nháp dịch vụ.');
             showToast({ tone: 'success', title: 'Đã lưu bản nháp', message: 'Bản nháp dịch vụ đã được lưu.' });
             resetForm();
             await loadServices();
@@ -340,12 +333,10 @@ const PartnerServicesPage = () => {
         try {
             setSaving(true);
             setError('');
-            setSuccess('');
             setFieldErrors({});
             if (form.draftId) await submitPartnerServiceDraft(form.draftId);
             else await submitPartnerServiceChangeRequest(buildPayload());
             const message = form.providerServiceId ? 'Đã gửi yêu cầu cập nhật dịch vụ để admin duyệt.' : 'Đã gửi yêu cầu tạo dịch vụ để admin duyệt.';
-            setSuccess(message);
             showToast({ tone: 'success', title: 'Đã gửi yêu cầu dịch vụ', message });
             resetForm();
             await loadServices();
@@ -475,7 +466,6 @@ const PartnerServicesPage = () => {
         }
         try {
             await copyPartnerService(service.id);
-            setSuccess('Đã tạo bản nháp sao chép từ dịch vụ.');
             showToast({ tone: 'success', title: 'Đã tạo bản nháp', message: 'Đã tạo bản nháp sao chép từ dịch vụ.' });
             await loadServices();
         } catch (err) {
@@ -494,7 +484,6 @@ const PartnerServicesPage = () => {
         }
         try {
             await copyPartnerServiceChangeRequest(draft.id);
-            setSuccess('Đã tạo bản nháp sao chép.');
             showToast({ tone: 'success', title: 'Đã tạo bản nháp', message: 'Đã tạo bản nháp sao chép.' });
             await loadServices();
         } catch (err) {
@@ -508,7 +497,6 @@ const PartnerServicesPage = () => {
         if (!window.confirm(`Xóa bản nháp ${draft.serviceName || `#${draft.id}`}?`)) return;
         try {
             await deletePartnerServiceDraft(draft.id);
-            setSuccess('Đã xóa bản nháp.');
             showToast({ tone: 'success', title: 'Đã xóa bản nháp', message: 'Bản nháp dịch vụ đã được xóa.' });
             await loadServices();
         } catch (err) {
@@ -522,7 +510,6 @@ const PartnerServicesPage = () => {
         <PartnerLayout title="Dịch vụ" subtitle="Tạo/cập nhật dịch vụ qua yêu cầu admin duyệt">
             <div className="space-y-6">
                 {error && <PartnerErrorState message={error} onRetry={loadServices} />}
-                {success && <PartnerNotice tone="success" title="Thông báo dịch vụ" message={success} onDismiss={() => setSuccess('')} />}
 
                 <section className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

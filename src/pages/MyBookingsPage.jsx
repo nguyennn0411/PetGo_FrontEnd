@@ -19,7 +19,10 @@ import { resolveUserId } from '../utils/userIdentity';
 const TABS = [
   { key: 'ALL', label: 'All' },
   { key: 'PENDING', label: 'Pending' },
+  { key: 'PENDING_PROVIDER_CONFIRMATION', label: 'Chờ provider' },
   { key: 'CONFIRMED', label: 'Confirmed' },
+  { key: 'ADMIN_REVIEW', label: 'Admin review' },
+  { key: 'DISPUTED', label: 'Dispute' },
   { key: 'COMPLETED', label: 'Completed' },
   { key: 'CANCELLED', label: 'Cancelled' },
 ];
@@ -27,20 +30,43 @@ const TABS = [
 const STATUS_STYLES = {
   PENDING_PAYMENT: 'bg-orange-50 text-orange-600 border-orange-100',
   PENDING_CONFIRMATION: 'bg-orange-50 text-orange-600 border-orange-100',
+  PENDING_PROVIDER_CONFIRMATION: 'bg-orange-50 text-orange-600 border-orange-100',
   CONFIRMED: 'bg-blue-50 text-blue-600 border-blue-100',
+  IN_PROGRESS: 'bg-blue-50 text-blue-600 border-blue-100',
+  AWAITING_COMPLETION_CONFIRMATION: 'bg-purple-50 text-purple-600 border-purple-100',
+  COMPLETED_BY_USER: 'bg-purple-50 text-purple-600 border-purple-100',
+  COMPLETED_BY_PROVIDER: 'bg-purple-50 text-purple-600 border-purple-100',
+  ADMIN_REVIEW: 'bg-amber-50 text-amber-700 border-amber-100',
+  DISPUTED: 'bg-red-50 text-red-600 border-red-100',
+  REJECTED: 'bg-red-50 text-red-600 border-red-100',
   COMPLETED: 'bg-green-50 text-green-600 border-green-100',
   CANCELLED: 'bg-red-50 text-red-600 border-red-100',
+};
+
+const STATUS_LABELS = {
+  PENDING_PROVIDER_CONFIRMATION: 'Chờ provider xác nhận',
+  ADMIN_REVIEW: 'Chờ admin xử lý',
+  DISPUTED: 'Đang tranh chấp',
+  AWAITING_COMPLETION_CONFIRMATION: 'Chờ xác nhận hoàn tất',
+  COMPLETED_BY_USER: 'Bạn đã xác nhận hoàn tất',
+  COMPLETED_BY_PROVIDER: 'Provider đã xác nhận hoàn tất',
+  IN_PROGRESS: 'Đang thực hiện',
+  CONFIRMED: 'Đã xác nhận',
+  COMPLETED: 'Hoàn thành',
+  REJECTED: 'Provider từ chối',
+  CANCELLED: 'Đã hủy',
 };
 
 const STATUS_ICONS = {
   PENDING_PAYMENT: <Clock3 className="w-3 h-3" />,
   PENDING_CONFIRMATION: <Clock3 className="w-3 h-3" />,
+  PENDING_PROVIDER_CONFIRMATION: <Clock3 className="w-3 h-3" />,
   CONFIRMED: <CheckCircle2 className="w-3 h-3" />,
+  ADMIN_REVIEW: <AlertCircle className="w-3 h-3" />,
+  DISPUTED: <AlertCircle className="w-3 h-3" />,
   COMPLETED: <CheckCircle2 className="w-3 h-3" />,
   CANCELLED: <XCircle className="w-3 h-3" />,
 };
-
-const fallbackImage = 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&q=80&w=600';
 
 const MyBookingsPage = () => {
   const navigate = useNavigate();
@@ -83,7 +109,7 @@ const MyBookingsPage = () => {
   const renderStatusBadge = (booking) => (
     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest ${STATUS_STYLES[booking.status] || 'bg-gray-50 text-gray-600 border-gray-100'}`}>
       {STATUS_ICONS[booking.status] || <Clock3 className="w-3 h-3" />}
-      {booking.statusLabel || booking.status}
+      {STATUS_LABELS[booking.status] || booking.statusLabel || booking.status}
     </span>
   );
 
@@ -109,8 +135,8 @@ const MyBookingsPage = () => {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`px-6 py-2.5 rounded-2xl text-sm font-black transition-all whitespace-nowrap ${activeTab === tab.key
-                  ? 'bg-gray-900 text-white shadow-xl scale-105'
-                  : 'bg-white text-gray-500 border border-gray-100 hover:border-orange-200 hover:text-orange-600 shadow-sm'
+                ? 'bg-gray-900 text-white shadow-xl scale-105'
+                : 'bg-white text-gray-500 border border-gray-100 hover:border-orange-200 hover:text-orange-600 shadow-sm'
                 }`}
             >
               {tab.label} <span className="ml-2 opacity-70">{counts[tab.key] ?? 0}</span>
@@ -150,7 +176,7 @@ const MyBookingsPage = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-gray-50">
                     <div className="flex items-center gap-4 min-w-0">
                       <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-sm border border-gray-100 shrink-0">
-                        <img src={booking.providerImage || fallbackImage} alt={booking.providerName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                        {booking.providerImage ? <img src={booking.providerImage} alt={booking.providerName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" /> : <div className="w-full h-full bg-orange-50 flex items-center justify-center"><PawPrint className="w-7 h-7 text-orange-400" /></div>}
                       </div>
                       <div className="min-w-0">
                         <h3 className="text-xl font-black text-gray-900 leading-tight group-hover:text-orange-600 transition-colors truncate">
@@ -167,6 +193,12 @@ const MyBookingsPage = () => {
                     <MetaBlock icon={<PawPrint className="w-4 h-4" />} title="Thú cưng" value={booking.petLabel} tone="orange" />
                     <MetaBlock icon={<Calendar className="w-4 h-4" />} title="Ngày giờ" value={`${booking.appointmentDateDisplay} • ${booking.appointmentTime}`} tone="blue" />
                   </div>
+
+                  {['PENDING_PROVIDER_CONFIRMATION', 'ADMIN_REVIEW', 'DISPUTED'].includes(booking.status) ? (
+                    <div className="mb-6 rounded-2xl border border-orange-100 bg-orange-50 px-5 py-4 text-sm font-bold text-orange-800">
+                      {booking.status === 'PENDING_PROVIDER_CONFIRMATION' ? 'Booking đã giữ tiền ví và đang chờ provider xác nhận nhận lịch.' : booking.status === 'ADMIN_REVIEW' ? 'Booking đang chờ admin xử lý theo rule mới, tiền escrow chưa giải ngân.' : 'Booking đang tranh chấp, admin sẽ xử lý phân bổ escrow.'}
+                    </div>
+                  ) : null}
 
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>

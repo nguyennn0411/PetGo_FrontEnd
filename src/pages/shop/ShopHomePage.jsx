@@ -68,7 +68,6 @@ export default function ShopHomePage() {
           <div className="flex items-end justify-between mb-8">
             <div>
               <h2 className="text-3xl font-black text-gray-950 tracking-tight">Danh mục nổi bật</h2>
-              <p className="text-gray-500 font-bold text-sm mt-1">Lấy từ bảng product_categories</p>
             </div>
             <Link to="/shop/category" className="font-black text-orange-600 text-sm flex items-center gap-1">Xem tất cả <ArrowRight className="w-4 h-4" /></Link>
           </div>

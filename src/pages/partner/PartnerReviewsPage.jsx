@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { CalendarDays, MessageSquareText, RefreshCw, Search, Star } from 'lucide-react';
 import PartnerLayout from '../../components/partner/PartnerLayout';
 import { PartnerEmptyState, PartnerErrorState, PartnerLoadingState, PartnerStatusBadge } from '../../components/partner/PartnerStates';
-import { getPartnerReviews, getPartnerServices } from '../../api/partner';
+import { getPartnerReviews, getPartnerServices, replyPartnerReview } from '../../api/partner';
 
 const getServiceName = (service) => service?.displayName || service?.customName || service?.serviceName || `Dịch vụ #${service?.id}`;
 
@@ -18,6 +18,7 @@ const PartnerReviewsPage = () => {
     const [page, setPage] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [message, setMessage] = useState('');
 
     const validateRange = () => {
         if (from && to && new Date(from) > new Date(to)) {
@@ -49,6 +50,18 @@ const PartnerReviewsPage = () => {
         }
     };
 
+    const submitReply = async (reviewId, reply) => {
+        try {
+            setError('');
+            setMessage('');
+            await replyPartnerReview(reviewId, reply);
+            setMessage('Đã lưu phản hồi review.');
+            await loadReviews(page);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Không thể phản hồi review.');
+        }
+    };
+
     const loadServices = async () => {
         try {
             const data = await getPartnerServices();
@@ -65,6 +78,7 @@ const PartnerReviewsPage = () => {
         <PartnerLayout title="Đánh giá" subtitle="Theo dõi review hiển thị của khách hàng" providerName={payload?.businessName}>
             <div className="space-y-6">
                 {error && <PartnerErrorState message={error} onRetry={() => loadReviews(page)} />}
+                {message && <div className="rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-sm font-bold text-green-700">{message}</div>}
 
                 <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <SummaryCard icon={Star} label="Điểm trung bình" value={payload?.averageRatingDisplay || '0.00'} tone="bg-yellow-50 text-yellow-600" />
@@ -91,11 +105,11 @@ const PartnerReviewsPage = () => {
                 {loading ? <PartnerLoadingState message="Đang tải đánh giá partner..." /> : payload?.reviews?.length ? (
                     <>
                         <section className="space-y-4">
-                            {payload.reviews.map((review) => <ReviewCard key={review.reviewId} review={review} />)}
+                            {payload.reviews.map((review) => <ReviewCard key={review.reviewId} review={review} onReply={submitReply} />)}
                         </section>
                         <Pagination payload={payload} page={page} onPage={loadReviews} />
                     </>
-                ) : <PartnerEmptyState title="Chưa có review phù hợp" message="Review hiển thị của khách sẽ xuất hiện tại đây. Reply/report được để phase sau." action={<button onClick={() => loadReviews(0)} className="px-4 py-2 rounded-xl bg-orange-50 text-orange-600 font-black flex items-center gap-2 mx-auto"><RefreshCw className="w-4 h-4" /> Refresh</button>} />}
+                ) : <PartnerEmptyState title="Chưa có review phù hợp" message="Review hiển thị của khách sẽ xuất hiện tại đây." action={<button onClick={() => loadReviews(0)} className="px-4 py-2 rounded-xl bg-orange-50 text-orange-600 font-black flex items-center gap-2 mx-auto"><RefreshCw className="w-4 h-4" /> Refresh</button>} />}
             </div>
         </PartnerLayout>
     );
@@ -109,22 +123,35 @@ const distributionPercent = (payload, star) => {
 
 const SummaryCard = ({ icon: Icon, label, value, tone }) => <div className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm"><div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-5 ${tone}`}><Icon className="w-6 h-6" /></div><p className="text-gray-400 font-black uppercase tracking-widest text-[10px]">{label}</p><p className="text-3xl font-black text-gray-900 mt-1">{value}</p></div>;
 
-const ReviewCard = ({ review }) => (
-    <article className="bg-white rounded-[2rem] border border-gray-100 p-5 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-            <div className="flex items-start gap-4">
-                {review.customerAvatarUrl ? <img src={review.customerAvatarUrl} alt={review.customerName || 'Customer'} className="w-14 h-14 rounded-2xl object-cover" /> : <div className="w-14 h-14 rounded-2xl bg-yellow-50 text-yellow-500 flex items-center justify-center"><Star className="w-6 h-6" /></div>}
-                <div>
-                    <div className="flex flex-wrap items-center gap-2 mb-1"><h3 className="text-lg font-black">{review.customerName || 'Khách hàng'}</h3><div className="flex text-yellow-400">{[1, 2, 3, 4, 5].map((item) => <Star key={item} className={`w-4 h-4 ${item <= review.rating ? 'fill-current' : ''}`} />)}</div><PartnerStatusBadge status={review.status} /></div>
-                    <p className="text-sm text-gray-500 font-semibold">{review.createdAt || 'Chưa rõ ngày'} · {review.serviceName || 'Dịch vụ'} · {review.petName || 'Thú cưng'}</p>
+const ReviewCard = ({ review, onReply }) => {
+    const [reply, setReply] = useState(review.providerReply || '');
+    const [saving, setSaving] = useState(false);
+    const handleReply = async () => {
+        setSaving(true);
+        try { await onReply(review.reviewId, reply); } finally { setSaving(false); }
+    };
+    return (
+        <article className="bg-white rounded-[2rem] border border-gray-100 p-5 shadow-sm">
+            <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                <div className="flex items-start gap-4">
+                    {review.customerAvatarUrl ? <img src={review.customerAvatarUrl} alt={review.customerName || 'Customer'} className="w-14 h-14 rounded-2xl object-cover" /> : <div className="w-14 h-14 rounded-2xl bg-yellow-50 text-yellow-500 flex items-center justify-center"><Star className="w-6 h-6" /></div>}
+                    <div>
+                        <div className="flex flex-wrap items-center gap-2 mb-1"><h3 className="text-lg font-black">{review.customerName || 'Khách hàng'}</h3><div className="flex text-yellow-400">{[1, 2, 3, 4, 5].map((item) => <Star key={item} className={`w-4 h-4 ${item <= review.rating ? 'fill-current' : ''}`} />)}</div><PartnerStatusBadge status={review.status} /></div>
+                        <p className="text-sm text-gray-500 font-semibold">{review.createdAt || 'Chưa rõ ngày'} · {review.serviceName || 'Dịch vụ'} · {review.petName || 'Thú cưng'}</p>
+                    </div>
                 </div>
+                {review.bookingId && <Link to={`/partner/bookings/${review.bookingId}`} className="px-4 py-2 rounded-xl bg-orange-50 text-orange-600 text-xs font-black uppercase tracking-widest flex items-center gap-2"><CalendarDays className="w-4 h-4" /> {review.bookingCode || 'Booking'}</Link>}
             </div>
-            {review.bookingId && <Link to={`/partner/bookings/${review.bookingId}`} className="px-4 py-2 rounded-xl bg-orange-50 text-orange-600 text-xs font-black uppercase tracking-widest flex items-center gap-2"><CalendarDays className="w-4 h-4" /> {review.bookingCode || 'Booking'}</Link>}
-        </div>
-        <p className="mt-4 text-gray-700 font-semibold leading-relaxed whitespace-pre-line">{review.comment || 'Khách hàng không để lại nội dung.'}</p>
-        {!!review.photos?.length && <div className="mt-4 flex flex-wrap gap-3">{review.photos.map((photo, index) => <img key={`${photo.photoUrl}-${index}`} src={photo.photoUrl} alt="Review" className="w-24 h-24 rounded-2xl object-cover border border-gray-100" />)}</div>}
-    </article>
-);
+            <p className="mt-4 text-gray-700 font-semibold leading-relaxed whitespace-pre-line">{review.comment || 'Khách hàng không để lại nội dung.'}</p>
+            {!!review.photos?.length && <div className="mt-4 flex flex-wrap gap-3">{review.photos.map((photo, index) => <img key={`${photo.photoUrl}-${index}`} src={photo.photoUrl} alt="Review" className="w-24 h-24 rounded-2xl object-cover border border-gray-100" />)}</div>}
+            <div className="mt-5 rounded-2xl bg-orange-50 border border-orange-100 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3"><p className="text-xs font-black uppercase tracking-widest text-orange-700">Phản hồi của provider</p>{review.providerRepliedAt && <span className="text-[10px] font-bold text-orange-500">{review.providerRepliedAt}</span>}</div>
+                <textarea value={reply} onChange={(event) => setReply(event.target.value)} maxLength={1000} rows={3} className="w-full rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-orange-200" placeholder="Nhập phản hồi cho khách hàng..." />
+                <button disabled={saving || !reply.trim()} onClick={handleReply} className="px-4 py-2 rounded-xl bg-orange-500 text-white text-xs font-black uppercase tracking-widest disabled:opacity-50">{saving ? 'Đang lưu...' : 'Lưu phản hồi'}</button>
+            </div>
+        </article>
+    );
+};
 
 const Pagination = ({ payload, page, onPage }) => {
     const totalPages = payload?.totalPages || 0;

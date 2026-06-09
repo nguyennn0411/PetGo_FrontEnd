@@ -100,7 +100,6 @@ export default function WalletPage() {
                 <div>
                     <p className="text-sm font-black uppercase tracking-widest text-orange-500">Nạp ví PayOS</p>
                     <h2 className="text-2xl font-black text-gray-950">Chọn mức nạp hoặc nhập số tiền</h2>
-                    <p className="mt-1 text-sm font-semibold text-gray-500">Sau khi tạo mã, QR hiển thị bên trái và thông tin nhập thủ công nằm bên phải.</p>
                 </div>
                 {topUpPayment?.checkoutUrl && !isTopUpExpired && <a href={topUpPayment.checkoutUrl} target="_blank" rel="noreferrer" className="rounded-2xl bg-gray-950 px-5 py-3 text-center text-sm font-black text-white">Mở trang PayOS</a>}
             </div>
