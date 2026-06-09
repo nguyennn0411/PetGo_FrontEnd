@@ -86,7 +86,7 @@ export default function ShopHomePage() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-3xl font-black text-gray-950">🔥 Sản phẩm hot</h2>
-              <p className="text-gray-500 font-bold text-sm">Lấy từ API /shop/products?hot=true</p>
+              {/* <p className="text-gray-500 font-bold text-sm">Lấy từ API /shop/products?hot=true</p> */}
             </div>
             <Link to="/shop/category" className="hidden sm:inline-flex text-orange-600 font-black text-sm">Xem cửa hàng</Link>
           </div>
