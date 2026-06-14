@@ -173,17 +173,7 @@ const AdminRegistrationsPage = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
-            <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-                    <button onClick={() => navigate('/')} className="p-2 hover:bg-gray-100 rounded-full transition-colors group">
-                        <ArrowLeft className="w-6 h-6 text-gray-600 group-hover:text-orange-500" />
-                    </button>
-                    <span className="font-black text-xl tracking-tight">Registration Review</span>
-                    <button onClick={loadList} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                        <RefreshCw className="w-6 h-6 text-gray-600" />
-                    </button>
-                </div>
-            </header>
+            
 
             <main className="max-w-7xl mx-auto px-4 mt-8 space-y-6">
                 <div className="bg-white p-8 rounded-[2.5rem] border border-white shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-5">

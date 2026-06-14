@@ -21,7 +21,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
-import { cancelMembershipAutoRenew, getMembershipPlans, getMyMembership } from '../api/memberships';
+import { getMembershipPlans, getMyMembership } from '../api/memberships';
 
 const benefits = [
   {
@@ -64,8 +64,8 @@ const benefits = [
 
 const faqs = [
   {
-    q: 'Làm thế nào để tôi hủy tự động gia hạn?',
-    a: 'Bạn có thể tắt auto-renew ngay trên trang membership. Quyền lợi hiện tại vẫn giữ đến hết kỳ đã thanh toán.',
+    q: 'Khi gói hết hạn thì tôi phải làm thế nào?',
+    a: 'Sau khi gói hết hạn, bạn có thể gia hạn lại bằng cách chọn và thanh toán một trong các gói bên dưới. Quyền lợi hiện tại vẫn giữ đến hết kỳ.',
   },
   {
     q: 'Tôi có thể nâng cấp gói sau này không?',
@@ -117,7 +117,6 @@ const MembershipPage = () => {
   const [currentSubscription, setCurrentSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isCancelling, setIsCancelling] = useState(false);
 
   const successMessage = useMemo(() => {
     if (searchParams.get('checkout') === 'success') {
@@ -170,46 +169,9 @@ const MembershipPage = () => {
     navigate(`/membership-payment?plan=${encodeURIComponent(plan.slug)}`);
   };
 
-  const handleCancelAutoRenew = async () => {
-    const accepted = window.confirm('Tắt tự động gia hạn cho gói membership hiện tại?');
-    if (!accepted) return;
-
-    try {
-      setIsCancelling(true);
-      const response = await cancelMembershipAutoRenew('Người dùng tắt tự động gia hạn từ MembershipPage');
-      setCurrentSubscription(response?.result || response);
-      const next = new URLSearchParams(searchParams);
-      next.set('updated', '1');
-      setSearchParams(next, { replace: true });
-    } catch (cancelError) {
-      window.alert(cancelError?.response?.data?.message || 'Không thể tắt tự động gia hạn.');
-    } finally {
-      setIsCancelling(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800 pb-20">
-      <header className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex justify-between items-center">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="bg-orange-500 p-1.5 rounded-lg shadow-lg shadow-orange-100">
-              <PawPrint className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-black text-gray-900 tracking-tight">Pet<span className="text-orange-500">Go</span></span>
-          </div>
-
-          <nav className="hidden md:flex items-center gap-8 text-sm font-bold text-gray-500 uppercase tracking-widest">
-            <button onClick={() => navigate('/')} className="hover:text-orange-600 transition-colors">Home</button>
-            <button onClick={() => navigate('/search')} className="hover:text-orange-600 transition-colors">Services</button>
-            <button onClick={() => navigate('/my-bookings')} className="hover:text-orange-600 transition-colors">My Bookings</button>
-            <button onClick={() => navigate('/membership')} className="text-orange-600">Membership</button>
-            <div className="w-10 h-10 rounded-full bg-orange-100 border-2 border-white flex items-center justify-center shadow-sm cursor-pointer" onClick={() => navigate('/profile')}>
-              <User className="w-5 h-5 text-orange-600" />
-            </div>
-          </nav>
-        </div>
-      </header>
+      
 
       <section className="bg-white py-16 sm:py-24 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-20 opacity-5 -z-0">
@@ -229,12 +191,6 @@ const MembershipPage = () => {
           {successMessage && (
             <div className="w-full max-w-3xl mb-6 rounded-3xl border border-green-100 bg-green-50 px-6 py-4 text-green-700 font-bold">
               {successMessage}
-            </div>
-          )}
-
-          {searchParams.get('updated') === '1' && (
-            <div className="w-full max-w-3xl mb-6 rounded-3xl border border-blue-100 bg-blue-50 px-6 py-4 text-blue-700 font-bold">
-              Đã cập nhật trạng thái tự động gia hạn của gói membership.
             </div>
           )}
 
@@ -280,25 +236,9 @@ const MembershipPage = () => {
 
               <div className="bg-white/5 rounded-[2rem] p-6 min-w-[280px] border border-white/10 space-y-4">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-white/60 font-bold uppercase tracking-widest">Auto renew</span>
-                  <span className={`font-black ${currentSubscription.autoRenew ? 'text-green-300' : 'text-yellow-300'}`}>
-                    {currentSubscription.autoRenew ? 'Bật' : 'Tắt'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
                   <span className="text-white/60 font-bold uppercase tracking-widest">Giá gói</span>
                   <span className="font-black">{currency(currentSubscription.priceAmount)} / {billingCycleLabel(currentSubscription.billingCycle)}</span>
                 </div>
-                {currentSubscription.autoRenew && (
-                  <button
-                    onClick={handleCancelAutoRenew}
-                    disabled={isCancelling}
-                    className="w-full py-3 rounded-2xl bg-white text-gray-900 font-black hover:bg-orange-500 hover:text-white transition-all flex items-center justify-center gap-2"
-                  >
-                    {isCancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-                    Tắt tự động gia hạn
-                  </button>
-                )}
               </div>
             </div>
           </section>

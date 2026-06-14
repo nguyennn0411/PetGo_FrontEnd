@@ -34,17 +34,7 @@ const NotificationsPage = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
-            <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-                    <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full transition-colors group">
-                        <ArrowLeft className="w-6 h-6 text-gray-600 group-hover:text-orange-500" />
-                    </button>
-                    <span className="font-black text-xl tracking-tight">Notification Center</span>
-                    <button onClick={() => navigate('/')} className="px-4 py-2 rounded-xl bg-orange-50 text-orange-600 font-black text-xs uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all">
-                        Home
-                    </button>
-                </div>
-            </header>
+            
 
             <main className="max-w-5xl mx-auto px-4 mt-6">
                 <NotificationCenter />

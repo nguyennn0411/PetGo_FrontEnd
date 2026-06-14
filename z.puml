@@ -1,0 +1,124 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+skinparam shadowing false
+
+' Cấu hình biến Entity thành hình chữ nhật xanh trơn (Giấu bảng thuộc tính)
+skinparam entity {
+    BackgroundColor #9cd3f0
+    BorderColor #333333
+    FontName Arial
+    FontStyle bold
+    AttributeFontColor transparent
+    AttributeIconSize 0
+}
+
+skinparam diamond {
+    BackgroundColor #e6e6e6
+    BorderColor #999999
+    FontName Arial
+}
+
+title MO HINH DU LIEU KHAI NIEM (CDM) - KTX FPT
+
+' ==========================================
+' THỰC THỂ (ENTITIES) - KHAI BÁO DẠNG ENTITY ĐỂ NHẬN BẢN SỐ
+' ==========================================
+entity "User" as User
+entity "Student" as Student
+entity "Staff" as Staff
+entity "Notification" as Notification
+entity "Semester" as Semester
+entity "Building" as Building
+entity "Room" as Room
+entity "Bed" as Bed
+entity "BookingRequest" as Booking
+entity "Residency" as Residency
+entity "UtilityReading" as Utility
+entity "Invoice" as Invoice
+entity "Ticket" as Ticket
+entity "Violation" as Violation
+
+' ==========================================
+' MỐI QUAN HỆ (RELATIONSHIPS)
+' ==========================================
+diamond "is a" as isa_student
+diamond "is a" as isa_staff
+diamond "manages" as parent_manage
+diamond "sends to" as send_notif
+diamond "manages" as build_manage
+diamond "contains" as build_contain
+diamond "assigned to" as staff_assign
+diamond "contains" as room_contain
+diamond "creates" as book_create
+diamond "applies" as book_apply
+diamond "requests" as book_request
+diamond "belongs to" as res_student
+diamond "located in" as res_room
+diamond "during" as res_semester
+diamond "reads" as util_room
+diamond "billed to" as inv_student
+diamond "raised by" as tick_room
+diamond "handled by" as tick_staff
+diamond "penalizes" as vio_student
+diamond "reported by" as vio_user
+
+' ==========================================
+' ĐƯỜNG NỐI & BẢN SỐ (CARDINALITY)
+' ==========================================
+
+' Phân cấp tài khoản
+User "1" -- isa_student
+isa_student -- "1" Student
+User "1" -- isa_staff
+isa_staff -- "1" Staff
+
+' Con người
+Student "M" -- parent_manage
+parent_manage -- "1" User
+Notification "M" -- send_notif
+send_notif -- "1" User
+
+' Cơ sở hạ tầng
+User "1" -- build_manage
+build_manage -- "1" Building
+Building "1" -- build_contain
+build_contain -- "M" Room
+Building "M" -- staff_assign
+staff_assign -- "M" Staff
+Room "1" -- room_contain
+room_contain -- "M" Bed
+
+' Đăng ký phòng
+Student "1" -- book_create
+book_create -- "M" Booking
+Semester "1" -- book_apply
+book_apply -- "M" Booking
+Room "1" -- book_request
+book_request -- "M" Booking
+
+' Cư trú
+Residency "M" -- res_student
+res_student -- "1" Student
+Residency "M" -- res_room
+res_room -- "1" Room
+Residency "M" -- res_semester
+res_semester -- "1" Semester
+
+' Tài chính & Vận hành
+Utility "M" -- util_room
+util_room -- "1" Room
+Invoice "M" -- inv_student
+inv_student -- "1" Student
+
+Ticket "M" -- tick_room
+tick_room -- "1" Room
+Ticket "M" -- tick_staff
+tick_staff -- "1" Staff
+
+Violation "M" -- vio_student
+vio_student -- "1" Student
+Violation "M" -- vio_user
+vio_user -- "1" User
+
+@enduml

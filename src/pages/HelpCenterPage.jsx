@@ -90,32 +90,7 @@ const HelpCenterPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800 pb-20">
       {/* Header PetGo */}
-      <header className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => window.location.href = '/'}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.location.href = '/'}>
-              <div className="bg-orange-500 p-1.5 rounded-lg">
-                <PawPrint className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-black text-gray-900 tracking-tight">Pet<span className="text-orange-500">Go</span></span>
-            </div>
-          </div>
-          <div className="flex items-center gap-6">
-            <button onClick={() => window.location.href = '/my-bookings'} className="text-sm font-bold text-gray-400 hover:text-orange-600 transition-colors hidden sm:block uppercase tracking-widest">
-              My Bookings
-            </button>
-            <div className="w-10 h-10 rounded-full bg-orange-100 border-2 border-white flex items-center justify-center shadow-sm">
-              <User className="w-5 h-5 text-orange-600" />
-            </div>
-          </div>
-        </div>
-      </header>
+      
 
       {/* Hero Section with Search */}
       <section className="bg-white border-b border-gray-100 py-16 sm:py-24 overflow-hidden relative">

@@ -305,21 +305,7 @@ const BookingPage = () => {
 
     return (
         <div className="min-h-screen bg-[#f7f8fc] text-gray-900">
-            <header className="sticky top-0 z-40 border-b border-white/80 bg-white/90 backdrop-blur-xl">
-                <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-                    <button onClick={() => navigate(`/providers/${providerId}`)} className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-gray-700 shadow-sm hover:border-orange-300 hover:text-orange-600">
-                        <ChevronLeft className="h-4 w-4" /> Quay lại
-                    </button>
-                    <div className="flex items-center gap-2">
-                        <div className="rounded-2xl bg-orange-500 p-2 text-white shadow-lg shadow-orange-200/60"><PawPrint className="h-5 w-5" /></div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-orange-500">PetGo booking</p>
-                            <h1 className="text-lg font-black leading-none">Đặt lịch mới</h1>
-                        </div>
-                    </div>
-                    <Link to="/my-bookings" className="hidden rounded-2xl bg-gray-900 px-4 py-2 text-xs font-black uppercase tracking-widest text-white hover:bg-orange-500 sm:inline-flex">Lịch của tôi</Link>
-                </div>
-            </header>
+            
 
             <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
                 {error ? <div className="mb-6 flex items-start gap-3 rounded-3xl border border-red-100 bg-red-50 px-5 py-4 text-sm font-medium text-red-700"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0" /><div>{error}</div></div> : null}

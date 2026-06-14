@@ -13,6 +13,7 @@ import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import PaymentCancelPage from './pages/PaymentCancelPage';
 import BookingSuccessPage from './pages/BookingSuccessPage';
 import InvoicePage from './pages/InvoicePage';
+import NotificationsPage from './pages/NotificationsPage';
 
 import MyBookingsPage from './pages/MyBookingsPage';
 import BookingDetailPage from './pages/BookingDetailPage';
@@ -90,12 +91,12 @@ export default function App() {
         <Route path='/nearby' element={withUserShell(<NearbyProvidersPage />, '/search')} />
         <Route path='/favorites' element={withUserShell(<FavoritesPage />, '/favorites')} />
 
-        <Route path='/booking' element={<BookingPage />} />
+        <Route path='/booking' element={withUserShell(<BookingPage />)} />
         <Route path='/payment' element={<Navigate to='/wallet' replace />} />
-        <Route path='/payment/success' element={<PaymentSuccessPage />} />
-        <Route path='/payment/cancel' element={<PaymentCancelPage />} />
-        <Route path='/booking-success' element={<BookingSuccessPage />} />
-        <Route path='/invoice' element={<InvoicePage />} />
+        <Route path='/payment/success' element={withUserShell(<PaymentSuccessPage />)} />
+        <Route path='/payment/cancel' element={withUserShell(<PaymentCancelPage />)} />
+        <Route path='/booking-success' element={withUserShell(<BookingSuccessPage />)} />
+        <Route path='/invoice' element={withUserShell(<InvoicePage />)} />
 
         <Route path='/my-bookings' element={withUserShell(<MyBookingsPage />, '/my-bookings')} />
         <Route path='/bookings/:id' element={withUserShell(<BookingDetailPage />, '/my-bookings')} />
@@ -107,6 +108,7 @@ export default function App() {
         <Route path='/register' element={<RegisterPage />} />
         <Route path='/verify-otp' element={<OtpVerificationPage />} />
         <Route path='/profile' element={withUserShell(<ProfilePage />, '/profile')} />
+        <Route path='/notifications' element={withUserShell(<NotificationsPage />, '/notifications')} />
         <Route path='/wallet' element={withUserShell(<WalletPage />, '/wallet')} />
         <Route path='/add-pet' element={withUserShell(<AddPetPage />, '/profile')} />
         <Route path='/chat' element={withUserShell(<ChatPage />, '')} />
@@ -142,7 +144,7 @@ export default function App() {
 
         {/* Partner Routes */}
         <Route path='/partner-registration/shop' element={<Navigate to='/partner-registration/provider' replace />} />
-        <Route path='/partner-registration/provider' element={<PartnerProviderRegistrationPage />} />
+        <Route path='/partner-registration/provider' element={withUserShell(<PartnerProviderRegistrationPage />)} />
         <Route path='/partner' element={<Navigate to='/partner/dashboard' replace />} />
         <Route path='/partner/dashboard' element={<PartnerDashboardPage />} />
         <Route path='/partner/profile' element={<PartnerProfilePage />} />

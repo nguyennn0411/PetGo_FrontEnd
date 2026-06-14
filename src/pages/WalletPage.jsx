@@ -11,10 +11,7 @@ const statusLabel = {
 const topUpPresets = [50000, 100000, 200000, 500000, 1000000, 2000000];
 const TOP_UP_TTL_SECONDS = 5 * 60;
 
-const buildQrImageUrl = (tx) => {
-    if (!tx?.qrCodeText) return null;
-    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(tx.qrCodeText)}`;
-};
+
 
 export default function WalletPage() {
     const [wallet, setWallet] = useState(null);
@@ -23,15 +20,13 @@ export default function WalletPage() {
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
     const [topUp, setTopUp] = useState({ amount: 50000, note: '' });
-    const [topUpPayment, setTopUpPayment] = useState(null);
     const [transfer, setTransfer] = useState({ recipientAccount: '', amount: 50000, note: '' });
     const [withdraw, setWithdraw] = useState({ amount: 50000, bankName: '', bankAccountNumber: '', bankAccountHolder: '', note: '' });
     const [now, setNow] = useState(Date.now());
 
     const latestPendingPayOs = useMemo(() => transactions.find((tx) => tx.type === 'TOP_UP' && tx.status === 'PAYMENT_PENDING'), [transactions]);
-    const activeTopUpPayment = topUpPayment || latestPendingPayOs;
-    const remainingTopUpSeconds = useMemo(() => getTopUpRemainingSeconds(activeTopUpPayment, now), [activeTopUpPayment, now]);
-    const isTopUpExpired = Boolean(activeTopUpPayment) && remainingTopUpSeconds <= 0;
+    const remainingTopUpSeconds = useMemo(() => getTopUpRemainingSeconds(latestPendingPayOs, now), [latestPendingPayOs, now]);
+    const isTopUpExpired = Boolean(latestPendingPayOs) && remainingTopUpSeconds <= 0;
 
     const load = async () => {
         setLoading(true); setError('');
@@ -43,19 +38,35 @@ export default function WalletPage() {
     };
 
     useEffect(() => { load(); }, []);
+    
     useEffect(() => {
         const timer = window.setInterval(() => setNow(Date.now()), 1000);
         return () => window.clearInterval(timer);
     }, []);
+
+    // Auto verify if returning from PayOS
+    useEffect(() => {
+        if (latestPendingPayOs) {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('orderCode') || params.has('status') || params.has('cancel')) {
+                verifyLatest().then(() => {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                });
+            }
+        }
+    }, [latestPendingPayOs]);
 
     const submitTopUp = async (e) => {
         e.preventDefault(); setMessage(''); setError('');
         if (Number(topUp.amount) < 50000) { setError('Số tiền nạp tối thiểu là 50.000đ.'); return; }
         try {
             const result = await createWalletTopUp({ ...topUp, amount: Number(topUp.amount), returnUrl: window.location.origin + '/wallet', cancelUrl: window.location.origin + '/wallet' });
-            setTopUpPayment(result);
-            setMessage('Đã tạo thông tin nạp ví. Quét QR bên trái hoặc nhập thông tin thủ công bên phải để thanh toán.');
-            await load();
+            if (result.checkoutUrl) {
+                window.location.href = result.checkoutUrl;
+            } else {
+                setMessage('Đã tạo yêu cầu nạp ví thành công.');
+                await load();
+            }
         } catch (err) { setError(err.response?.data?.message || 'Tạo nạp ví thất bại.'); }
     };
 
@@ -101,7 +112,6 @@ export default function WalletPage() {
                     <p className="text-sm font-black uppercase tracking-widest text-orange-500">Nạp ví PayOS</p>
                     <h2 className="text-2xl font-black text-gray-950">Chọn mức nạp hoặc nhập số tiền</h2>
                 </div>
-                {topUpPayment?.checkoutUrl && !isTopUpExpired && <a href={topUpPayment.checkoutUrl} target="_blank" rel="noreferrer" className="rounded-2xl bg-gray-950 px-5 py-3 text-center text-sm font-black text-white">Mở trang PayOS</a>}
             </div>
             <form onSubmit={submitTopUp} className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto]">
                 <div>
@@ -115,27 +125,6 @@ export default function WalletPage() {
                 </div>
                 <button className="rounded-2xl bg-orange-500 px-6 py-3 font-black text-white">Tạo mã nạp</button>
             </form>
-            {topUpPayment && !isTopUpExpired && <div className="mt-6 rounded-2xl bg-blue-50 p-4 font-black text-blue-700">Mã thanh toán chỉ hiệu lực trong {formatCountdown(remainingTopUpSeconds)}. Hết 5 phút mà chưa chuyển tiền thì giao dịch nạp ví thất bại.</div>}
-            {topUpPayment && isTopUpExpired && <div className="mt-6 rounded-2xl bg-red-50 p-4 font-bold text-red-700">Mã thanh toán đã hết hạn sau 5 phút và được xem là nạp tiền thất bại. Vui lòng tạo mã mới; nếu bạn đã chuyển tiền, hãy khiếu nại/báo lỗi với admin.</div>}
-            {topUpPayment && !isTopUpExpired && <div className="mt-6 grid gap-6 lg:grid-cols-2">
-                <div className="rounded-3xl border border-orange-100 bg-orange-50 p-6 text-center">
-                    <p className="text-sm font-black uppercase tracking-widest text-orange-600">Bước 1: Quét QR</p>
-                    <div className="mt-4 inline-flex rounded-3xl bg-white p-4 shadow-sm">
-                        {buildQrImageUrl(topUpPayment) ? <img src={buildQrImageUrl(topUpPayment)} alt="QR nạp ví PayOS" className="h-64 w-64" /> : <div className="grid h-64 w-64 place-items-center rounded-2xl bg-gray-100 text-sm font-bold text-gray-500">QR sẽ hiển thị sau khi PayOS trả dữ liệu</div>}
-                    </div>
-                    <p className="mt-4 text-sm font-bold text-gray-600">Quét mã bằng app ngân hàng/ví điện tử. Sau khi thanh toán, bấm đồng bộ hoặc chờ webhook PayOS cập nhật.</p>
-                </div>
-                <div className="rounded-3xl border bg-white p-6">
-                    <p className="text-sm font-black uppercase tracking-widest text-gray-500">Bước 2: Nhập thủ công nếu không quét QR</p>
-                    <div className="mt-4 space-y-3 text-sm">
-                        <div className="flex justify-between gap-4 rounded-2xl bg-gray-50 p-3"><span className="font-bold text-gray-500">Số tiền</span><span className="font-black">{money(topUpPayment.amount)}</span></div>
-                        <div className="flex justify-between gap-4 rounded-2xl bg-gray-50 p-3"><span className="font-bold text-gray-500">Mã giao dịch</span><span className="font-black">{topUpPayment.transactionCode}</span></div>
-                        <div className="rounded-2xl bg-gray-50 p-3"><p className="font-bold text-gray-500">Nội dung chuyển khoản</p><p className="mt-1 break-all font-black">{topUpPayment.paymentContent || topUpPayment.transactionCode}</p></div>
-                        <div className="rounded-2xl bg-amber-50 p-3 font-bold text-amber-700">Lưu ý: nhập đúng số tiền và nội dung để PayOS nhận diện. Nếu không tự động cộng tiền, admin sẽ xác nhận thủ công trước khi số dư thay đổi.</div>
-                    </div>
-                    <button type="button" onClick={() => verifyWalletTopUp(topUpPayment.id).then(async () => { setMessage('Đã đồng bộ trạng thái PayOS.'); await load(); }).catch(err => setError(err.response?.data?.message || 'Không đồng bộ được PayOS.'))} className="mt-4 w-full rounded-2xl bg-gray-950 p-3 font-black text-white">Tôi đã thanh toán - đồng bộ ngay</button>
-                </div>
-            </div>}
         </section>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-2">

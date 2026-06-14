@@ -24,10 +24,3 @@ export const checkoutMembership = async (payload) => {
   const response = await api.post('/memberships/checkout', payload);
   return response.data;
 };
-
-export const cancelMembershipAutoRenew = async (reason) => {
-  const response = await api.post('/memberships/me/cancel', {
-    reason,
-  });
-  return response.data;
-};

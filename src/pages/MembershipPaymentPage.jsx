@@ -24,11 +24,8 @@ import { checkoutMembership, getMembershipCheckoutContext } from '../api/members
 import { createPayOsPayment } from '../api/payments';
 
 const paymentOptions = [
+  { id: 'WALLET', name: 'Ví PetGo', icon: <Wallet className="w-5 h-5 text-blue-600" />, desc: 'Thanh toán nhanh qua số dư ví PetGo' },
   { id: 'PAYOS', name: 'Thanh toán PayOS (VietQR)', icon: <ShieldCheck className="w-5 h-5 text-orange-500" />, desc: 'Quét mã VietQR chuyển khoản nhanh 24/7' },
-  { id: 'MOMO', name: 'Ví MoMo', icon: <Wallet className="w-5 h-5" />, desc: 'Thanh toán nhanh qua App MoMo' },
-  { id: 'VNPAY', name: 'VNPay', icon: <div className="w-5 h-5 bg-blue-600 rounded flex items-center justify-center text-[8px] text-white font-bold italic">VN</div>, desc: 'Cổng thanh toán QR Code ngân hàng' },
-  { id: 'CARD', name: 'Credit / Debit Card', icon: <CreditCard className="w-5 h-5" />, desc: 'Visa, Mastercard, JCB' },
-  { id: 'BANK_TRANSFER', name: 'Chuyển khoản', icon: <Building className="w-5 h-5" />, desc: 'Chuyển khoản ngân hàng trực tiếp' },
 ];
 
 const faqs = [
@@ -56,7 +53,7 @@ const MembershipPaymentPage = () => {
   const { account, loadingAccount } = useContext(AuthContext);
 
   const planSlug = searchParams.get('plan') || '';
-  const [paymentMethod, setPaymentMethod] = useState('PAYOS');
+  const [paymentMethod, setPaymentMethod] = useState('WALLET');
   const [promoInput, setPromoInput] = useState('');
   const [appliedPromoCode, setAppliedPromoCode] = useState('');
   const [activeFaq, setActiveFaq] = useState(null);
@@ -81,9 +78,6 @@ const MembershipPaymentPage = () => {
         promoCode: promoCode || undefined,
       });
       setContext(response?.result || response);
-      if (response?.autoRenewDefault !== undefined) {
-        setAutoRenew(Boolean(response.autoRenewDefault));
-      }
     } catch (loadError) {
       setError(loadError?.response?.data?.message || 'Không thể tải dữ liệu checkout membership.');
     } finally {
@@ -113,7 +107,6 @@ const MembershipPaymentPage = () => {
         planSlug,
         paymentMethod,
         promoCode: appliedPromoCode || undefined,
-        autoRenew,
       });
       const result = response?.result || response;
 
@@ -172,28 +165,7 @@ const MembershipPaymentPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800 pb-20">
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex justify-between items-center">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="bg-orange-500 p-1.5 rounded-lg shadow-lg">
-              <PawPrint className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-black text-gray-900 tracking-tight">Pet<span className="text-orange-500">Go</span></span>
-          </div>
-
-          <div className="hidden sm:flex items-center gap-4">
-            <Step text="Chọn gói" completed step={1} />
-            <div className="w-8 h-px bg-gray-200"></div>
-            <Step text="Thanh toán" active step={2} />
-            <div className="w-8 h-px bg-gray-200"></div>
-            <Step text="Hoàn tất" step={3} />
-          </div>
-
-          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200">
-            <Lock className="w-4 h-4 text-gray-400" />
-          </div>
-        </div>
-      </header>
+      
 
       <main className="max-w-6xl mx-auto px-4 py-8 sm:py-12">
         <div className="mb-10 text-center sm:text-left">
@@ -246,7 +218,7 @@ const MembershipPaymentPage = () => {
                   </ul>
 
                   <div className="pt-6 border-t border-gray-50 space-y-3">
-                    <SummaryLine label="Tự động gia hạn" value={autoRenew ? 'Đang bật' : 'Đang tắt'} />
+                    <SummaryLine label="Phương thức" value={paymentMethod} />
                     {context?.currentSubscription?.planName && (
                       <SummaryLine label="Gói hiện tại" value={context.currentSubscription.planName} />
                     )}
@@ -323,11 +295,6 @@ const MembershipPaymentPage = () => {
                     </label>
                   ))}
                 </div>
-
-                <label className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 cursor-pointer">
-                  <input type="checkbox" checked={autoRenew} onChange={(e) => setAutoRenew(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                  <span className="text-sm font-bold text-gray-700">Tự động gia hạn gói membership ở kỳ tiếp theo</span>
-                </label>
               </section>
 
               <section className="bg-white rounded-[2.5rem] p-8 sm:p-10 border border-gray-100 shadow-xl relative overflow-hidden">
