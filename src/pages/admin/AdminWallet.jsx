@@ -106,14 +106,12 @@ export default function AdminWallet() {
         </div>
         <div className="card" style={{ marginTop: 24 }}>
             <h3>Booking dispute / escrow cần admin xử lý</h3>
-            <p className="text-muted">Admin phân bổ escrow: hoàn user, chuyển provider hoặc split một phần. Tổng phân bổ không được vượt escrow.</p>
             <table><thead><tr><th>Booking</th><th>User</th><th>Provider</th><th>Dịch vụ</th><th>Lịch hẹn</th><th>Escrow</th><th>Lý do</th><th>Thao tác</th></tr></thead><tbody>
                 {loading ? <tr><td colSpan="8">Đang tải...</td></tr> : bookingDisputes.length === 0 ? <tr><td colSpan="8">Không có booking dispute cần xử lý.</td></tr> : bookingDisputes.map(dispute => <tr key={dispute.bookingId}><td>{dispute.bookingCode}<br /><span className="badge badge-danger">{dispute.statusLabel || dispute.status}</span></td><td>#{dispute.customerUserId}<br /><span className="text-muted">{dispute.customerName || '—'}</span></td><td>{dispute.providerName || `#${dispute.providerId}`}</td><td>{dispute.serviceName}</td><td>{dispute.appointmentDate}<br /><span className="text-muted">{dispute.appointmentTime}</span></td><td className="fw-500">{dispute.escrowAmountDisplay || money(dispute.escrowAmount)}</td><td>{dispute.disputeReason || '—'}</td><td><button className="btn btn-sm btn-primary" onClick={() => resolveBookingDispute(dispute)}>Resolve split</button> <button className="btn btn-sm" onClick={() => openBookingDisputeChat(dispute)}>Mở chat</button></td></tr>)}
             </tbody></table>
         </div>
         <div className="card" style={{ marginTop: 24 }}>
             <h3>Nạp ví thất bại / khiếu nại cần kiểm tra</h3>
-            <p className="text-muted">Các giao dịch nạp quá hạn 5 phút. Nếu user cung cấp bằng chứng đã chuyển tiền, admin có thể xác minh và cộng ví thủ công.</p>
             <table><thead><tr><th>Mã</th><th>User</th><th>Số tiền</th><th>PayOS</th><th>Ghi chú hệ thống</th><th>Thời gian</th><th>Thao tác</th></tr></thead><tbody>
                 {loading ? <tr><td colSpan="7">Đang tải...</td></tr> : failedTopUps.length === 0 ? <tr><td colSpan="7">Không có giao dịch nạp thất bại cần xử lý.</td></tr> : failedTopUps.map(tx => <tr key={tx.id}><td>{tx.transactionCode}</td><td>{tx.userCode}<br /><span className="text-muted">{tx.userName}</span></td><td className="fw-500">{money(tx.amount)}</td><td>{tx.gatewayName}<br /><span className="text-muted">{tx.gatewayTransactionId}</span></td><td>{tx.reviewNote || tx.note || '—'}</td><td>{tx.createdAt || '—'}</td><td><button className="btn btn-sm btn-success" onClick={() => resolveFailed(tx.id, 'APPROVE')}>Đã nhận tiền - cộng ví</button> <button className="btn btn-sm btn-danger" onClick={() => resolveFailed(tx.id, 'REJECT')}>Đóng/Từ chối</button></td></tr>)}
             </tbody></table>

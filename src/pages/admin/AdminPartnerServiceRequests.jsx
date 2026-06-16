@@ -238,7 +238,6 @@ const AdminPartnerServiceRequests = () => {
             <div className="metrics metrics-3">
                 <div className="metric-card"><div className="metric-label">Đang hiển thị</div><div className="metric-value">{requests.length}</div><div className="metric-change metric-up">Theo bộ lọc hiện tại</div></div>
                 <div className="metric-card"><div className="metric-label">Tạo mới</div><div className="metric-value">{counts.create}</div><div className="metric-change metric-up">Yêu cầu tạo dịch vụ</div></div>
-                <div className="metric-card"><div className="metric-label">Cập nhật</div><div className="metric-value">{counts.update}</div><div className="metric-change metric-down">Yêu cầu update có highlight</div></div>
             </div>
 
             <div className="search-bar" style={{ justifyContent: 'space-between' }}>
@@ -252,7 +251,6 @@ const AdminPartnerServiceRequests = () => {
                 <div className="card-header">
                     <div>
                         <div className="card-title">Yêu cầu tạo/cập nhật dịch vụ</div>
-                        <div className="text-muted text-small">Admin xem trước thay đổi; field nào khác hiện tại sẽ được tô nền vàng.</div>
                     </div>
                     <span className="badge badge-info">{counts.pending} pending</span>
                 </div>

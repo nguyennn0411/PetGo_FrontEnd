@@ -275,7 +275,7 @@ const AdminNotifications = () => {
               </Field>
             )}
 
-            {form.audienceType === 'ALL' && <div className="card" style={{ marginBottom: 0, background: 'var(--bg-info)', color: 'var(--text-info)', padding: 12 }}>Thông báo sẽ được gửi tới toàn bộ tài khoản có role USER hoặc SHOP.</div>}
+            {form.audienceType === 'ALL' && <div className="card" style={{ marginBottom: 0, background: 'var(--bg-info)', color: 'var(--text-info)', padding: 12 }}>Thông báo sẽ được gửi tới toàn bộ tài khoản.</div>}
 
             <div className="grid2" style={{ marginBottom: 0 }}>
               <Field label="Mức ưu tiên">

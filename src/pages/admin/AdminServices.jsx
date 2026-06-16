@@ -205,7 +205,7 @@ const AdminServices = () => {
                 <div className="metric-card">
                     <div className="metric-label">Đã ẩn</div>
                     <div className="metric-value">{hiddenCategories}</div>
-                    <div className="metric-change metric-down">Ẩn mềm, không xóa dữ liệu</div>
+                    <div className="metric-change metric-down">Ẩn mềm</div>
                 </div>
             </div>
 

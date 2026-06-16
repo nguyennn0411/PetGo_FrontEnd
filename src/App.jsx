@@ -30,7 +30,7 @@ import ChatPage from './pages/ChatPage';
 
 import MembershipPage from './pages/MembershipPage';
 import MembershipPaymentPage from './pages/MembershipPaymentPage';
-import AdminDashboard from './pages/admin/AdminDashboard';
+// import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminPartners from './pages/admin/AdminPartners';
 import AdminBookings from './pages/admin/AdminBookings';
@@ -124,7 +124,8 @@ export default function App() {
 
 
         {/* Admin Routes */}
-        <Route path='/admin/dashboard' element={<AdminDashboard />} />
+        {/* <Route path='/admin/dashboard' element={<AdminDashboard />} /> */}
+        <Route path='/admin/dashboard' element={<AdminUsers />} />
         <Route path='/admin/users' element={<AdminUsers />} />
         <Route path='/admin/partners' element={<AdminPartners />} />
         <Route path='/admin/bookings' element={<AdminBookings />} />
