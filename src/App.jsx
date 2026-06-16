@@ -164,7 +164,7 @@ export default function App() {
         <Route path='/home' element={<Navigate to='/' replace />} />
         <Route path='/services' element={<Navigate to='/' replace />} />
         <Route path='*' element={<Navigate to='/' replace />} />
-        <Route path="/ai-grooming" element={<AiGroomingPage />} />
+        <Route path="/ai-grooming" element={withUserShell(<AiGroomingPage />, '/ai-grooming')} />
       </Routes>
       <AiChatWidget />
     </BrowserRouter>

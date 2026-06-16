@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Bell, Calendar, Crown, Heart, LogOut, Menu, PawPrint, Search, ShoppingBag, User, Wallet, X } from 'lucide-react';
+import { Bell, Calendar, Crown, Heart, LogOut, Menu, PawPrint, Search, ShoppingBag, Sparkles, User, Wallet, X } from 'lucide-react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { getRoleLandingPath, hasAdminRole, hasPartnerRole } from '../utils/partnerAccess';
@@ -9,6 +9,7 @@ import { getMyMembership } from '../api/memberships';
 const navItems = [
     { to: '/', label: 'Trang chủ' },
     { to: '/search', label: 'Dịch vụ', icon: Search },
+    { to: '/ai-grooming', label: 'AI Grooming', icon: Sparkles },
     { to: '/shop', label: 'Cửa hàng', icon: ShoppingBag },
     { to: '/my-bookings', label: 'Booking', icon: Calendar },
     { to: '/favorites', label: 'Yêu thích', icon: Heart },
@@ -117,7 +118,7 @@ const UserNav = ({ activePath = '' }) => {
                     <span className="text-2xl font-black tracking-tighter text-gray-950">Pet<span className="text-orange-500">Go</span></span>
                 </Link>
 
-                <nav className="hidden flex-1 items-center justify-center gap-7 lg:flex">
+                <nav className="hidden flex-1 items-center justify-center gap-4 lg:flex xl:gap-7">
                     {navItems.map((item) => (
                         <NavLink
                             key={item.to}
