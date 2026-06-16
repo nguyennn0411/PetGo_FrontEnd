@@ -219,10 +219,6 @@ const BookingDetailPage = () => {
                 </div>
               </div>
 
-              <div className="mx-8 mb-8 rounded-[1.5rem] border border-orange-100 bg-orange-50 px-5 py-4 text-sm font-bold leading-relaxed text-orange-800">
-                {statusDescription}
-              </div>
-
               <div className="p-8 grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <InfoCard icon={<Calendar className="w-4 h-4 text-blue-500" />} label="Ngày hẹn" value={booking.appointmentDateDisplay} />
                 <InfoCard icon={<Clock3 className="w-4 h-4 text-blue-500" />} label="Khung giờ" value={booking.appointmentTime} />
@@ -245,7 +241,6 @@ const BookingDetailPage = () => {
                     <div className="pb-6">
                       <p className="text-sm font-black text-gray-900">{item.toStatusLabel || STATUS_LABELS[item.toStatus] || item.toStatus}</p>
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">{item.createdAt}</p>
-                      {item.note ? <p className="text-sm text-gray-600 font-medium mt-2 leading-relaxed">{item.note}</p> : null}
                       {item.changedBy ? <p className="text-xs font-bold text-orange-600 mt-2">By: {item.changedBy}</p> : null}
                     </div>
                   </div>

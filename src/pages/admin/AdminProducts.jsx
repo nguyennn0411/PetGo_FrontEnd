@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
+import { AdminDialog, AdminToastStack, getAdminErrorMessage, useAdminDialog, useAdminToast } from '../../components/admin/AdminFeedback';
 import { formatVnd, shopApi } from '../../api/shop';
 
 const emptyForm = { name: '', slug: '', brand: 'PetGo', categoryId: '', targetSpecies: 'ALL', priceAmount: '', salePriceAmount: '', stockQuantity: 0, sku: '', mainImageUrl: '', shortDescription: '', description: '', featured: true, hot: false, active: true, status: 'ACTIVE' };
@@ -13,9 +14,20 @@ export default function AdminProducts() {
   const [form, setForm] = useState(emptyForm);
   const [keyword, setKeyword] = useState('');
 
+  const { toasts, showToast, dismissToast } = useAdminToast();
+  const { dialog, confirmDialog, closeDialog } = useAdminDialog();
+
   const load = async () => {
-    setProducts(await shopApi.getAdminProducts({ keyword }));
-    setCategories(await shopApi.getCategories());
+    try {
+      setProducts(await shopApi.getAdminProducts({ keyword }) || []);
+      setCategories(await shopApi.getCategories() || []);
+    } catch (err) {
+      showToast({
+        tone: 'error',
+        title: 'Lỗi tải sản phẩm',
+        message: getAdminErrorMessage(err, 'Không tải được danh sách sản phẩm hoặc danh mục.'),
+      });
+    }
   };
   useEffect(() => { load(); }, []);
 
@@ -27,14 +39,67 @@ export default function AdminProducts() {
 
   const submit = async (e) => {
     e.preventDefault();
-    const payload = { ...form, slug: form.slug || slugify(form.name), priceAmount: Number(form.priceAmount), salePriceAmount: form.salePriceAmount ? Number(form.salePriceAmount) : null, stockQuantity: Number(form.stockQuantity || 0), categoryId: Number(form.categoryId) };
-    if (editing) await shopApi.updateAdminProduct(editing.id, payload); else await shopApi.createAdminProduct(payload);
-    setShowForm(false); setEditing(null); setForm(emptyForm); load();
+    try {
+      const payload = { ...form, slug: form.slug || slugify(form.name), priceAmount: Number(form.priceAmount), salePriceAmount: form.salePriceAmount ? Number(form.salePriceAmount) : null, stockQuantity: Number(form.stockQuantity || 0), categoryId: Number(form.categoryId) };
+      if (editing) {
+        await shopApi.updateAdminProduct(editing.id, payload);
+        showToast({
+          tone: 'success',
+          title: 'Cập nhật thành công',
+          message: `Sản phẩm "${payload.name}" đã được lưu thay đổi.`,
+        });
+      } else {
+        await shopApi.createAdminProduct(payload);
+        showToast({
+          tone: 'success',
+          title: 'Tạo sản phẩm thành công',
+          message: `Sản phẩm "${payload.name}" đã được thêm vào shop.`,
+        });
+      }
+      setShowForm(false); setEditing(null); setForm(emptyForm); load();
+    } catch (err) {
+      showToast({
+        tone: 'error',
+        title: 'Lưu thất bại',
+        message: getAdminErrorMessage(err, 'Không thể lưu thông tin sản phẩm.'),
+      });
+    }
   };
-  const remove = async (id) => { if (confirm('Ẩn sản phẩm này?')) { await shopApi.deleteAdminProduct(id); load(); } };
+
+  const remove = async (id) => {
+    const product = products.find((p) => p.id === id);
+    const name = product ? product.name : 'sản phẩm này';
+    const accepted = await confirmDialog({
+      tone: 'warning',
+      title: 'Ẩn sản phẩm?',
+      message: `Bạn có chắc muốn ẩn sản phẩm "${name}"? Sản phẩm ẩn sẽ không hiển thị trên cửa hàng.`,
+      confirmLabel: 'Ẩn sản phẩm',
+      cancelLabel: 'Hủy',
+    });
+    if (!accepted) return;
+
+    try {
+      await shopApi.deleteAdminProduct(id);
+      showToast({
+        tone: 'success',
+        title: 'Đã ẩn sản phẩm',
+        message: `Sản phẩm "${name}" đã được ẩn thành công.`,
+      });
+      load();
+    } catch (err) {
+      showToast({
+        tone: 'error',
+        title: 'Ẩn sản phẩm thất bại',
+        message: getAdminErrorMessage(err, 'Không thể ẩn sản phẩm.'),
+      });
+    }
+  };
 
   return (
     <AdminLayout title="Quản lý sản phẩm shop">
+      <AdminToastStack toasts={toasts} onDismiss={dismissToast} />
+      <AdminDialog dialog={dialog} onResolve={closeDialog} />
+
       <div className="metrics metrics-3">
         <div className="metric-card"><div className="metric-label">Tổng sản phẩm</div><div className="metric-value">{products.length}</div><div className="metric-change metric-up">PetGo Store</div></div>
         <div className="metric-card"><div className="metric-label">Đang bán</div><div className="metric-value">{products.filter((p) => p.active !== false && p.status === 'ACTIVE').length}</div><div className="metric-change metric-up">Hiển thị ngoài shop</div></div>

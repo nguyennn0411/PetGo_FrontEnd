@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
+import { AdminDialog, AdminToastStack, getAdminErrorMessage, useAdminDialog, useAdminToast } from '../../components/admin/AdminFeedback';
 import { getAdminBookingDisputes, getAdminWalletAutoConfirm, getAdminWalletFailedTopUps, getAdminWalletPendingTransactions, openAdminBookingDisputeChat, resolveAdminBookingDispute, resolveAdminWalletFailedTopUp, reviewAdminWalletTransaction, updateAdminWalletAutoConfirm, updateAdminWalletStatus } from '../../api/wallet';
 
 const money = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(value || 0));
@@ -11,64 +12,234 @@ export default function AdminWallet() {
     const [bookingDisputes, setBookingDisputes] = useState([]);
     const [autoConfirm, setAutoConfirm] = useState(false);
     const [walletLock, setWalletLock] = useState({ userId: '', status: 'ACTIVE', note: '' });
-    const [message, setMessage] = useState('');
-    const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
+    
+    const { toasts, showToast, dismissToast } = useAdminToast();
+    const { dialog, confirmDialog, promptDialog, closeDialog } = useAdminDialog();
 
     const load = async () => {
-        setLoading(true); setError('');
+        setLoading(true);
         try {
             const [txs, failed, setting, disputes] = await Promise.all([getAdminWalletPendingTransactions(), getAdminWalletFailedTopUps(), getAdminWalletAutoConfirm(), getAdminBookingDisputes()]);
             setPending(Array.isArray(txs) ? txs : []);
             setFailedTopUps(Array.isArray(failed) ? failed : []);
             setAutoConfirm(Boolean(setting?.enabled));
             setBookingDisputes(Array.isArray(disputes) ? disputes : []);
-        } catch (err) { setError(err.response?.data?.message || 'Không tải được dữ liệu ví admin.'); }
-        finally { setLoading(false); }
+        } catch (err) {
+            showToast({
+                tone: 'error',
+                title: 'Lỗi tải dữ liệu',
+                message: getAdminErrorMessage(err, 'Không tải được dữ liệu ví admin.'),
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => { load(); }, []);
 
     const toggleAuto = async () => {
-        setMessage(''); setError('');
-        if (!window.confirm(`${autoConfirm ? 'Tắt' : 'Bật'} tự động cộng tiền nạp ví?`)) return;
-        try { const result = await updateAdminWalletAutoConfirm(!autoConfirm); setAutoConfirm(Boolean(result.enabled)); setMessage(`Đã ${result.enabled ? 'bật' : 'tắt'} tự động cộng tiền nạp ví.`); }
-        catch (err) { setError(err.response?.data?.message || 'Không cập nhật được cấu hình.'); }
+        const nextState = !autoConfirm;
+        const accepted = await confirmDialog({
+            tone: nextState ? 'success' : 'warning',
+            title: nextState ? 'Bật tự động cộng tiền?' : 'Tắt tự động cộng tiền?',
+            message: `Bạn có chắc muốn ${nextState ? 'bật' : 'tắt'} tự động cộng tiền nạp ví?`,
+            confirmLabel: nextState ? 'Bật tự động' : 'Tắt tự động',
+            cancelLabel: 'Hủy',
+        });
+        if (!accepted) return;
+        try {
+            const result = await updateAdminWalletAutoConfirm(nextState);
+            setAutoConfirm(Boolean(result.enabled));
+            showToast({
+                tone: 'success',
+                title: 'Cập nhật cấu hình',
+                message: `Đã ${result.enabled ? 'bật' : 'tắt'} tự động cộng tiền nạp ví thành công.`,
+            });
+        } catch (err) {
+            showToast({
+                tone: 'error',
+                title: 'Lỗi cấu hình',
+                message: getAdminErrorMessage(err, 'Không cập nhật được cấu hình.'),
+            });
+        }
     };
 
     const review = async (id, action) => {
-        const reviewNote = window.prompt(action === 'APPROVE' ? 'Ghi chú duyệt giao dịch' : 'Lý do từ chối', '') || '';
-        if (!window.confirm(`${action === 'APPROVE' ? 'Duyệt' : 'Từ chối'} giao dịch ví này?`)) return;
-        setMessage(''); setError('');
-        try { await reviewAdminWalletTransaction(id, { action, reviewNote }); setMessage('Đã xử lý giao dịch ví.'); await load(); }
-        catch (err) { setError(err.response?.data?.message || 'Không xử lý được giao dịch.'); }
+        const isApprove = action === 'APPROVE';
+        const tone = isApprove ? 'success' : 'error';
+        const title = isApprove ? 'Duyệt giao dịch ví' : 'Từ chối giao dịch ví';
+        const reviewNote = await promptDialog({
+            tone,
+            title,
+            message: isApprove ? 'Nhập ghi chú duyệt giao dịch (tuỳ chọn):' : 'Nhập lý do từ chối giao dịch (bắt buộc):',
+            placeholder: isApprove ? 'Nhập ghi chú...' : 'Ví dụ: Sai thông tin chuyển khoản...',
+            required: !isApprove,
+            confirmLabel: isApprove ? 'Duyệt giao dịch' : 'Từ chối giao dịch',
+            cancelLabel: 'Hủy',
+        });
+        if (reviewNote === null) return;
+
+        try {
+            await reviewAdminWalletTransaction(id, { action, reviewNote });
+            showToast({
+                tone: 'success',
+                title: isApprove ? 'Đã duyệt giao dịch' : 'Đã từ chối giao dịch',
+                message: 'Giao dịch ví đã được xử lý thành công.',
+            });
+            await load();
+        } catch (err) {
+            showToast({
+                tone: 'error',
+                title: 'Xử lý thất bại',
+                message: getAdminErrorMessage(err, 'Không xử lý được giao dịch.'),
+            });
+        }
     };
 
     const resolveFailed = async (id, action) => {
-        const reviewNote = window.prompt(action === 'APPROVE' ? 'Ghi chú xác minh đã nhận tiền' : 'Lý do đóng khiếu nại', '') || '';
-        if (!window.confirm(`${action === 'APPROVE' ? 'Xác nhận đã nhận tiền và cộng ví' : 'Đóng/từ chối khiếu nại'} cho giao dịch nạp thất bại này?`)) return;
-        setMessage(''); setError('');
-        try { await resolveAdminWalletFailedTopUp(id, { action, reviewNote }); setMessage('Đã xử lý giao dịch nạp ví thất bại.'); await load(); }
-        catch (err) { setError(err.response?.data?.message || 'Không xử lý được giao dịch nạp thất bại.'); }
+        const isApprove = action === 'APPROVE';
+        const tone = isApprove ? 'success' : 'error';
+        const title = isApprove ? 'Xác nhận nạp ví' : 'Từ chối khiếu nại nạp';
+        const reviewNote = await promptDialog({
+            tone,
+            title,
+            message: isApprove ? 'Nhập ghi chú xác minh đã nhận tiền (tuỳ chọn):' : 'Nhập lý do đóng/từ chối khiếu nại (bắt buộc):',
+            placeholder: isApprove ? 'Ghi chú xác minh...' : 'Lý do từ chối...',
+            required: !isApprove,
+            confirmLabel: isApprove ? 'Xác nhận' : 'Từ chối',
+            cancelLabel: 'Hủy',
+        });
+        if (reviewNote === null) return;
+
+        try {
+            await resolveAdminWalletFailedTopUp(id, { action, reviewNote });
+            showToast({
+                tone: 'success',
+                title: 'Đã cập nhật giao dịch',
+                message: 'Giao dịch nạp ví thất bại đã được xử lý thành công.',
+            });
+            await load();
+        } catch (err) {
+            showToast({
+                tone: 'error',
+                title: 'Xử lý thất bại',
+                message: getAdminErrorMessage(err, 'Không xử lý được giao dịch nạp thất bại.'),
+            });
+        }
     };
 
     const submitLock = async (e) => {
-        e.preventDefault(); setMessage(''); setError('');
-        try { await updateAdminWalletStatus(walletLock.userId, { status: walletLock.status, note: walletLock.note }); setMessage('Đã cập nhật trạng thái ví người dùng.'); setWalletLock({ userId: '', status: 'ACTIVE', note: '' }); }
-        catch (err) { setError(err.response?.data?.message || 'Không cập nhật được trạng thái ví.'); }
+        e.preventDefault();
+        if (!walletLock.userId.trim()) {
+            showToast({
+                tone: 'warning',
+                title: 'Thiếu thông tin',
+                message: 'Vui lòng nhập User ID.',
+            });
+            return;
+        }
+        const accepted = await confirmDialog({
+            tone: 'warning',
+            title: 'Cập nhật trạng thái ví?',
+            message: `Bạn có chắc muốn chuyển trạng thái ví của user #${walletLock.userId} sang ${walletLock.status}?`,
+            confirmLabel: 'Cập nhật',
+            cancelLabel: 'Hủy',
+        });
+        if (!accepted) return;
+
+        try {
+            await updateAdminWalletStatus(walletLock.userId, { status: walletLock.status, note: walletLock.note });
+            showToast({
+                tone: 'success',
+                title: 'Cập nhật thành công',
+                message: 'Đã cập nhật trạng thái ví người dùng.',
+            });
+            setWalletLock({ userId: '', status: 'ACTIVE', note: '' });
+        } catch (err) {
+            showToast({
+                tone: 'error',
+                title: 'Cập nhật thất bại',
+                message: getAdminErrorMessage(err, 'Không cập nhật được trạng thái ví.'),
+            });
+        }
     };
 
     const resolveBookingDispute = async (dispute) => {
         const escrow = Number(dispute.escrowAmount || 0);
-        const refundToUserAmount = Number(window.prompt(`Hoàn về ví user bao nhiêu? Escrow hiện có ${money(escrow)}`, escrow) || 0);
-        const releaseToProviderAmount = Number(window.prompt('Chuyển sang ví provider bao nhiêu?', Math.max(0, escrow - refundToUserAmount)) || 0);
-        const reason = window.prompt('Lý do/audit note xử lý dispute', '') || '';
-        if (refundToUserAmount < 0 || releaseToProviderAmount < 0) { setError('Số tiền phân bổ không được âm.'); return; }
-        if (refundToUserAmount + releaseToProviderAmount > escrow) { setError('Tổng phân bổ không được vượt escrow.'); return; }
-        if (!window.confirm(`Xử lý dispute ${dispute.bookingCode}: hoàn user ${money(refundToUserAmount)}, chuyển provider ${money(releaseToProviderAmount)}?`)) return;
-        setMessage(''); setError('');
-        try { await resolveAdminBookingDispute(dispute.bookingId, { refundToUserAmount, releaseToProviderAmount, reason }); setMessage('Đã xử lý dispute booking.'); await load(); }
-        catch (err) { setError(err.response?.data?.message || 'Không xử lý được dispute booking.'); }
+        
+        const refundToUserText = await promptDialog({
+            tone: 'warning',
+            title: 'Hoàn tiền cho khách hàng',
+            message: `Nhập số tiền muốn hoàn về ví khách hàng. Escrow hiện có: ${money(escrow)}`,
+            defaultValue: String(escrow),
+            required: true,
+            multiline: false,
+            confirmLabel: 'Tiếp tục',
+            cancelLabel: 'Hủy',
+        });
+        if (refundToUserText === null) return;
+        const refundToUserAmount = Number(refundToUserText || 0);
+
+        const maxRelease = Math.max(0, escrow - refundToUserAmount);
+        const releaseToProviderText = await promptDialog({
+            tone: 'info',
+            title: 'Giải ngân cho nhà cung cấp',
+            message: `Nhập số tiền muốn giải ngân cho đối tác (max: ${money(maxRelease)})`,
+            defaultValue: String(maxRelease),
+            required: true,
+            multiline: false,
+            confirmLabel: 'Tiếp tục',
+            cancelLabel: 'Hủy',
+        });
+        if (releaseToProviderText === null) return;
+        const releaseToProviderAmount = Number(releaseToProviderText || 0);
+
+        if (refundToUserAmount < 0 || releaseToProviderAmount < 0) {
+            showToast({ tone: 'error', title: 'Lỗi số tiền', message: 'Số tiền phân bổ không được âm.' });
+            return;
+        }
+        if (refundToUserAmount + releaseToProviderAmount > escrow) {
+            showToast({ tone: 'error', title: 'Lỗi số tiền', message: 'Tổng phân bổ không được vượt escrow.' });
+            return;
+        }
+
+        const reason = await promptDialog({
+            tone: 'info',
+            title: 'Lý do xử lý khiếu nại',
+            message: 'Nhập ghi chú/lý do xử lý dispute booking này (bắt buộc):',
+            placeholder: 'Ví dụ: Hoàn trả 100% cho khách hàng do nhà cung cấp không phục vụ...',
+            required: true,
+            multiline: true,
+            confirmLabel: 'Tiếp tục',
+            cancelLabel: 'Hủy',
+        });
+        if (!reason) return;
+
+        const accepted = await confirmDialog({
+            tone: 'warning',
+            title: 'Xác nhận phân bổ tiền Booking Dispute',
+            message: `Bạn có chắc muốn xử lý khiếu nại booking ${dispute.bookingCode}: hoàn khách hàng ${money(refundToUserAmount)}, chuyển đối tác ${money(releaseToProviderAmount)}?`,
+            confirmLabel: 'Xác nhận phân bổ',
+            cancelLabel: 'Hủy',
+        });
+        if (!accepted) return;
+
+        try {
+            await resolveAdminBookingDispute(dispute.bookingId, { refundToUserAmount, releaseToProviderAmount, reason });
+            showToast({
+                tone: 'success',
+                title: 'Đã xử lý khiếu nại',
+                message: 'Đã phân bổ tiền ký quỹ booking thành công.',
+            });
+            await load();
+        } catch (err) {
+            showToast({
+                tone: 'error',
+                title: 'Xử lý thất bại',
+                message: getAdminErrorMessage(err, 'Không xử lý được dispute booking.'),
+            });
+        }
     };
 
     const openBookingDisputeChat = async (dispute) => {
@@ -76,12 +247,19 @@ export default function AdminWallet() {
             const conversation = await openAdminBookingDisputeChat(dispute.bookingId);
             const conversationId = conversation?.conversationId || conversation?.id;
             if (conversationId) window.location.href = `/chat?conversationId=${conversationId}`;
-        } catch (err) { setError(err.response?.data?.message || 'Không mở được chat dispute booking.'); }
+        } catch (err) {
+            showToast({
+                tone: 'error',
+                title: 'Lỗi mở chat',
+                message: getAdminErrorMessage(err, 'Không mở được chat dispute booking.'),
+            });
+        }
     };
 
     return <AdminLayout title="Quản lý ví">
-        {message && <div className="mb-4 rounded-2xl bg-green-50 p-4 font-bold text-green-700">{message}</div>}
-        {error && <div className="mb-4 rounded-2xl bg-red-50 p-4 font-bold text-red-700">{error}</div>}
+        <AdminToastStack toasts={toasts} onDismiss={dismissToast} />
+        <AdminDialog dialog={dialog} onResolve={closeDialog} />
+
         <div className="metrics">
             <div className="metric-card"><div className="metric-label">Giao dịch chờ duyệt</div><div className="metric-value">{pending.length}</div><div className="metric-change metric-up">Nạp/rút thủ công</div></div>
             <div className="metric-card"><div className="metric-label">Nạp thất bại/khiếu nại</div><div className="metric-value">{failedTopUps.length}</div><div className="metric-change metric-down">Quá hạn 5 phút</div></div>

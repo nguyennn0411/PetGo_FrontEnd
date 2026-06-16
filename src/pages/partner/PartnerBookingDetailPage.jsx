@@ -139,14 +139,6 @@ const PartnerBookingDetailPage = () => {
                             </section>
                         )}
 
-                        <section className="bg-orange-50 rounded-[2rem] border border-orange-100 p-5 text-orange-800 flex items-start gap-3">
-                            <AlertTriangle className="w-5 h-5 mt-1 shrink-0" />
-                            <div>
-                                <p className="text-xs font-black uppercase tracking-widest">Workflow luồng mới</p>
-                                <p className="font-bold">Confirm/reject là xác nhận nhận lịch mới. Xác nhận hoàn tất là bước sau khi dịch vụ diễn ra; tiền escrow chỉ giải ngân khi đủ điều kiện.</p>
-                            </div>
-                        </section>
-
                         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm space-y-4">
                                 <h3 className="text-xl font-black">Khách hàng & thú cưng</h3>
@@ -177,7 +169,7 @@ const PartnerBookingDetailPage = () => {
                             {(booking.timeline || []).length ? (booking.timeline || []).map((item, index) => (
                                 <div key={index} className="p-4 rounded-2xl bg-gray-50">
                                     <p className="font-black">{item.fromStatusLabel || item.fromStatus || 'Start'} → {item.toStatusLabel || item.toStatus}</p>
-                                    <p className="text-sm text-gray-500 font-semibold">{item.note} · {item.changedBy} · {item.createdAt}</p>
+                                    <p className="text-sm text-gray-500 font-semibold">{item.changedBy} · {item.createdAt}</p>
                                 </div>
                             )) : <p className="p-4 rounded-2xl bg-gray-50 text-gray-500 font-bold">Chưa có lịch sử trạng thái cho booking này.</p>}
                         </section>
