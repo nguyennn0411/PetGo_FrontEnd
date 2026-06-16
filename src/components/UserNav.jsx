@@ -1,12 +1,15 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Bell, Calendar, Crown, Heart, LogOut, Menu, PawPrint, Search, ShoppingBag, User, Wallet, X } from 'lucide-react';
+import { Bell, Calendar, Crown, Heart, LogOut, Menu, PawPrint, Search, ShoppingBag, Sparkles, User, Wallet, X } from 'lucide-react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { getRoleLandingPath, hasAdminRole, hasPartnerRole } from '../utils/partnerAccess';
+import { getMyWallet } from '../api/wallet';
+import { getMyMembership } from '../api/memberships';
 
 const navItems = [
     { to: '/', label: 'Trang chủ' },
     { to: '/search', label: 'Dịch vụ', icon: Search },
+    { to: '/ai-grooming', label: 'AI Grooming', icon: Sparkles },
     { to: '/shop', label: 'Cửa hàng', icon: ShoppingBag },
     { to: '/my-bookings', label: 'Booking', icon: Calendar },
     { to: '/favorites', label: 'Yêu thích', icon: Heart },
@@ -21,6 +24,61 @@ const UserNav = ({ activePath = '' }) => {
     const profileRef = useRef(null);
     const canViewDashboard = account && (hasAdminRole(account) || hasPartnerRole(account));
     const dashboardPath = canViewDashboard ? getRoleLandingPath(account, '/profile') : '/profile';
+    const [walletBalance, setWalletBalance] = useState(null);
+    const [membership, setMembership] = useState(null);
+
+    useEffect(() => {
+        if (!account) {
+            setWalletBalance(null);
+            setMembership(null);
+            return;
+        }
+        const fetchWallet = async () => {
+            try {
+                const w = await getMyWallet();
+                setWalletBalance(w?.balance);
+            } catch (err) { }
+        };
+        const fetchMembership = async () => {
+            try {
+                const m = await getMyMembership();
+                setMembership(m);
+            } catch (err) { }
+        };
+        
+        fetchWallet();
+        fetchMembership();
+        
+        const interval = setInterval(() => {
+            fetchWallet();
+            fetchMembership();
+        }, 5000);
+        return () => clearInterval(interval);
+    }, [account]);
+
+    const isMembershipActive = membership && membership.status === 'ACTIVE';
+    let membershipLabel = "Membership";
+    let membershipColorClass = "border-orange-100 bg-orange-50 text-orange-700 hover:border-orange-200 hover:bg-orange-100";
+    let iconColor = "h-4 w-4";
+
+    if (isMembershipActive) {
+        const slug = (membership.planSlug || '').toLowerCase();
+        if (slug === 'petgo-platinum') {
+            membershipLabel = 'Platinum';
+            membershipColorClass = "border-purple-200 bg-gradient-to-r from-purple-100 to-fuchsia-100 text-purple-700 hover:from-purple-200 hover:to-fuchsia-200";
+            iconColor = "h-4 w-4 text-purple-600";
+        } else if (slug === 'petgo-gold') {
+            membershipLabel = 'Gold';
+            membershipColorClass = "border-yellow-200 bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 hover:from-amber-200 hover:to-yellow-200";
+            iconColor = "h-4 w-4 text-amber-600";
+        } else if (slug === 'petgo-silver') {
+            membershipLabel = 'Silver';
+            membershipColorClass = "border-gray-300 bg-gradient-to-r from-gray-100 to-slate-100 text-gray-800 hover:from-gray-200 hover:to-slate-200 shadow-sm";
+            iconColor = "h-4 w-4 text-gray-700";
+        } else {
+            membershipLabel = membership.planName || "Membership";
+        }
+    }
 
     useEffect(() => {
         if (!profileOpen) {
@@ -60,7 +118,7 @@ const UserNav = ({ activePath = '' }) => {
                     <span className="text-2xl font-black tracking-tighter text-gray-950">Pet<span className="text-orange-500">Go</span></span>
                 </Link>
 
-                <nav className="hidden flex-1 items-center justify-center gap-7 lg:flex">
+                <nav className="hidden flex-1 items-center justify-center gap-4 lg:flex xl:gap-7">
                     {navItems.map((item) => (
                         <NavLink
                             key={item.to}
@@ -73,8 +131,8 @@ const UserNav = ({ activePath = '' }) => {
                 </nav>
 
                 <div className="hidden shrink-0 items-center gap-2 lg:flex">
-                    <Link to="/membership" className="inline-flex items-center gap-2 rounded-full border border-orange-100 bg-orange-50 px-4 py-2.5 text-xs font-black text-orange-700 transition-colors hover:border-orange-200 hover:bg-orange-100">
-                        <Crown className="h-4 w-4" /> Membership
+                    <Link to="/membership" className={`inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-xs font-black transition-all ${membershipColorClass}`}>
+                        <Crown className={iconColor} /> {membershipLabel}
                     </Link>
                     {account && (
                         <Link to="/notifications" className="grid h-10 w-10 place-items-center rounded-full border border-gray-200 bg-white text-gray-600 transition-colors hover:border-orange-200 hover:text-orange-500" aria-label="Thông báo">
@@ -84,8 +142,15 @@ const UserNav = ({ activePath = '' }) => {
                     {loadingAccount ? (
                         <div className="h-10 w-24 animate-pulse rounded-full bg-gray-100" />
                     ) : account ? (
-                        <div ref={profileRef} className="relative">
-                            <button type="button" onClick={() => setProfileOpen((value) => !value)} className="flex h-10 items-center gap-2 rounded-full border border-gray-200 bg-white py-1 pl-1 pr-3 text-sm font-black text-gray-800 transition-colors hover:border-orange-200 hover:text-orange-600">
+                        <div className="flex items-center gap-3">
+                            {walletBalance !== null && walletBalance !== undefined && (
+                                <Link to="/wallet" className="hidden sm:flex h-10 items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 text-sm font-black text-orange-600 transition-colors hover:bg-orange-100">
+                                    <Wallet className="h-4 w-4" />
+                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(walletBalance)}
+                                </Link>
+                            )}
+                            <div ref={profileRef} className="relative">
+                                <button type="button" onClick={() => setProfileOpen((value) => !value)} className="flex h-10 items-center gap-2 rounded-full border border-gray-200 bg-white py-1 pl-1 pr-3 text-sm font-black text-gray-800 transition-colors hover:border-orange-200 hover:text-orange-600">
                                 <span className="grid h-8 w-8 place-items-center rounded-full bg-orange-50 text-orange-600"><User className="h-4 w-4" /></span>
                                 <span className="max-w-28 truncate">Tài khoản</span>
                             </button>
@@ -97,6 +162,7 @@ const UserNav = ({ activePath = '' }) => {
                                     <button onClick={handleLogout} className="mt-1 flex w-full items-center gap-2 rounded-2xl px-4 py-3 text-left text-sm font-black text-red-500 hover:bg-red-50"><LogOut className="h-4 w-4" /> Đăng xuất</button>
                                 </div>
                             )}
+                            </div>
                         </div>
                     ) : (
                         <div className="flex items-center gap-2">
@@ -121,7 +187,7 @@ const UserNav = ({ activePath = '' }) => {
                             </Link>
                         ))}
                         <Link to="/membership" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black text-gray-800 hover:bg-orange-50">
-                            <Crown className="h-4 w-4 text-orange-500" /> Membership
+                            <Crown className="h-4 w-4 text-orange-500" /> {membershipLabel}
                         </Link>
                         {account && (
                             <Link to="/notifications" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black text-gray-800 hover:bg-orange-50">

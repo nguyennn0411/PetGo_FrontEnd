@@ -132,54 +132,7 @@ const NearbyProvidersPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800 flex flex-col h-screen">
-      <header className="bg-white border-b border-gray-100 shadow-sm z-50">
-        <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex justify-between items-center gap-4">
-          <div className="flex items-center gap-4 min-w-0">
-            <button
-              onClick={() => navigate('/search')}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-              <div className="bg-orange-500 p-1.5 rounded-lg">
-                <PawPrint className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-black text-gray-900 tracking-tight">
-                Pet<span className="text-orange-500">Go</span>
-              </span>
-            </div>
-          </div>
-
-          <div className="hidden md:flex flex-1 max-w-md mx-4">
-            <div className="relative w-full group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-orange-500" />
-              <input
-                type="text"
-                placeholder="Tìm dịch vụ gần bạn..."
-                className="w-full pl-11 pr-4 py-2.5 bg-gray-100 border-none rounded-full focus:ring-2 focus:ring-orange-500/20 transition-all outline-none text-sm font-medium"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/favorites')}
-              className="relative rounded-full p-2 hover:bg-gray-100 transition-colors"
-            >
-              <Heart className={favorites.length ? 'text-red-500 fill-red-500' : 'text-gray-600'} />
-            </button>
-            <div
-              className="w-10 h-10 rounded-full bg-orange-100 border-2 border-white flex items-center justify-center shadow-sm cursor-pointer"
-              onClick={() => navigate('/profile')}
-            >
-              <User className="w-5 h-5 text-orange-600" />
-            </div>
-          </div>
-        </div>
-      </header>
+      
 
       <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         <section className="w-full lg:w-[460px] bg-white border-r border-gray-100 overflow-y-auto no-scrollbar flex flex-col shadow-xl z-20">

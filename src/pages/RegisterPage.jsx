@@ -39,20 +39,39 @@ const RegisterPage = () => {
 
     setIsLoading(true);
     try {
-      await registerRequest({
+      const response = await registerRequest({
         email,
         password,
         fullName: name,
         phoneNumber: phone,
       });
+
+      // BE trả về HTTP 200 nhưng có code OTP_PENDING (email chưa xác thực, OTP còn hạn)
+      if (response?.code === 'OTP_PENDING') {
+        const redirectEmail = response.email || email.trim().toLowerCase();
+        navigate(`/verify-otp?email=${encodeURIComponent(redirectEmail)}`);
+        return;
+      }
+
       setSuccess('Đăng ký thành công! Đang chuyển đến trang xác thực OTP...');
       setTimeout(() => navigate(`/verify-otp?email=${encodeURIComponent(email)}`), 1500);
     } catch (err) {
-      setError(err.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+      const errorMessage = err.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
+      const errorCode = err.response?.data?.code;
+
+      // Fallback: kiểm tra code OTP_PENDING
+      if (errorCode === 'OTP_PENDING' || errorMessage.includes('Hệ thống đang chuyển sang trang xác minh OTP')) {
+        const redirectEmail = err.response?.data?.email || email.trim().toLowerCase();
+        navigate(`/verify-otp?email=${encodeURIComponent(redirectEmail)}`);
+        return;
+      }
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 font-sans selection:bg-orange-100 selection:text-orange-900">

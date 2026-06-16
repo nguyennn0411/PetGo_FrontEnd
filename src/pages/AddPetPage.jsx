@@ -242,22 +242,7 @@ const AddPetPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <button
-            onClick={() => navigate('/profile?tab=pets')}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors group"
-          >
-            <ArrowLeft className="w-6 h-6 text-gray-600 group-hover:text-orange-500" />
-          </button>
-
-          <span className="font-black text-xl tracking-tight">
-            {isEditMode ? 'Cập nhật thú cưng' : 'Thêm thú cưng mới'}
-          </span>
-
-          <div className="w-10" />
-        </div>
-      </header>
+      
 
       <main className="max-w-4xl mx-auto px-4 mt-8">
         <div className="bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 overflow-hidden border border-white">

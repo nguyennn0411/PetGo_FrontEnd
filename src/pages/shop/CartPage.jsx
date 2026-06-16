@@ -57,6 +57,7 @@ export default function CartPage() {
             <h2 className="font-black text-xl text-gray-950">Tóm tắt đơn hàng</h2>
             <div className="space-y-3 text-sm font-bold text-gray-600">
               <div className="flex justify-between"><span>Tạm tính</span><span>{formatVnd(cart.subtotalAmount)}</span></div>
+              {cart.discountAmount > 0 && <div className="flex justify-between text-green-600"><span>Giảm giá (Membership)</span><span>-{formatVnd(cart.discountAmount)}</span></div>}
               <div className="flex justify-between"><span>Phí giao hàng</span><span>{formatVnd(cart.shippingFeeAmount)}</span></div>
               <div className="flex justify-between text-lg font-black text-gray-950 border-t pt-4"><span>Tổng</span><span className="text-orange-600">{formatVnd(cart.totalAmount)}</span></div>
             </div>

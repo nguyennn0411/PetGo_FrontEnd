@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Search,
   Star,
-  Heart,
   Calendar,
   User,
   PawPrint,
@@ -22,8 +21,9 @@ import {
   Quote,
   ChevronLeft,
 } from 'lucide-react';
-import { getProviderFilterOptions } from '../api/providers';
+import { getActiveProviderServices, getProviderFilterOptions } from '../api/providers';
 import { getHomePage } from '../api/home';
+import { formatCurrencyVnd, pickProviderImage } from '../utils/providerHelpers';
 
 const categoryMarqueeStyles = `
   @keyframes petgoCategoryMarquee {
@@ -37,6 +37,8 @@ const App = () => {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [sliders, setSliders] = useState([]);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [featuredServices, setFeaturedServices] = useState([]);
+  const [loadingFeaturedServices, setLoadingFeaturedServices] = useState(true);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -65,6 +67,34 @@ const App = () => {
     };
 
     loadHome();
+  }, []);
+
+  useEffect(() => {
+    const loadFeaturedServices = async () => {
+      setLoadingFeaturedServices(true);
+      try {
+        const data = await getActiveProviderServices({
+          sortBy: 'FEATURED',
+          featuredOnly: true,
+          page: 0,
+          size: 3,
+        });
+        const services = Array.isArray(data?.items)
+          ? data.items
+          : Array.isArray(data?.content)
+            ? data.content
+            : Array.isArray(data)
+              ? data
+              : [];
+        setFeaturedServices(services.slice(0, 3));
+      } catch {
+        setFeaturedServices([]);
+      } finally {
+        setLoadingFeaturedServices(false);
+      }
+    };
+
+    loadFeaturedServices();
   }, []);
 
   const fallbackSliders = [
@@ -133,13 +163,6 @@ const App = () => {
   };
 
   const getCategorySearchValue = (category) => category?.id ?? category?.slug ?? category?.name;
-
-  // Nhà cung cấp gần đây
-  const nearbyProviders = [
-    { id: 1, name: "Spa Thú Cưng Paws & Relax", rating: 4.8, distance: "0.8 km", price: "200.000", image: "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&q=80&w=400" },
-    { id: 2, name: "Phòng Khám Happy Tails", rating: 4.9, distance: "1.5 km", price: "150.000", image: "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&q=80&w=400" },
-    { id: 3, name: "Khách Sạn Thú Cưng Pet Heaven", rating: 4.7, distance: "2.2 km", price: "400.000", image: "https://images.unsplash.com/photo-1591768793355-74d7ca738055?auto=format&fit=crop&q=80&w=400" }
-  ];
 
   // Review khách hàng
   const reviews = [
@@ -300,14 +323,48 @@ const App = () => {
         </div>
       </section>
 
-      {/* Featured Providers */}
+      {/* Featured Services */}
       <section className="py-24 max-w-7xl mx-auto px-4">
-        <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight mb-12">Nhà cung cấp chăm sóc thú cưng nổi bật</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-          <ProviderCard provider={nearbyProviders[0]} badge="Đánh giá cao" />
-          <ProviderCard provider={nearbyProviders[1]} badge="Phổ biến" />
-          <ProviderCard provider={nearbyProviders[2]} badge="Mới" />
+        <div className="mb-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.25em] text-orange-500">Dữ liệu thật từ PetGo</p>
+            <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Dịch vụ nổi bật</h2>
+          </div>
+          <button
+            onClick={() => window.location.href = '/search?featuredOnly=true'}
+            className="inline-flex w-fit items-center gap-2 rounded-2xl bg-orange-50 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-orange-600 transition-all hover:bg-orange-500 hover:text-white"
+          >
+            Xem thêm <ArrowRight className="h-4 w-4" />
+          </button>
         </div>
+
+        {loadingFeaturedServices ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+            {[...Array(3)].map((_, index) => (
+              <div key={index} className="h-[430px] animate-pulse rounded-[2.5rem] border border-gray-100 bg-gray-50" />
+            ))}
+          </div>
+        ) : featuredServices.length ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+            {featuredServices.map((service, index) => (
+              <FeaturedServiceCard
+                key={`${service.providerServiceId || service.id || service.serviceName || service.name}-${index}`}
+                service={service}
+                badge={index === 0 ? 'Nổi bật' : index === 1 ? 'Phổ biến' : 'Gợi ý'}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-[2rem] border border-dashed border-gray-200 bg-gray-50 p-10 text-center">
+            <p className="text-sm font-bold text-gray-500">Chưa có dịch vụ nổi bật từ hệ thống.</p>
+            <button
+              onClick={() => window.location.href = '/search'}
+              className="mt-5 rounded-2xl bg-gray-900 px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-orange-500"
+            >
+              Khám phá dịch vụ
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Audiences */}
@@ -338,7 +395,7 @@ const App = () => {
       </section>
 
       {/* NEW SECTION: Membership Promotion */}
-      {/* <section className="py-24 bg-blue-50 relative overflow-hidden">
+      <section className="py-24 bg-blue-50 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-10 opacity-5">
           <Crown className="w-96 h-96 -rotate-12 text-blue-900" />
         </div>
@@ -372,7 +429,7 @@ const App = () => {
                   Xem gói hội viên
                 </button>
                 <button
-                  onClick={() => window.location.href = '/membership-payment?plan=pro'}
+                  onClick={() => window.location.href = '/membership'}
                   className="px-10 py-5 bg-white text-blue-600 font-black rounded-2xl border-2 border-blue-100 hover:bg-blue-50 transition-all uppercase tracking-widest text-xs"
                 >
                   Bắt đầu hội viên
@@ -391,7 +448,7 @@ const App = () => {
                   <span className="text-xs font-bold text-gray-400">/ tháng</span>
                 </div>
                 <button
-                  onClick={() => window.location.href = '/membership-payment?plan=pro'}
+                  onClick={() => window.location.href = '/membership'}
                   className="w-full py-4 bg-blue-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all"
                 >
                   Nâng cấp ngay
@@ -405,7 +462,7 @@ const App = () => {
                   <span className="text-xs font-bold text-gray-400">/ tháng</span>
                 </div>
                 <button
-                  onClick={() => window.location.href = '/membership-payment?plan=premium'}
+                  onClick={() => window.location.href = '/membership'}
                   className="w-full py-4 bg-white text-gray-900 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all"
                 >
                   Nâng cấp ngay
@@ -414,7 +471,7 @@ const App = () => {
             </div>
           </div>
         </div>
-      </section> */}
+      </section>
 
       {/* Why Choose PetGo */}
       <section className="py-24 bg-white text-center">
@@ -480,47 +537,72 @@ const App = () => {
   );
 };
 
-// Component con: Card nhà cung cấp
-const ProviderCard = ({ provider, badge }) => (
-  <div className="group bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 cursor-pointer">
-    <div className="relative h-56 overflow-hidden">
-      <img src={provider.image} alt={provider.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-gray-900 shadow-sm">
-        {badge}
-      </div>
-      <button className="absolute top-4 right-4 p-2.5 bg-white/90 backdrop-blur-md rounded-2xl text-gray-400 hover:text-red-500 transition-all shadow-lg">
-        <Heart className="w-4 h-4" />
-      </button>
-    </div>
-    <div className="p-8">
-      <div className="flex justify-between items-start mb-4">
-        <h3 className="text-xl font-black text-gray-900 group-hover:text-orange-600 transition-colors leading-tight h-12 flex items-center">{provider.name}</h3>
-        <div className="flex items-center gap-1.5 bg-yellow-50 px-2 py-0.5 rounded-lg shrink-0">
-          <Star className="w-3 h-3 text-yellow-500 fill-current" />
-          <span className="text-[10px] font-black text-yellow-700">{provider.rating}</span>
+// Component con: Card dịch vụ nổi bật
+const FeaturedServiceCard = ({ service, badge }) => {
+  const provider = service.provider || {};
+  const providerId = service.providerId || provider.id;
+  const serviceId = service.providerServiceId || service.id;
+  const serviceName = service.name || service.displayName || service.serviceName || service.customName || 'Dịch vụ PetGo';
+  const providerName = service.providerName || provider.name || 'Đối tác PetGo';
+  const serviceImage = service.photoUrls?.[0]
+    || service.imageUrl
+    || service.thumbnailUrl
+    || pickProviderImage({ image: service.providerImage || provider.image });
+  const categoryName = service.categoryName || service.categories?.[0]?.name || 'Dịch vụ';
+  const duration = service.duration || (service.durationMinutes ? `${service.durationMinutes} phút` : 'Theo lịch hẹn');
+  const rawPrice = service.priceAmount ?? service.price ?? service.priceFrom;
+  const priceLabel = service.priceDisplay
+    || service.priceAmountDisplay
+    || service.priceFromDisplay
+    || (rawPrice !== null && rawPrice !== undefined && rawPrice !== '' ? `${formatCurrencyVnd(rawPrice)}đ` : 'Liên hệ');
+  const rating = service.rating || service.providerRating || service.avgRating || provider.rating || '0.0';
+  const bookingParams = new URLSearchParams();
+  if (providerId) bookingParams.set('providerId', providerId);
+  if (serviceId && !String(serviceId).startsWith('provider-')) bookingParams.set('serviceId', serviceId);
+  const bookingUrl = bookingParams.toString() ? `/booking?${bookingParams.toString()}` : '/booking';
+  const detailUrl = providerId ? `/providers/${providerId}` : '/search?featuredOnly=true';
+
+  return (
+    <div className="group bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
+      <div className="relative h-56 overflow-hidden">
+        <img src={serviceImage} alt={serviceName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-gray-900 shadow-sm">
+          {badge}
+        </div>
+        <div className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-yellow-50/95 px-3 py-1.5 text-yellow-700 shadow-sm backdrop-blur-md">
+          <Star className="w-3.5 h-3.5 fill-current" />
+          <span className="text-[10px] font-black">{rating}</span>
         </div>
       </div>
-      <div className="flex items-center gap-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">
-        <div className="flex items-center gap-1"><Navigation className="w-3.5 h-3.5 text-blue-500" /> {provider.distance}</div>
-        <div className="flex items-center gap-1"><Tag className="w-3.5 h-3.5 text-orange-500" /> Giá từ {provider.price}đ</div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={() => window.location.href = '/providers/1'}
-          className="py-3 px-2 bg-gray-100 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all"
-        >
-          Chi tiết
-        </button>
-        <button
-          onClick={() => window.location.href = '/booking'}
-          className="py-3 px-2 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-500 transition-all"
-        >
-          Đặt lịch ngay
-        </button>
+      <div className="p-8">
+        <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-orange-500">{categoryName}</p>
+        <h3 className="text-xl font-black text-gray-900 group-hover:text-orange-600 transition-colors leading-tight min-h-14">{serviceName}</h3>
+        <p className="mt-2 text-sm font-bold text-gray-500 line-clamp-1">Tại {providerName}</p>
+        <p className="mt-4 text-sm font-medium leading-6 text-gray-500 line-clamp-2">
+          {service.description || service.shortDescription || service.desc || 'Đang cập nhật mô tả dịch vụ.'}
+        </p>
+        <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-gray-400 uppercase tracking-widest my-6">
+          <div className="flex items-center gap-1"><Navigation className="w-3.5 h-3.5 text-blue-500" /> {duration}</div>
+          <div className="flex items-center gap-1"><Tag className="w-3.5 h-3.5 text-orange-500" /> {priceLabel}</div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => window.location.href = detailUrl}
+            className="py-3 px-2 bg-gray-100 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all"
+          >
+            Chi tiết
+          </button>
+          <button
+            onClick={() => window.location.href = bookingUrl}
+            className="py-3 px-2 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-500 transition-all"
+          >
+            Đặt lịch ngay
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Component con: Feature
 const Feature = ({ icon, title, desc }) => (

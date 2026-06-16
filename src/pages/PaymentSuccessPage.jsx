@@ -29,7 +29,9 @@ export default function PaymentSuccessPage() {
 
       try {
         // Sync and verify on backend
-        const data = await verifyPayOsPayment(Number(orderCode));
+        // Extract invoiceId from composite orderCode (invoiceId * 10000 + random)
+        const invoiceId = Math.floor(Number(orderCode) / 10000);
+        const data = await verifyPayOsPayment(invoiceId);
         setPaymentData(data);
         setStatus('success');
 

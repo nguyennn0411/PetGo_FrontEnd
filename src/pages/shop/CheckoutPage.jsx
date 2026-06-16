@@ -18,7 +18,7 @@ export default function CheckoutPage() {
     district: 'Thanh Xuân',
     city: 'Hà Nội',
     province: 'Hà Nội',
-    paymentMethod: 'COD',
+    paymentMethod: 'WALLET',
     customerNote: '',
   });
 
@@ -70,7 +70,7 @@ export default function CheckoutPage() {
             <div>
               <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-3">Phương thức thanh toán</label>
               <div className="grid grid-cols-2 gap-3">
-                {['COD', 'PAYOS'].map((m) => <button type="button" key={m} onClick={() => update('paymentMethod', m)} className={`p-4 rounded-2xl border font-black text-xs ${form.paymentMethod === m ? 'bg-orange-500 text-white border-orange-500' : 'bg-white border-gray-200 text-gray-700'}`}>{m}</button>)}
+                {['WALLET', 'PAYOS'].map((m) => <button type="button" key={m} onClick={() => update('paymentMethod', m)} className={`p-4 rounded-2xl border font-black text-xs ${form.paymentMethod === m ? 'bg-orange-500 text-white border-orange-500' : 'bg-white border-gray-200 text-gray-700'}`}>{m === 'WALLET' ? 'Ví PetGo' : m}</button>)}
               </div>
             </div>
           </section>
@@ -81,6 +81,7 @@ export default function CheckoutPage() {
             </div>
             <div className="space-y-3 border-t pt-4 font-bold text-gray-600">
               <div className="flex justify-between"><span>Tạm tính</span><span>{formatVnd(cart.subtotalAmount)}</span></div>
+              {cart.discountAmount > 0 && <div className="flex justify-between text-green-600"><span>Giảm giá (Membership)</span><span>-{formatVnd(cart.discountAmount)}</span></div>}
               <div className="flex justify-between"><span>Phí giao hàng</span><span>{formatVnd(cart.shippingFeeAmount)}</span></div>
               <div className="flex justify-between text-lg font-black text-gray-950"><span>Tổng cộng</span><span className="text-orange-600">{formatVnd(cart.totalAmount)}</span></div>
             </div>

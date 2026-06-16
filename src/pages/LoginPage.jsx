@@ -117,14 +117,40 @@ const LoginPage = () => {
 
     try {
       const response = await loginRequest({ userName: email, password });
+
+      // BE trả về HTTP 200 nhưng có code OTP_PENDING -> Chuyển sang trang xác minh OTP
+      if (response?.code === 'OTP_PENDING') {
+        const redirectEmail = response.email || email.trim().toLowerCase();
+        navigate(`/verify-otp?email=${encodeURIComponent(redirectEmail)}`);
+        return;
+      }
+
       const authenticatedAccount = login(response);
       navigate(getRoleLandingPath(authenticatedAccount), { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      const errorMessage = err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
+      const errorCode = err.response?.data?.code;
+
+      // Fallback: kiểm tra code OTP_PENDING trong trường hợp lỗi (phòng khi BE trả về non-200)
+      if (errorCode === 'OTP_PENDING' || errorMessage.includes('Hệ thống đang chuyển sang trang xác minh OTP')) {
+        const redirectEmail = err.response?.data?.email || email.trim().toLowerCase();
+        navigate(`/verify-otp?email=${encodeURIComponent(redirectEmail)}`);
+        return;
+      }
+
+      // OTP đã hết hạn, tài khoản đã bị hủy -> Hiển thị lỗi và gợi ý đăng ký lại
+      if (errorMessage.includes('Mã OTP đã hết hạn') || errorMessage.includes('tài khoản đã bị hủy')) {
+        setError(errorMessage);
+        setShowRegisterPrompt(true);
+        return;
+      }
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 font-sans selection:bg-orange-100 selection:text-orange-900">

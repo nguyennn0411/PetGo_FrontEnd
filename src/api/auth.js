@@ -15,6 +15,11 @@ export const verifyOtpRequest = async (payload) => {
   return response.data;
 };
 
+export const resendOtpRequest = async (email) => {
+  const response = await api.post('/auth/resend-otp', { email });
+  return response.data;
+};
+
 export const forgotPasswordRequest = async (payload) => {
   const response = await api.post('/auth/forgot-password', payload);
   return response.data;

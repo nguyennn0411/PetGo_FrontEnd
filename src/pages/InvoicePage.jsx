@@ -96,24 +96,7 @@ const InvoicePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800 pb-20">
-      <header className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50 print:hidden">
-        <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full transition-all">
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            <button onClick={() => navigate('/')} className="flex items-center gap-2">
-              <div className="bg-orange-500 p-1.5 rounded-lg shadow-lg shadow-orange-100">
-                <PawPrint className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-black text-gray-900 tracking-tight">Pet<span className="text-orange-500">Go</span></span>
-            </button>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-orange-100 border-2 border-white flex items-center justify-center shadow-sm">
-            <User className="w-5 h-5 text-orange-600" />
-          </div>
-        </div>
-      </header>
+      
 
       <main className="max-w-3xl mx-auto px-4 py-10 sm:py-16">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10 print:hidden">

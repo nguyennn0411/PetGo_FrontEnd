@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { forgotPasswordRequest, resetPasswordRequest, verifyOtpRequest } from '../api/auth';
+import { forgotPasswordRequest, resetPasswordRequest, verifyOtpRequest, resendOtpRequest } from '../api/auth';
 
 const OtpVerificationPage = () => {
   const [otpCode, setOtpCode] = useState('');
@@ -81,14 +81,20 @@ const OtpVerificationPage = () => {
   };
 
   const handleResendCode = async () => {
-    if (!isPasswordReset || !email) return;
+    if (!email) return;
 
     setError('');
     setSuccess('');
     setIsResending(true);
 
     try {
-      await forgotPasswordRequest({ email });
+      if (isPasswordReset) {
+        // Gửi lại OTP đặt lại mật khẩu
+        await forgotPasswordRequest({ email });
+      } else {
+        // Gửi lại OTP xác minh email đăng ký
+        await resendOtpRequest(email);
+      }
       setSuccess('Mã xác thực mới đã được gửi đến email của bạn.');
     } catch (err) {
       setError(err.response?.data?.message || 'Không thể gửi lại mã xác thực. Vui lòng thử lại.');

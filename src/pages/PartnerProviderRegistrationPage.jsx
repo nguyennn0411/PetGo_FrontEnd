@@ -22,24 +22,7 @@ const PartnerProviderRegistrationPage = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-16">
-            <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/85 backdrop-blur-md">
-                <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-                    <button
-                        type="button"
-                        onClick={() => navigate('/profile?tab=partner-registration')}
-                        className="group rounded-full p-2 transition-colors hover:bg-gray-100"
-                    >
-                        <ArrowLeft className="h-6 w-6 text-gray-600 group-hover:text-orange-500" />
-                    </button>
-                    <Link to="/" className="flex items-center gap-2 font-black text-xl tracking-tight">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500 text-white">P</span>
-                        PetGo
-                    </Link>
-                    <Link to="/" className="rounded-full p-2 transition-colors hover:bg-gray-100">
-                        <Home className="h-6 w-6 text-gray-600" />
-                    </Link>
-                </div>
-            </header>
+            
 
             <main className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
                 <section className="mb-6 overflow-hidden rounded-[2.5rem] border border-white bg-white shadow-xl shadow-gray-200/50">
