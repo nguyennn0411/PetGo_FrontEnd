@@ -722,16 +722,13 @@ const AdminPartners = () => {
         <button className="btn btn-sm" onClick={resetFilters} disabled={activeFilterCount === 0}>
           Xóa lọc{activeFilterCount ? ` (${activeFilterCount})` : ''}
         </button>
-        <button className="btn btn-primary">Xuất danh sách</button>
+        {/* <button className="btn btn-primary">Xuất danh sách</button> */}
       </div>
 
       <div className="card">
         <div className="card-header">
           <div>
-            <div className="card-title">Danh sách đối tác thống nhất</div>
-            <div className="text-muted text-small">
-              Gộp provider đã verified và hồ sơ đăng ký theo 3 trạng thái chính: Verified, Pending, Cancel.
-            </div>
+            <div className="card-title">Danh sách đối tác</div>
           </div>
           <span className="badge badge-info">{filteredRows.length}/{allRows.length} hồ sơ</span>
         </div>
