@@ -1,33 +1,68 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CircleCheck, MapPin, Wallet } from 'lucide-react';
 import ShopLayout from '../../components/shop/ShopLayout';
+import { AuthContext } from '../../context/AuthContext';
 import { formatVnd, getCurrentUserId, shopApi } from '../../api/shop';
+import { getAccountDisplayName, getAccountPhone } from '../../utils/userIdentity';
 
 export default function CheckoutPage() {
+  const { account } = useContext(AuthContext);
   const userId = getCurrentUserId();
   const navigate = useNavigate();
   const [cart, setCart] = useState({ items: [], subtotalAmount: 0, shippingFeeAmount: 0, totalAmount: 0 });
   const [submitting, setSubmitting] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
+  const wardOptions = [
+    'Xã Hòa Lạc',
+    'Xã Yên Xuân',
+    'Xã Thạch Thất',
+    'Xã Tây Phương',
+    'Xã Hạ Bằng',
+  ];
   const [form, setForm] = useState({
-    receiverName: 'Nguyễn Văn Test',
-    receiverPhone: '0912345678',
-    receiverEmail: 'test@petgo.vn',
+    receiverName: '',
+    receiverPhone: '',
+    receiverEmail: '',
     shippingAddress: 'Số 123 Nguyễn Trãi',
-    ward: 'Thanh Xuân Trung',
-    district: 'Thanh Xuân',
+    ward: wardOptions[0],
+    district: 'Thạch Thất',
     city: 'Hà Nội',
     province: 'Hà Nội',
     paymentMethod: 'WALLET',
     customerNote: '',
   });
 
-  useEffect(() => { shopApi.getCart(userId).then(setCart).catch(() => {}); }, []);
-  const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const isValidPhone = (value) => /^\d{9,12}$/.test(value || '');
+
+  useEffect(() => {
+    shopApi.getCart(userId).then(setCart).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!account) return;
+    setForm((prev) => ({
+      ...prev,
+      receiverName: getAccountDisplayName(account),
+      receiverPhone: getAccountPhone(account),
+      receiverEmail: account?.email || prev.receiverEmail,
+    }));
+  }, [account]);
+
+  const update = (key, value) => {
+    if (key === 'receiverPhone') {
+      setPhoneError(value === '' || isValidPhone(value) ? '' : 'Số điện thoại phải chứa 9-12 chữ số.');
+    }
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
 
   const submit = async (e) => {
     e.preventDefault();
     if (!cart.items?.length) return alert('Giỏ hàng đang trống.');
+    if (!isValidPhone(form.receiverPhone)) {
+      setPhoneError('Số điện thoại phải chứa đủ chữ số.');
+      return alert('Số điện thoại không đúng định dạng. Vui lòng nhập chữ số.');
+    }
     try {
       setSubmitting(true);
       const order = await shopApi.checkout({ userId, ...form });
@@ -56,11 +91,10 @@ export default function CheckoutPage() {
             <h2 className="font-black text-xl flex items-center gap-2"><MapPin className="text-orange-500" /> Thông tin nhận hàng</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label="Họ tên" value={form.receiverName} onChange={(v) => update('receiverName', v)} required />
-              <Input label="Số điện thoại" value={form.receiverPhone} onChange={(v) => update('receiverPhone', v)} required />
+              <Input label="Số điện thoại" value={form.receiverPhone} onChange={(v) => update('receiverPhone', v)} required type="tel" error={phoneError} />
               <Input label="Email" value={form.receiverEmail} onChange={(v) => update('receiverEmail', v)} type="email" />
-              <Input label="Tỉnh/Thành phố" value={form.city} onChange={(v) => update('city', v)} />
-              <Input label="Quận/Huyện" value={form.district} onChange={(v) => update('district', v)} />
-              <Input label="Phường/Xã" value={form.ward} onChange={(v) => update('ward', v)} />
+              <Input label="Tỉnh/Thành phố" value={form.city} disabled />
+              <Select label="Xã" value={form.ward} onChange={(v) => update('ward', v)} options={wardOptions} />
             </div>
             <Input label="Địa chỉ cụ thể" value={form.shippingAddress} onChange={(v) => update('shippingAddress', v)} required />
             <div>
@@ -93,6 +127,30 @@ export default function CheckoutPage() {
   );
 }
 
-function Input({ label, value, onChange, type = 'text', required = false }) {
-  return <div><label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">{label}</label><input type={type} required={required} value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-2xl bg-gray-50 border border-gray-200 p-4 outline-none focus:border-orange-400 font-bold" /></div>;
+function Input({ label, value, onChange, type = 'text', required = false, disabled = false, error }) {
+  return (
+    <div>
+      <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">{label}</label>
+      <input
+        type={type}
+        required={required}
+        disabled={disabled}
+        value={value}
+        onChange={(e) => onChange && onChange(e.target.value)}
+        className={`w-full rounded-2xl bg-gray-50 border p-4 outline-none focus:border-orange-400 font-bold ${disabled ? 'cursor-not-allowed bg-gray-100 text-gray-500 border-gray-200' : error ? 'border-red-400 text-red-900 focus:border-red-500' : 'border-gray-200'}`}
+      />
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+function Select({ label, value, onChange, options }) {
+  return (
+    <div>
+      <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">{label}</label>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-2xl bg-gray-50 border border-gray-200 p-4 outline-none focus:border-orange-400 font-bold">
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+    </div>
+  );
 }
