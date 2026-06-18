@@ -17,6 +17,9 @@ import {
   Star,
   Store,
   Users,
+  Package,
+  ListTree,
+  ShoppingCart,
   X,
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
@@ -59,7 +62,14 @@ const navGroups = [
     items: [
       { id: 'admin-reports', icon: BarChart3, label: 'Báo cáo', path: '/admin/reports', subtitle: 'Phân tích tăng trưởng, doanh thu và khu vực' },
       { id: 'admin-vouchers', icon: Gift, label: 'Khuyến mãi', path: '/admin/vouchers', subtitle: 'Quản lý voucher, flash sale và mã ưu đãi' },
-      { id: 'admin-content', icon: ShoppingBag, label: 'Nội dung', path: '/admin/content', subtitle: 'Quản lý banner, blog, SEO và trang tĩnh' },
+    ],
+  },
+  {
+    title: 'Cửa hàng (Store)',
+    items: [
+      { id: 'admin-categories', icon: ListTree, label: 'Danh mục', path: '/admin/categories', subtitle: 'Quản lý danh mục sản phẩm cửa hàng' },
+      { id: 'admin-products', icon: Package, label: 'Sản phẩm', path: '/admin/products', subtitle: 'Quản lý sản phẩm, tồn kho và giá bán' },
+      { id: 'admin-orders', icon: ShoppingCart, label: 'Đơn hàng', path: '/admin/shop-orders', subtitle: 'Xử lý và theo dõi đơn hàng mua sắm' },
     ],
   },
 ];

@@ -35,8 +35,15 @@ export default function ShopHomePage() {
   }, []);
 
   const addToCart = async (product) => {
-    await shopApi.addCartItem({ userId: getCurrentUserId(), productId: product.id, quantity: 1 });
-    alert('Đã thêm sản phẩm vào giỏ hàng!');
+    const userId = getCurrentUserId();
+    if (!userId) {
+      if (confirm('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng. Đăng nhập ngay?')) {
+        navigate('/login');
+      }
+      return;
+    }
+    await shopApi.addCartItem({ userId, productId: product.id, quantity: 1 });
+    window.alert('Đã thêm sản phẩm vào giỏ hàng!');
   };
 
   return (

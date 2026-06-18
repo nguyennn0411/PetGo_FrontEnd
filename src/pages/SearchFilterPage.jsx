@@ -69,7 +69,7 @@ const SearchFilterPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [layout, setLayout] = useState('grid');
-  const [resultView, setResultView] = useState('providers');
+  const [resultView, setResultView] = useState('services');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [servicesLoading, setServicesLoading] = useState(false);
@@ -452,22 +452,22 @@ const SearchFilterPage = () => {
                 <div className="flex items-center gap-2 rounded-2xl border bg-white px-3 py-2 shadow-sm" aria-label="Chuyển kiểu kết quả">
                   <button
                     type="button"
-                    onClick={() => setResultView('providers')}
-                    title="Xem nhà cung cấp"
-                    aria-label="Xem nhà cung cấp"
-                    className={`text-sm font-bold transition-colors ${resultView === 'providers' ? 'text-orange-600' : 'text-gray-500 hover:text-gray-900'}`}
-                  >
-                    Nhà cung cấp
-                  </button>
-                  <span className="h-4 w-px bg-gray-200" aria-hidden="true"></span>
-                  <button
-                    type="button"
                     onClick={() => setResultView('services')}
                     title="Xem dịch vụ"
                     aria-label="Xem dịch vụ"
                     className={`text-sm font-bold transition-colors ${resultView === 'services' ? 'text-orange-600' : 'text-gray-500 hover:text-gray-900'}`}
                   >
                     Dịch vụ
+                  </button>
+                  <span className="h-4 w-px bg-gray-200" aria-hidden="true"></span>
+                  <button
+                    type="button"
+                    onClick={() => setResultView('providers')}
+                    title="Xem nhà cung cấp"
+                    aria-label="Xem nhà cung cấp"
+                    className={`text-sm font-bold transition-colors ${resultView === 'providers' ? 'text-orange-600' : 'text-gray-500 hover:text-gray-900'}`}
+                  >
+                    Nhà cung cấp
                   </button>
                 </div>
                 <div className="flex bg-white border rounded-2xl p-1">

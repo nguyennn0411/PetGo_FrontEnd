@@ -21,6 +21,20 @@ export const shopApi = {
   createAdminProduct: async (payload) => unwrap(await api.post('/admin/products', payload)),
   updateAdminProduct: async (id, payload) => unwrap(await api.put(`/admin/products/${id}`, payload)),
   deleteAdminProduct: async (id) => unwrap(await api.delete(`/admin/products/${id}`)),
+  
+  uploadAdminStoreImage: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return unwrap(await api.post('/admin/upload-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }));
+  },
+  
+  getAdminCategories: async (params = {}) => unwrap(await api.get('/admin/shop-categories', { params })),
+  createAdminCategory: async (payload) => unwrap(await api.post('/admin/shop-categories', payload)),
+  updateAdminCategory: async (id, payload) => unwrap(await api.put(`/admin/shop-categories/${id}`, payload)),
+  deleteAdminCategory: async (id) => unwrap(await api.delete(`/admin/shop-categories/${id}`)),
+  
   getAdminShopOrders: async (params = {}) => unwrap(await api.get('/admin/shop-orders', { params })),
   updateAdminShopOrderStatus: async (id, payload) => unwrap(await api.put(`/admin/shop-orders/${id}/status`, payload)),
 };
@@ -37,10 +51,10 @@ export const getCurrentUserId = () => {
   if (account) {
     try {
       const parsed = JSON.parse(account);
-      return Number(parsed.userId || parsed.userId || parsed.id || 1);
+      return Number(parsed.userId || parsed.id) || null;
     } catch {
-      return 1;
+      return null;
     }
   }
-  return 1;
+  return null;
 };

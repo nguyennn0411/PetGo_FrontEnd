@@ -52,6 +52,7 @@ import CartPage from './pages/shop/CartPage';
 import CheckoutPage from './pages/shop/CheckoutPage';
 import ShopOrdersPage from './pages/shop/ShopOrdersPage';
 import AdminProducts from './pages/admin/AdminProducts';
+import AdminCategories from './pages/admin/AdminCategories';
 import AdminShopOrders from './pages/admin/AdminShopOrders';
 import PartnerProviderRegistrationPage from './pages/PartnerProviderRegistrationPage';
 import PartnerDashboardPage from './pages/partner/PartnerDashboardPage';
@@ -139,6 +140,7 @@ export default function App() {
         <Route path='/admin/logs' element={<AdminLogs />} />
         <Route path='/admin/reports' element={<AdminReports />} />
         <Route path='/admin/wallet' element={<AdminWallet />} />
+        <Route path='/admin/categories' element={<AdminCategories />} />
         <Route path='/admin/products' element={<AdminProducts />} />
         <Route path='/admin/shop-orders' element={<AdminShopOrders />} />
 

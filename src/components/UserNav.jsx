@@ -5,15 +5,14 @@ import { AuthContext } from '../context/AuthContext';
 import { getRoleLandingPath, hasAdminRole, hasPartnerRole } from '../utils/partnerAccess';
 import { getMyWallet } from '../api/wallet';
 import { getMyMembership } from '../api/memberships';
+import { shopApi, getCurrentUserId } from '../api/shop';
 
 const navItems = [
     { to: '/', label: 'Trang chủ' },
     { to: '/search', label: 'Dịch vụ', icon: Search },
     { to: '/ai-grooming', label: 'AI Grooming', icon: Sparkles },
     { to: '/shop', label: 'Cửa hàng', icon: ShoppingBag },
-    { to: '/my-bookings', label: 'Booking', icon: Calendar },
     { to: '/favorites', label: 'Yêu thích', icon: Heart },
-    { to: '/wallet', label: 'Ví', icon: Wallet },
 ];
 
 const UserNav = ({ activePath = '' }) => {
@@ -26,32 +25,36 @@ const UserNav = ({ activePath = '' }) => {
     const dashboardPath = canViewDashboard ? getRoleLandingPath(account, '/profile') : '/profile';
     const [walletBalance, setWalletBalance] = useState(null);
     const [membership, setMembership] = useState(null);
+    const [cartCount, setCartCount] = useState(0);
 
     useEffect(() => {
         if (!account) {
             setWalletBalance(null);
             setMembership(null);
+            setCartCount(0);
             return;
         }
-        const fetchWallet = async () => {
-            try {
-                const w = await getMyWallet();
-                setWalletBalance(w?.balance);
-            } catch (err) { }
-        };
         const fetchMembership = async () => {
             try {
                 const m = await getMyMembership();
                 setMembership(m);
             } catch (err) { }
         };
+        const fetchCart = async () => {
+            try {
+                const cart = await shopApi.getCart(getCurrentUserId());
+                if (cart && cart.items) {
+                    setCartCount(cart.items.reduce((acc, item) => acc + item.quantity, 0));
+                }
+            } catch (err) { }
+        };
         
-        fetchWallet();
         fetchMembership();
+        fetchCart();
         
         const interval = setInterval(() => {
-            fetchWallet();
             fetchMembership();
+            fetchCart();
         }, 5000);
         return () => clearInterval(interval);
     }, [account]);
@@ -135,20 +138,24 @@ const UserNav = ({ activePath = '' }) => {
                         <Crown className={iconColor} /> {membershipLabel}
                     </Link>
                     {account && (
-                        <Link to="/notifications" className="grid h-10 w-10 place-items-center rounded-full border border-gray-200 bg-white text-gray-600 transition-colors hover:border-orange-200 hover:text-orange-500" aria-label="Thông báo">
-                            <Bell className="h-5 w-5" />
-                        </Link>
+                        <>
+                            <Link to="/cart" className="relative grid h-10 w-10 place-items-center rounded-full border border-gray-200 bg-white text-gray-600 transition-colors hover:border-orange-200 hover:text-orange-500" aria-label="Giỏ hàng">
+                                <ShoppingBag className="h-5 w-5" />
+                                {cartCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 grid h-5 min-w-[20px] place-items-center rounded-full bg-orange-500 px-1 text-[10px] font-black text-white">
+                                        {cartCount > 99 ? '99+' : cartCount}
+                                    </span>
+                                )}
+                            </Link>
+                            <Link to="/notifications" className="grid h-10 w-10 place-items-center rounded-full border border-gray-200 bg-white text-gray-600 transition-colors hover:border-orange-200 hover:text-orange-500" aria-label="Thông báo">
+                                <Bell className="h-5 w-5" />
+                            </Link>
+                        </>
                     )}
                     {loadingAccount ? (
                         <div className="h-10 w-24 animate-pulse rounded-full bg-gray-100" />
                     ) : account ? (
                         <div className="flex items-center gap-3">
-                            {walletBalance !== null && walletBalance !== undefined && (
-                                <Link to="/wallet" className="hidden sm:flex h-10 items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 text-sm font-black text-orange-600 transition-colors hover:bg-orange-100">
-                                    <Wallet className="h-4 w-4" />
-                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(walletBalance)}
-                                </Link>
-                            )}
                             <div ref={profileRef} className="relative">
                                 <button type="button" onClick={() => setProfileOpen((value) => !value)} className="flex h-10 items-center gap-2 rounded-full border border-gray-200 bg-white py-1 pl-1 pr-3 text-sm font-black text-gray-800 transition-colors hover:border-orange-200 hover:text-orange-600">
                                 <span className="grid h-8 w-8 place-items-center rounded-full bg-orange-50 text-orange-600"><User className="h-4 w-4" /></span>
@@ -157,6 +164,8 @@ const UserNav = ({ activePath = '' }) => {
                             {profileOpen && (
                                 <div className="absolute right-0 mt-3 w-60 rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-gray-200/70">
                                     <button onClick={() => { setProfileOpen(false); navigate('/profile'); }} className="w-full rounded-2xl px-4 py-3 text-left text-sm font-black hover:bg-orange-50">Hồ sơ cá nhân</button>
+                                    <button onClick={() => { setProfileOpen(false); navigate('/my-bookings'); }} className="w-full rounded-2xl px-4 py-3 text-left text-sm font-black hover:bg-orange-50">Lịch sử Booking</button>
+                                    <button onClick={() => { setProfileOpen(false); navigate('/my-orders'); }} className="w-full rounded-2xl px-4 py-3 text-left text-sm font-black hover:bg-orange-50">Lịch sử mua hàng</button>
                                     <button onClick={() => { setProfileOpen(false); navigate('/wallet'); }} className="w-full rounded-2xl px-4 py-3 text-left text-sm font-black hover:bg-orange-50">Ví PetGo</button>
                                     {canViewDashboard && <button onClick={() => { setProfileOpen(false); navigate(dashboardPath); }} className="w-full rounded-2xl px-4 py-3 text-left text-sm font-black hover:bg-orange-50">Dashboard</button>}
                                     <button onClick={handleLogout} className="mt-1 flex w-full items-center gap-2 rounded-2xl px-4 py-3 text-left text-sm font-black text-red-500 hover:bg-red-50"><LogOut className="h-4 w-4" /> Đăng xuất</button>
@@ -190,9 +199,19 @@ const UserNav = ({ activePath = '' }) => {
                             <Crown className="h-4 w-4 text-orange-500" /> {membershipLabel}
                         </Link>
                         {account && (
-                            <Link to="/notifications" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black text-gray-800 hover:bg-orange-50">
-                                <Bell className="h-4 w-4 text-orange-500" /> Thông báo
-                            </Link>
+                            <>
+                                <Link to="/cart" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black text-gray-800 hover:bg-orange-50">
+                                    <ShoppingBag className="h-4 w-4 text-orange-500" /> Giỏ hàng
+                                    {cartCount > 0 && (
+                                        <span className="ml-auto rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-black text-white">
+                                            {cartCount}
+                                        </span>
+                                    )}
+                                </Link>
+                                <Link to="/notifications" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black text-gray-800 hover:bg-orange-50">
+                                    <Bell className="h-4 w-4 text-orange-500" /> Thông báo
+                                </Link>
+                            </>
                         )}
                         {account ? (
                             <Link to="/profile" onClick={() => setOpen(false)} className="rounded-2xl bg-gray-950 px-4 py-3 text-center text-sm font-black text-white">

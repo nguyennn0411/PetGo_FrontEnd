@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { verifyPayOsPayment } from '../api/payments';
 import {
-  Loader2,
   CheckCircle2,
   AlertCircle,
   ShieldCheck,
@@ -28,14 +27,12 @@ export default function PaymentSuccessPage() {
       }
 
       try {
-        // Sync and verify on backend
-        // Extract invoiceId from composite orderCode (invoiceId * 10000 + random)
         const invoiceId = Math.floor(Number(orderCode) / 10000);
         const data = await verifyPayOsPayment(invoiceId);
         setPaymentData(data);
         setStatus('success');
 
-        // Automatically redirect after 3.5 seconds
+        // Tự động chuyển trang sau 3.5 giây
         setTimeout(() => {
           if (data.bookingId) {
             navigate(`/booking-success?bookingId=${data.bookingId}&invoiceId=${data.invoiceId}`, {
@@ -47,7 +44,8 @@ export default function PaymentSuccessPage() {
               replace: true,
             });
           } else {
-            navigate('/my-bookings', { replace: true });
+            // Đơn hàng Store → chuyển về lịch sử đơn hàng
+            navigate('/my-orders', { replace: true });
           }
         }, 3500);
       } catch (err) {
@@ -76,14 +74,14 @@ export default function PaymentSuccessPage() {
         replace: true,
       });
     } else {
-      navigate('/my-bookings', { replace: true });
+      navigate('/my-orders', { replace: true });
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-tr from-orange-50 via-white to-orange-50 flex items-center justify-center px-6 py-12 font-sans">
       <div className="max-w-md w-full bg-white rounded-[2.5rem] border border-orange-100 shadow-2xl shadow-orange-100/50 p-8 sm:p-10 relative overflow-hidden transition-all duration-500">
-        
+
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-orange-400/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-orange-500/5 rounded-full blur-3xl -ml-16 -mb-16"></div>
@@ -109,20 +107,24 @@ export default function PaymentSuccessPage() {
         {status === 'success' && (
           <div className="text-center space-y-8 animate-in zoom-in duration-500">
             <div className="relative w-24 h-24 mx-auto">
-              {/* Ripple circles */}
               <div className="absolute inset-0 rounded-full bg-green-100 animate-ping opacity-45 duration-1000"></div>
               <div className="relative w-24 h-24 rounded-full bg-green-50 flex items-center justify-center shadow-lg shadow-green-100">
                 <CheckCircle2 className="w-12 h-12 text-green-600" />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-black uppercase tracking-widest mb-2">
                 <Sparkles className="w-3.5 h-3.5" /> Thành công
               </div>
               <h2 className="text-3xl font-black text-gray-900 tracking-tight">Giao dịch đã xác nhận!</h2>
               <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                Thanh toán đã được ghi nhận. Hệ thống đang chuyển bạn về trang hóa đơn/dịch vụ...
+                Thanh toán đã được ghi nhận. Hệ thống đang chuyển bạn về{' '}
+                {paymentData?.bookingId
+                  ? 'trang booking'
+                  : paymentData?.subscriptionId
+                  ? 'trang membership'
+                  : 'lịch sử đơn hàng'}...
               </p>
             </div>
 

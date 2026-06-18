@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Heart, ShoppingBasket, Star, Truck } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import ShopLayout from '../../components/shop/ShopLayout';
 import { formatVnd, getCurrentUserId, resolveProductPrice, shopApi } from '../../api/shop';
 
 export default function ShopProductDetailPage() {
   const { slug } = useParams();
+  const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -19,8 +20,15 @@ export default function ShopProductDetailPage() {
   }, [slug]);
 
   const addToCart = async () => {
-    await shopApi.addCartItem({ userId: getCurrentUserId(), productId: product.id, quantity });
-    alert('Đã thêm sản phẩm vào giỏ hàng!');
+    const userId = getCurrentUserId();
+    if (!userId) {
+      if (confirm('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng. Đăng nhập ngay?')) {
+        navigate('/login');
+      }
+      return;
+    }
+    await shopApi.addCartItem({ userId, productId: product.id, quantity });
+    window.alert('Đã thêm sản phẩm vào giỏ hàng!');
   };
 
   return (

@@ -31,7 +31,23 @@ export default function AdminProducts() {
     if (editing) await shopApi.updateAdminProduct(editing.id, payload); else await shopApi.createAdminProduct(payload);
     setShowForm(false); setEditing(null); setForm(emptyForm); load();
   };
-  const remove = async (id) => { if (confirm('Ẩn sản phẩm này?')) { await shopApi.deleteAdminProduct(id); load(); } };
+  const remove = async (id) => {
+    if (await window.confirmAsync('Bạn có chắc chắn muốn xóa sản phẩm này khỏi hệ thống?')) {
+      await shopApi.deleteAdminProduct(id);
+      load();
+    }
+  };
+  
+  const handleUploadImage = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const url = await shopApi.uploadAdminStoreImage(file);
+      setForm({ ...form, mainImageUrl: url });
+    } catch (err) {
+      window.alert('Lỗi tải ảnh lên');
+    }
+  };
 
   return (
     <AdminLayout title="Quản lý sản phẩm shop">
@@ -49,7 +65,7 @@ export default function AdminProducts() {
       <div className="card mb-0">
         <table>
           <thead><tr><th>Ảnh</th><th>Sản phẩm</th><th>Danh mục</th><th>Giá</th><th>Tồn kho</th><th>Loài</th><th>Trạng thái</th><th style={{ textAlign: 'right' }}>Thao tác</th></tr></thead>
-          <tbody>{products.map((p) => <tr key={p.id}><td><img src={p.mainImageUrl || 'https://placehold.co/80'} style={{ width: 58, height: 58, borderRadius: 16, objectFit: 'cover' }} /></td><td><b>{p.name}</b><br /><span style={{ color: '#888', fontSize: 12 }}>{p.sku || p.productCode}</span></td><td>{p.categoryName}</td><td><b>{formatVnd(p.salePriceAmount || p.priceAmount)}</b>{p.salePriceAmount && <><br /><span style={{ color: '#999', textDecoration: 'line-through', fontSize: 12 }}>{formatVnd(p.priceAmount)}</span></>}</td><td>{p.stockQuantity}</td><td>{p.targetSpecies}</td><td><span className={`status ${p.status === 'ACTIVE' ? 'status-active' : 'status-pending'}`}>{p.status}</span></td><td style={{ textAlign: 'right' }}><button className="btn btn-sm" onClick={() => openForm(p)}>Sửa</button> <button className="btn btn-sm btn-danger" onClick={() => remove(p.id)}>Ẩn</button></td></tr>)}</tbody>
+          <tbody>{products.map((p) => <tr key={p.id}><td><img src={p.mainImageUrl || 'https://placehold.co/80'} style={{ width: 58, height: 58, borderRadius: 16, objectFit: 'cover' }} /></td><td><b>{p.name}</b><br /><span style={{ color: '#888', fontSize: 12 }}>{p.sku || p.productCode}</span></td><td>{p.categoryName}</td><td><b>{formatVnd(p.salePriceAmount || p.priceAmount)}</b>{p.salePriceAmount && <><br /><span style={{ color: '#999', textDecoration: 'line-through', fontSize: 12 }}>{formatVnd(p.priceAmount)}</span></>}</td><td>{p.stockQuantity}</td><td>{p.targetSpecies}</td><td><span className={`status ${p.status === 'ACTIVE' ? 'status-active' : 'status-pending'}`}>{p.status}</span></td><td style={{ textAlign: 'right' }}><button className="btn btn-sm" onClick={() => openForm(p)}>Sửa</button> <button className="btn btn-sm btn-danger" onClick={() => remove(p.id)}>Xóa</button></td></tr>)}</tbody>
         </table>
       </div>
 
@@ -62,7 +78,13 @@ export default function AdminProducts() {
         <Input label="Giá sale" type="number" value={form.salePriceAmount || ''} onChange={(v) => setForm({ ...form, salePriceAmount: v })} />
         <Input label="Tồn kho" type="number" value={form.stockQuantity} onChange={(v) => setForm({ ...form, stockQuantity: v })} />
         <Input label="SKU" value={form.sku || ''} onChange={(v) => setForm({ ...form, sku: v })} />
-        <Input label="Ảnh URL" value={form.mainImageUrl || ''} onChange={(v) => setForm({ ...form, mainImageUrl: v })} />
+        <div>
+          <label>Ảnh sản phẩm</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input type="file" accept="image/*" onChange={handleUploadImage} style={{ flex: 1, padding: '8px 0' }} />
+            {form.mainImageUrl && <img src={form.mainImageUrl} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8 }} alt="preview" />}
+          </div>
+        </div>
         <Input label="Thương hiệu" value={form.brand || ''} onChange={(v) => setForm({ ...form, brand: v })} />
       </div><div style={{ marginTop: 12 }}><label>Mô tả ngắn</label><input value={form.shortDescription || ''} onChange={(e) => setForm({ ...form, shortDescription: e.target.value })} /></div><div style={{ marginTop: 12 }}><label>Mô tả</label><textarea rows={4} value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}><button type="button" className="btn" onClick={() => setShowForm(false)}>Hủy</button><button className="btn btn-primary">Lưu</button></div></form></div>}
     </AdminLayout>
