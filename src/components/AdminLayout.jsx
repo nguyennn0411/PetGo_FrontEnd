@@ -23,18 +23,18 @@ import { AuthContext } from '../context/AuthContext';
 import '../styles/AdminDashboard.css';
 
 const navGroups = [
-  {
-    title: 'Tổng quan',
-    items: [
-      {
-        id: 'admin-dashboard',
-        icon: BarChart3,
-        label: 'Dashboard',
-        path: '/admin/dashboard',
-        subtitle: 'Tổng quan hệ thống và tình trạng vận hành',
-      },
-    ],
-  },
+  // {
+  //   title: 'Tổng quan',
+  //   items: [
+  //     {
+  //       id: 'admin-dashboard',
+  //       icon: BarChart3,
+  //       label: 'Dashboard',
+  //       path: '/admin/dashboard',
+  //       subtitle: 'Tổng quan hệ thống và tình trạng vận hành',
+  //     },
+  //   ],
+  // },
   {
     title: 'Quản lý hệ thống',
     items: [
@@ -42,7 +42,7 @@ const navGroups = [
       { id: 'admin-partners', icon: Store, label: 'Đối tác', path: '/admin/partners', badge: 5, subtitle: 'Duyệt hồ sơ, quản trị nhà cung cấp và trạng thái provider' },
       { id: 'admin-services', icon: Scissors, label: 'Dịch vụ', path: '/admin/services', subtitle: 'Quản lý danh mục và service taxonomy' },
       { id: 'admin-service-requests', icon: FileText, label: 'Duyệt dịch vụ', path: '/admin/partner-service-requests', subtitle: 'Duyệt yêu cầu tạo/cập nhật dịch vụ từ partner' },
-      { id: 'admin-bookings', icon: CalendarDays, label: 'Booking', path: '/admin/bookings', subtitle: 'Theo dõi booking toàn hệ thống' },
+      // { id: 'admin-bookings', icon: CalendarDays, label: 'Booking', path: '/admin/bookings', subtitle: 'Theo dõi booking toàn hệ thống' },
       { id: 'admin-wallet', icon: Wallet, label: 'Ví', path: '/admin/wallet', subtitle: 'Duyệt nạp/rút, khóa ví và cấu hình tự động cộng tiền' },
       { id: 'admin-reviews', icon: Star, label: 'Review', path: '/admin/reviews', badge: 2, subtitle: 'Giám sát đánh giá và nội dung bị báo cáo' },
     ],
