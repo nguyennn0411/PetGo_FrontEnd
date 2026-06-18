@@ -40,6 +40,12 @@ const UserNav = ({ activePath = '' }) => {
                 setMembership(m);
             } catch (err) { }
         };
+        const fetchWallet = async () => {
+            try {
+                const w = await getMyWallet();
+                setWalletBalance(w?.balance ?? null);
+            } catch (err) { }
+        };
         const fetchCart = async () => {
             try {
                 const cart = await shopApi.getCart(getCurrentUserId());
@@ -49,13 +55,15 @@ const UserNav = ({ activePath = '' }) => {
             } catch (err) { }
         };
 
+        fetchWallet();
         fetchMembership();
         fetchCart();
 
         const interval = setInterval(() => {
+            fetchWallet();
             fetchMembership();
             fetchCart();
-        }, 5000);
+        }, 30000);
         return () => clearInterval(interval);
     }, [account]);
 
@@ -139,6 +147,16 @@ const UserNav = ({ activePath = '' }) => {
                     </Link>
                     {account && (
                         <>
+                            <Link
+                                to="/wallet"
+                                className="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-3 py-2 text-xs font-black text-green-700 transition-colors hover:bg-green-100"
+                                aria-label="Ví PetGo"
+                            >
+                                <Wallet className="h-3.5 w-3.5 text-green-600" />
+                                {walletBalance !== null
+                                    ? walletBalance.toLocaleString('vi-VN') + '₫'
+                                    : '...'}
+                            </Link>
                             <Link to="/cart" className="relative grid h-10 w-10 place-items-center rounded-full border border-gray-200 bg-white text-gray-600 transition-colors hover:border-orange-200 hover:text-orange-500" aria-label="Giỏ hàng">
                                 <ShoppingBag className="h-5 w-5" />
                                 {cartCount > 0 && (
@@ -205,6 +223,15 @@ const UserNav = ({ activePath = '' }) => {
                                     {cartCount > 0 && (
                                         <span className="ml-auto rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-black text-white">
                                             {cartCount}
+                                        </span>
+                                    )}
+                                </Link>
+                                <Link to="/wallet" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black text-gray-800 hover:bg-orange-50">
+                                    <Wallet className="h-4 w-4 text-green-600" />
+                                    <span>Ví PetGo</span>
+                                    {walletBalance !== null && (
+                                        <span className="ml-auto rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-black text-green-700">
+                                            {walletBalance.toLocaleString('vi-VN')}₫
                                         </span>
                                     )}
                                 </Link>
