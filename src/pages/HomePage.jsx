@@ -149,7 +149,6 @@ const App = () => {
 
   const audienceCards = [
     { title: 'Dành cho chủ nuôi', desc: 'Một nơi để tìm dịch vụ đáng tin cậy, lưu địa điểm yêu thích và chăm sóc thú cưng đều đặn hơn.', cta: 'Khám phá dịch vụ', href: '/search', icon: <User className="w-6 h-6" /> },
-    { title: 'Dành cho đối tác', desc: 'Cửa hàng có thể giới thiệu hồ sơ, quản lý dịch vụ, lịch làm việc và booking từ khách hàng.', cta: 'Đăng ký đối tác', href: '/partner-registration/provider', icon: <PawPrint className="w-6 h-6" /> },
   ];
 
   const getCategoryIcon = (categoryName = '') => {
@@ -236,9 +235,7 @@ const App = () => {
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500 mb-3">PetGo là gì?</p>
-              <h2 className="text-3xl font-black tracking-tight text-gray-950 sm:text-5xl">
-                Nền tảng kết nối chủ nuôi với dịch vụ chăm sóc thú cưng đáng tin cậy.
-              </h2>
+
               <p className="mt-5 text-base font-medium leading-8 text-gray-500">
                 PetGo giúp bạn tìm kiếm, so sánh, đặt lịch và quản lý các nhu cầu chăm sóc thú cưng hằng ngày — từ spa làm đẹp, khám thú y đến khách sạn lưu trú.
               </p>
@@ -372,7 +369,6 @@ const App = () => {
         <div className="max-w-7xl mx-auto px-4">
           <div className="mb-10 max-w-3xl">
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500 mb-3">PetGo dành cho ai?</p>
-            <h2 className="text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">Một hệ sinh thái cho cả chủ nuôi và đơn vị chăm sóc thú cưng.</h2>
           </div>
           <div className="grid gap-6 lg:grid-cols-2">
             {audienceCards.map((card) => (
