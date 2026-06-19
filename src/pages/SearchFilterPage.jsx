@@ -540,12 +540,12 @@ const SearchFilterPage = () => {
                       {loading ? 'Đang tải...' : 'Xem thêm'}
                     </button>
                   )}
-                  <button
+                  {/* <button
                     onClick={() => navigate('/compare')}
                     className="px-6 py-3 rounded-2xl border bg-white font-semibold hover:bg-gray-50"
                   >
                     So sánh dịch vụ / nhà cung cấp
-                  </button>
+                  </button> */}
                 </div>
               </>
             )}
