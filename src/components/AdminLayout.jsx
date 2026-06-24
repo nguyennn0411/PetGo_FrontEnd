@@ -21,6 +21,8 @@ import {
   X,
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
+import DashboardLayout from './DashboardLayout';
+import AdminSidebar, { adminNavGroups } from './sidebars/AdminSidebar';
 import '../styles/AdminDashboard.css';
 
 export const AdminTitleContext = createContext(null);
@@ -77,20 +79,45 @@ const AdminLayout = () => {
   const [open, setOpen] = useState(false);
   const [pageTitle, setPageTitle] = useState('');
 
-  const activeItem = useMemo(() => (
-    navGroups
-      .flatMap((group) => group.items)
-      .find((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`))
-  ), [location.pathname]);
+  /* ── Tự động resolve tiêu đề dựa trên URL hiện tại ── */
+  const activeItem = useMemo(
+    () =>
+      adminNavGroups
+        .flatMap((group) => group.items)
+        .find(
+          (item) =>
+            location.pathname === item.path ||
+            location.pathname.startsWith(`${item.path}/`),
+        ),
+    [location.pathname],
+  );
 
   const displayName = account?.fullName || account?.name || account?.email || 'Admin';
   const title = pageTitle || activeItem?.label || 'Admin Panel';
   const pageSubtitle = activeItem?.subtitle || 'Điều phối và giám sát hệ sinh thái PetGo';
 
-  const handleLogout = () => {
-    logout?.();
-    navigate('/login');
-  };
+  /* ── Header bên trái: nút quay lại ── */
+  const headerLeftExtra = (
+    <button
+      onClick={() => navigate('/')}
+      className="hidden sm:flex p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-orange-500"
+      type="button"
+    >
+      <ChevronLeft className="w-5 h-5" />
+    </button>
+  );
+
+  /* ── Header bên phải: nút thông báo ── */
+  const headerActions = (
+    <button
+      onClick={() => navigate('/admin/notifications')}
+      className="relative p-3 rounded-2xl bg-gray-50 text-gray-500 hover:text-orange-500 hover:bg-orange-50"
+      title="Thông báo"
+      type="button"
+    >
+      <MessageSquare className="w-5 h-5" />
+    </button>
+  );
 
   return (
     <AdminTitleContext.Provider value={setPageTitle}>
