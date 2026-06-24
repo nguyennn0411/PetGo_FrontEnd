@@ -21,15 +21,12 @@ import {
   RefreshCw,
   Settings,
   ShieldCheck,
+  Store,
   Trash2,
-  Upload,
   User,
 } from 'lucide-react';
 import api from '../api/axios';
 import { updateMyProfile } from '../api/profile';
-import Swal from 'sweetalert2';
-import { toast } from 'react-hot-toast';
-import ImageUploadPopup from '../components/ImageUploadPopup';
 import NotificationCenter from '../components/NotificationCenter';
 import { AuthContext } from '../context/AuthContext';
 import {
@@ -54,7 +51,6 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [imageUploadType, setImageUploadType] = useState(null);
 
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -107,7 +103,7 @@ const ProfilePage = () => {
       const [profileRes, bookingsRes] = await Promise.all([
         api.get('/profile/me'),
         userId
-          ? api.get(`/bookings/my`, { params: { status: 'ALL' } })
+          ? api.get(`/users/${userId}/bookings`, { params: { status: 'ALL' } })
           : Promise.resolve({ data: { bookings: [] } }),
       ]);
 
@@ -115,8 +111,8 @@ const ProfilePage = () => {
       setProfile(profileData);
       updateAccount?.(profileData?.user || {});
 
-      const bookingsResult = Array.isArray(bookingsRes.data?.result) ? bookingsRes.data.result : (bookingsRes.data?.bookings || []);
-      setBookings(bookingsResult);
+      const bookingPayload = bookingsRes.data?.bookings ? bookingsRes.data : (bookingsRes.data?.result || bookingsRes.data);
+      setBookings(bookingPayload?.bookings || []);
     } catch (error) {
       setProfileError(error.response?.data?.message || 'Không thể tải profile.');
       setBookingsError(error.response?.data?.message || 'Không thể tải lịch sử booking.');
@@ -174,7 +170,7 @@ const ProfilePage = () => {
       updateAccount?.(updated?.user || {});
       setIsEditModalOpen(false);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Cập nhật profile thất bại.');
+      window.alert(error.response?.data?.message || 'Cập nhật profile thất bại.');
     } finally {
       setIsSaving(false);
     }
@@ -182,8 +178,8 @@ const ProfilePage = () => {
 
   const handleDeletePet = async (petId, petName) => {
     if (!userId) return;
-    const result = await Swal.fire({ icon: 'warning', title: 'Xóa thú cưng?', text: `Bạn có chắc muốn xóa "${petName}"?`, showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: 'Hủy', confirmButtonColor: '#ef4444', reverseButtons: true });
-    if (!result.isConfirmed) return;
+    const accepted = window.confirm(`Bạn có chắc muốn xóa thú cưng ${petName}?`);
+    if (!accepted) return;
 
     try {
       setDeletingPetId(petId);
@@ -191,30 +187,9 @@ const ProfilePage = () => {
       setPets((prev) => prev.filter((pet) => pet.id !== petId));
       setProfile((prev) => prev ? { ...prev, totalPets: Math.max((prev.totalPets || 1) - 1, 0) } : prev);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Xóa thú cưng thất bại.');
+      window.alert(error.response?.data?.message || 'Xóa thú cưng thất bại.');
     } finally {
       setDeletingPetId(null);
-    }
-  };
-
-  const handleImageSave = async (url) => {
-    try {
-      const payload = {
-        fullName: displayUser.name,
-        email: displayUser.email,
-        phoneNumber: displayUser.phone,
-        avatarUrl: imageUploadType === 'avatar' ? url : displayUser.avatarUrl,
-        coverUrl: imageUploadType === 'cover' ? url : displayUser.coverUrl,
-        addressLine1: displayUser.addressLine1,
-        city: displayUser.city,
-        province: displayUser.province,
-      };
-      const updated = await updateMyProfile(payload);
-      setProfile(updated);
-      updateAccount?.(updated?.user || {});
-      setImageUploadType(null);
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Cập nhật ảnh thất bại.');
     }
   };
 
@@ -264,7 +239,7 @@ const ProfilePage = () => {
           <div className="relative h-48 sm:h-64">
             <img src={displayUser.cover} alt="Cover" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-            <button onClick={() => setImageUploadType('cover')} className="absolute top-4 right-4 p-3 bg-white/20 backdrop-blur-md hover:bg-white/40 rounded-2xl text-white transition-all border border-white/30">
+            <button className="absolute top-4 right-4 p-3 bg-white/20 backdrop-blur-md hover:bg-white/40 rounded-2xl text-white transition-all border border-white/30">
               <Camera className="w-5 h-5" />
             </button>
           </div>
@@ -272,11 +247,8 @@ const ProfilePage = () => {
           <div className="px-8 pb-8 relative">
             <div className="flex flex-col sm:flex-row items-end gap-6 -mt-16 sm:-mt-20 mb-6">
               <div className="relative group">
-                <div onClick={() => setImageUploadType('avatar')} className="w-32 h-32 sm:w-40 sm:h-40 rounded-[2rem] border-4 border-white overflow-hidden shadow-2xl relative bg-white cursor-pointer group-hover:ring-2 group-hover:ring-orange-500 transition-all">
+                <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-[2rem] border-4 border-white overflow-hidden shadow-2xl relative bg-white">
                   <img src={displayUser.avatar} alt={displayUser.name} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
-                    <Camera className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-all" />
-                  </div>
                 </div>
                 <div className="absolute -bottom-2 -right-2 bg-orange-500 p-2.5 rounded-2xl shadow-lg border-4 border-white">
                   <ShieldCheck className="w-5 h-5 text-white" />
@@ -314,6 +286,7 @@ const ProfilePage = () => {
             <TabButton active={activeTab === 'personal'} onClick={() => setActiveTab('personal')} icon={<User className="w-5 h-5" />} label="Thông tin cá nhân" />
             <TabButton active={activeTab === 'pets'} onClick={() => setActiveTab('pets')} icon={<PawPrint className="w-5 h-5" />} label="Thú cưng của tôi" />
             <TabButton active={activeTab === 'history'} onClick={() => setActiveTab('history')} icon={<Clock className="w-5 h-5" />} label="Lịch sử dịch vụ" />
+            <TabButton active={activeTab === 'partner-registration'} onClick={() => setActiveTab('partner-registration')} icon={<Store className="w-5 h-5" />} label="Đăng ký Partner" />
             <TabButton active={activeTab === 'security'} onClick={() => setActiveTab('security')} icon={<ShieldCheck className="w-5 h-5" />} label="Mật khẩu & Bảo mật" />
             <TabButton active={activeTab === 'payment'} onClick={() => setActiveTab('payment')} icon={<CreditCard className="w-5 h-5" />} label="Phương thức thanh toán" />
             <TabButton active={activeTab === 'notifications'} onClick={() => setActiveTab('notifications')} icon={<Bell className="w-5 h-5" />} label="Thông báo" />
@@ -451,13 +424,13 @@ const ProfilePage = () => {
                 ) : (
                   <div className="grid grid-cols-1 gap-4">
                     {recentBookings.map((item) => (
-                      <div key={item.id} className="bg-white p-6 rounded-[2.5rem] border border-gray-50 flex flex-col sm:flex-row sm:items-center gap-6 hover:shadow-xl hover:shadow-gray-100 transition-all group relative overflow-hidden">
+                      <div key={item.bookingId} className="bg-white p-6 rounded-[2.5rem] border border-gray-50 flex flex-col sm:flex-row sm:items-center gap-6 hover:shadow-xl hover:shadow-gray-100 transition-all group relative overflow-hidden">
                         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${item.status === 'CANCELLED' ? 'bg-gray-100 text-gray-400' : 'bg-orange-100 text-orange-600'}`}>
                           <PawPrint className="w-5 h-5" />
                         </div>
                         <div className="flex-1 space-y-1">
                           <div className="flex items-center justify-between gap-3">
-                            <h3 className="font-black text-lg text-gray-900">{item.areaName}</h3>
+                            <h3 className="font-black text-lg text-gray-900">{item.providerName}</h3>
                             <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${item.status === 'COMPLETED' ? 'bg-green-50 text-green-600' : item.status === 'CANCELLED' ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'}`}>
                               {item.statusLabel || item.status}
                             </span>
@@ -471,7 +444,7 @@ const ProfilePage = () => {
                             <div className="flex items-center gap-1 text-orange-600 font-black">{item.totalAmountDisplay || item.totalAmount}</div>
                           </div>
                         </div>
-                        <button onClick={() => navigate(`/bookings/${item.id}`)} className="sm:p-3 bg-gray-50 rounded-xl text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-all">
+                        <button onClick={() => navigate(`/bookings/${item.bookingId}`)} className="sm:p-3 bg-gray-50 rounded-xl text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-all">
                           <ExternalLink className="w-5 h-5" />
                         </button>
                       </div>
@@ -479,6 +452,10 @@ const ProfilePage = () => {
                   </div>
                 )}
               </div>
+            )}
+
+            {activeTab === 'partner-registration' && (
+              <PartnerRegistrationChoice onSelectProvider={() => navigate('/partner-registration/provider')} />
             )}
 
             {activeTab === 'notifications' && (
@@ -499,14 +476,6 @@ const ProfilePage = () => {
           </div>
         </div>
       </main>
-
-      {imageUploadType && (
-        <ImageUploadPopup
-          type={imageUploadType}
-          onSave={handleImageSave}
-          onClose={() => setImageUploadType(null)}
-        />
-      )}
 
       {isEditModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
@@ -531,6 +500,8 @@ const ProfilePage = () => {
                   <ModalInput label="Địa chỉ dòng 1" value={editData.addressLine1} onChange={(e) => setEditData({ ...editData, addressLine1: e.target.value })} />
                   <ModalInput label="Thành phố" value={editData.city} onChange={(e) => setEditData({ ...editData, city: e.target.value })} />
                   <ModalInput label="Tỉnh" value={editData.province} onChange={(e) => setEditData({ ...editData, province: e.target.value })} />
+                  <ModalInput label="Avatar URL" value={editData.avatarUrl} onChange={(e) => setEditData({ ...editData, avatarUrl: e.target.value })} />
+                  <ModalInput label="Cover URL" value={editData.coverUrl} onChange={(e) => setEditData({ ...editData, coverUrl: e.target.value })} />
                 </div>
 
                 <div className="pt-8 flex gap-4">
@@ -556,6 +527,57 @@ const ProfilePage = () => {
     </div>
   );
 };
+
+const PartnerRegistrationChoice = ({ onSelectProvider }) => (
+  <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-white space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+    <div className="space-y-3">
+      <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center">
+        <Store className="w-7 h-7" />
+      </div>
+      <div>
+        <h2 className="text-2xl font-black">Chọn loại đăng ký Partner</h2>
+        <p className="text-gray-500 font-medium mt-1">Hiện tại PetGo đang mở đăng ký cho nhà cung cấp dịch vụ.</p>
+      </div>
+    </div>
+
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <button
+        type="button"
+        onClick={onSelectProvider}
+        className="group min-h-48 rounded-[2rem] bg-orange-50 p-6 text-left border border-orange-100 transition-all hover:-translate-y-1 hover:bg-orange-500 hover:text-white hover:shadow-2xl hover:shadow-orange-100 active:scale-[0.98]"
+      >
+        <span className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-orange-500 shadow-sm transition-all group-hover:bg-white/20 group-hover:text-white">
+          <Store className="w-7 h-7" />
+        </span>
+        <span className="block text-xl font-black text-gray-900 transition-colors group-hover:text-white">Đăng ký cho provider</span>
+        <span className="mt-2 block text-sm font-semibold leading-relaxed text-gray-500 transition-colors group-hover:text-orange-50">
+          Dành cho provider muốn tạo hồ sơ dịch vụ, gửi ảnh địa điểm và chờ xét duyệt.
+        </span>
+        <span className="mt-5 inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-orange-600 transition-colors group-hover:text-white">
+          Bắt đầu đăng ký
+          <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+        </span>
+      </button>
+
+      <button
+        type="button"
+        disabled
+        className="min-h-48 cursor-not-allowed rounded-[2rem] bg-gray-50 p-6 text-left border border-gray-100 opacity-80"
+      >
+        <span className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-gray-400 shadow-sm">
+          <Clock className="w-7 h-7" />
+        </span>
+        <span className="block text-xl font-black text-gray-500">Sắp ra mắt</span>
+        <span className="mt-2 block text-sm font-semibold leading-relaxed text-gray-400">
+          Luồng đăng ký partner khác đang được chuẩn bị và sẽ được mở ở phiên bản sau.
+        </span>
+        <span className="mt-5 inline-flex rounded-full bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400">
+          Đang phát triển
+        </span>
+      </button>
+    </div>
+  </div>
+);
 
 const StatItem = ({ label, value }) => (
   <div className="text-center group cursor-default">

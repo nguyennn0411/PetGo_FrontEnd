@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Bell, CheckCheck, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
 import {
     getMyNotificationSummary,
@@ -6,7 +6,6 @@ import {
     markAllNotificationsAsRead,
     markNotificationAsRead,
 } from '../api/notifications';
-import { NotificationContext } from '../context/NotificationContext';
 
 const filterOptions = [
     { value: 'ALL', label: 'Tất cả' },
@@ -22,7 +21,6 @@ const priorityClass = {
 };
 
 const NotificationCenter = ({ compact = false }) => {
-    const { newNotifications, resetUnreadCount, clearNewNotifications } = useContext(NotificationContext);
     const [notifications, setNotifications] = useState([]);
     const [summary, setSummary] = useState({ total: 0, unread: 0, read: 0 });
     const [filter, setFilter] = useState('ALL');
@@ -38,11 +36,8 @@ const NotificationCenter = ({ compact = false }) => {
                 getMyNotifications(nextFilter),
                 getMyNotificationSummary(),
             ]);
-            const merged = mergeNotifications(items || [], newNotifications);
-            setNotifications(merged);
+            setNotifications(items || []);
             setSummary(nextSummary || { total: 0, unread: 0, read: 0 });
-            resetUnreadCount(nextSummary?.unread || 0);
-            clearNewNotifications();
         } catch (err) {
             setError(err.response?.data?.message || 'Không thể tải thông báo.');
         } finally {
@@ -53,12 +48,6 @@ const NotificationCenter = ({ compact = false }) => {
     useEffect(() => {
         loadNotifications(filter);
     }, [filter]);
-
-    useEffect(() => {
-        if (newNotifications.length > 0 && filter === 'ALL') {
-            setNotifications((prev) => mergeNotifications(prev, newNotifications));
-        }
-    }, [newNotifications]);
 
     const displayItems = useMemo(() => compact ? notifications.slice(0, 5) : notifications, [compact, notifications]);
 
@@ -158,7 +147,7 @@ const NotificationCenter = ({ compact = false }) => {
             ) : (
                 <div className="space-y-3">
                     {displayItems.map((item) => (
-                        <div key={item.id || item.notificationId} className={`bg-white rounded-[2rem] border p-5 transition-all ${item.read ? 'border-gray-100' : 'border-orange-100 shadow-lg shadow-orange-50'}`}>
+                        <div key={item.id} className={`bg-white rounded-[2rem] border p-5 transition-all ${item.read ? 'border-gray-100' : 'border-orange-100 shadow-lg shadow-orange-50'}`}>
                             <div className="flex items-start gap-4">
                                 <div className={`mt-1 w-3 h-3 rounded-full ${item.read ? 'bg-gray-200' : 'bg-orange-500'}`} />
                                 <div className="flex-1 min-w-0">
@@ -192,12 +181,6 @@ const NotificationCenter = ({ compact = false }) => {
             )}
         </div>
     );
-};
-
-const mergeNotifications = (existing, incoming) => {
-    const seen = new Set(existing.map((n) => n.id || n.notificationId));
-    const newOnes = incoming.filter((n) => !seen.has(n.id || n.notificationId));
-    return [...newOnes, ...existing];
 };
 
 const formatDateTime = (value) => {

@@ -1,195 +1,210 @@
-import { useContext, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, ImagePlus, Loader2, MessageCircle, RefreshCw, Send, Trash2 } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { deleteChatMessage, getChatConversations, getChatMessages, markChatAsRead, sendChatImage, sendChatMessage } from '../api/chat';
 import { AuthContext } from '../context/AuthContext';
-import { createConversation, getConversationDetail, getMessages, getMyConversations, sendMessage } from '../api/chat';
+import { resolveUserId } from '../utils/userIdentity';
 
-const STATUS_LABEL = { OPEN: 'Mở', PROCESSING: 'Đang xử lý', COMPLETED: 'Hoàn thành' };
-const TYPE_OPTIONS = [
-  { value: 'REPORT', label: 'Báo cáo lỗi', desc: 'Báo cáo lỗi hệ thống, thanh toán, booking...' },
-  { value: 'QA', label: 'Hỏi đáp', desc: 'Hỏi đáp thắc mắc về dịch vụ, chính sách...' },
-];
+const ChatPage = () => {
+    const navigate = useNavigate();
+    const { conversationId } = useParams();
+    const { account, loadingAccount } = useContext(AuthContext);
+    const currentUserId = useMemo(() => resolveUserId(account), [account]);
 
-export default function ChatPage() {
-  const { account } = useContext(AuthContext);
-  const navigate = useNavigate();
-  const [conversations, setConversations] = useState([]);
-  const [activeConv, setActiveConv] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ type: 'REPORT', title: '', content: '', imageUrl: '', errorCode: '' });
-  const [input, setInput] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const bottomRef = useRef(null);
+    const [conversations, setConversations] = useState([]);
+    const [activeId, setActiveId] = useState(conversationId ? Number(conversationId) : null);
+    const [messages, setMessages] = useState([]);
+    const [draft, setDraft] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [messagesLoading, setMessagesLoading] = useState(false);
+    const [sending, setSending] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [error, setError] = useState('');
 
-  useEffect(() => { loadConversations(); }, []);
+    const activeConversation = conversations.find((item) => item.id === activeId) || null;
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+    const loadConversations = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const data = await getChatConversations();
+            const list = Array.isArray(data) ? data : [];
+            setConversations(list);
+            if (!activeId && list.length) setActiveId(list[0].id);
+        } catch (err) {
+            setError(err?.response?.data?.message || 'Không tải được danh sách chat.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const loadConversations = async () => {
-    try {
-      const data = await getMyConversations();
-      setConversations(Array.isArray(data) ? data : []);
-    } catch (_) { /* ignore */ } finally { setLoading(false); }
-  };
+    const loadMessages = async (id = activeId) => {
+        if (!id) {
+            setMessages([]);
+            return;
+        }
+        setMessagesLoading(true);
+        setError('');
+        try {
+            const data = await getChatMessages(id);
+            setMessages(Array.isArray(data) ? data : []);
+            await markChatAsRead(id).catch(() => null);
+        } catch (err) {
+            setError(err?.response?.data?.message || 'Không tải được tin nhắn.');
+        } finally {
+            setMessagesLoading(false);
+        }
+    };
 
-  const openConversation = async (conv) => {
-    setActiveConv(conv);
-    try {
-      const data = await getMessages(conv.id);
-      setMessages(Array.isArray(data) ? data : []);
-    } catch (_) { setMessages([]); }
-  };
+    useEffect(() => {
+        if (loadingAccount) return;
+        if (!account) {
+            navigate('/login', { state: { redirectTo: conversationId ? `/chat/${conversationId}` : '/chat' } });
+            return;
+        }
+        loadConversations();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loadingAccount, account]);
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    if (!form.title.trim() || !form.content.trim()) return;
-    setSubmitting(true);
-    try {
-      const payload = { type: form.type, title: form.title.trim(), content: form.content.trim() };
-      if (form.imageUrl.trim()) payload.imageUrl = form.imageUrl.trim();
-      if (form.errorCode.trim()) payload.errorCode = form.errorCode.trim();
-      const conv = await createConversation(payload);
-      setShowCreate(false);
-      setForm({ type: 'REPORT', title: '', content: '', imageUrl: '', errorCode: '' });
-      await loadConversations();
-      if (conv?.id) openConversation(conv);
-    } catch (_) { /* ignore */ } finally { setSubmitting(false); }
-  };
+    useEffect(() => {
+        if (conversationId) setActiveId(Number(conversationId));
+    }, [conversationId]);
 
-  const handleSend = async (e) => {
-    e.preventDefault();
-    if (!input.trim() || !activeConv) return;
-    const text = input.trim();
-    setInput('');
-    try {
-      const msg = await sendMessage(activeConv.id, { content: text });
-      setMessages(prev => [...prev, msg]);
-    } catch (_) { /* ignore */ }
-  };
+    useEffect(() => {
+        if (!activeId) return;
+        loadMessages(activeId);
+        if (String(activeId) !== conversationId) navigate(`/chat/${activeId}`, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeId]);
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <div className="w-96 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-          <h1 className="text-lg font-black">Hỗ trợ & Liên hệ</h1>
-          <button onClick={() => setShowCreate(true)} className="px-3 py-1.5 bg-orange-500 text-white rounded-xl text-sm font-black hover:bg-orange-600">
-            + Tạo mới
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {loading ? <p className="text-center text-gray-400 py-8">Đang tải...</p> :
-           conversations.length === 0 ? <p className="text-center text-gray-400 py-8">Chưa có hội thoại nào.</p> :
-           conversations.map(conv => (
-            <button key={conv.id} onClick={() => openConversation(conv)}
-              className={`w-full text-left p-3 rounded-2xl transition-all ${activeConv?.id === conv.id ? 'bg-orange-50 border-2 border-orange-200' : 'hover:bg-gray-50 border-2 border-transparent'}`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-black uppercase tracking-wider text-gray-400">{conv.typeLabel}</span>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${conv.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : conv.status === 'PROCESSING' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                  {conv.statusLabel}
-                </span>
-              </div>
-              <p className="font-black text-sm truncate">{conv.title}</p>
-              {conv.lastMessage && <p className="text-xs text-gray-500 truncate mt-1">{conv.lastMessage.content}</p>}
-            </button>
-          ))}
-        </div>
-      </div>
+    const handleSend = async (event) => {
+        event.preventDefault();
+        const content = draft.trim();
+        if (!content || !activeId) return;
+        try {
+            setSending(true);
+            const sent = await sendChatMessage(activeId, content);
+            setMessages((prev) => [...prev, sent]);
+            setDraft('');
+            await loadConversations();
+        } catch (err) {
+            setError(err?.response?.data?.message || 'Gửi tin nhắn thất bại.');
+        } finally {
+            setSending(false);
+        }
+    };
 
-      <div className="flex-1 flex flex-col">
-        {!activeConv ? (
-          <div className="flex-1 flex items-center justify-center text-gray-400">
-            <div className="text-center">
-              <p className="text-5xl mb-4">💬</p>
-              <p className="font-black text-lg">Chọn hoặc tạo hội thoại</p>
-              <p className="text-sm">Báo cáo lỗi hoặc hỏi đáp thắc mắc</p>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="p-4 border-b border-gray-200 bg-white flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-black uppercase tracking-wider text-gray-400">{activeConv.typeLabel}</span>
-                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${activeConv.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : activeConv.status === 'PROCESSING' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                    {activeConv.statusLabel}
-                  </span>
-                </div>
-                <h2 className="font-black">{activeConv.title}</h2>
-              </div>
-            </div>
+    const handleImageChange = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file || !activeId) return;
+        try {
+            setUploadingImage(true);
+            const sent = await sendChatImage(activeId, file);
+            setMessages((prev) => [...prev, sent]);
+            await loadConversations();
+            await loadMessages(activeId);
+        } catch (err) {
+            setError(err?.response?.data?.message || 'Gửi ảnh thất bại.');
+        } finally {
+            setUploadingImage(false);
+        }
+    };
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
-              {messages.map(msg => (
-                <div key={msg.id} className={`flex ${msg.senderId === account?.userId ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-md rounded-2xl p-3 ${msg.isSystemMessage ? 'bg-gray-200 text-gray-600 text-center text-xs w-full max-w-full italic' : msg.senderId === account?.userId ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200'}`}>
-                    {msg.errorCode && <div className="text-xs font-black mb-1 opacity-70">Mã lỗi: {msg.errorCode}</div>}
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                    {msg.imageUrl && <img src={msg.imageUrl} alt="attachment" className="mt-2 rounded-xl max-h-60 object-cover" />}
-                    <p className="text-[10px] mt-1 opacity-60">{new Date(msg.createdAt).toLocaleString('vi-VN')}</p>
-                  </div>
-                </div>
-              ))}
-              <div ref={bottomRef} />
-            </div>
+    const handleDeleteMessage = async (messageId) => {
+        if (!activeId || !messageId || !window.confirm('Xóa tin nhắn này?')) return;
+        try {
+            const deleted = await deleteChatMessage(activeId, messageId);
+            setMessages((prev) => prev.filter((message) => message.id !== deleted.id));
+            await loadConversations();
+        } catch (err) {
+            setError(err?.response?.data?.message || 'Xóa tin nhắn thất bại.');
+        }
+    };
 
-            {activeConv.status !== 'COMPLETED' ? (
-              <form onSubmit={handleSend} className="p-4 bg-white border-t border-gray-200 flex gap-2">
-                <input value={input} onChange={e => setInput(e.target.value)} placeholder="Nhập tin nhắn..." className="flex-1 px-4 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm" />
-                <button type="submit" disabled={!input.trim()} className="px-5 py-2.5 bg-orange-500 text-white rounded-2xl font-black text-sm hover:bg-orange-600 disabled:opacity-50">Gửi</button>
-              </form>
-            ) : (
-              <div className="p-4 bg-gray-100 text-center text-sm text-gray-500 font-semibold">Hội thoại đã kết thúc.</div>
-            )}
-          </>
-        )}
-      </div>
+    if (loadingAccount || loading) {
+        return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-orange-500" /></div>;
+    }
 
-      {showCreate && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShowCreate(false)}>
-          <div className="bg-white rounded-3xl p-6 w-full max-w-lg mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-black mb-4">Tạo hội thoại mới</h2>
-            <form onSubmit={handleCreate} className="space-y-3">
-              <div>
-                <label className="text-xs font-black text-gray-500 mb-1 block">Loại</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {TYPE_OPTIONS.map(opt => (
-                    <button key={opt.value} type="button" onClick={() => setForm({ ...form, type: opt.value })}
-                      className={`p-3 rounded-2xl text-left border-2 transition-all ${form.type === opt.value ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                      <p className="font-black text-sm">{opt.label}</p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">{opt.desc}</p>
+    return (
+        <div className="min-h-screen bg-gray-50 text-gray-900">
+            <div className="max-w-7xl mx-auto px-4 py-6">
+                <div className="flex items-center justify-between gap-4 mb-6">
+                    <button onClick={() => navigate(-1)} className="px-4 py-3 rounded-2xl bg-white border border-gray-100 font-black text-sm flex items-center gap-2">
+                        <ArrowLeft className="w-4 h-4" /> Quay lại
                     </button>
-                  ))}
+                    <button onClick={() => { loadConversations(); loadMessages(); }} className="px-4 py-3 rounded-2xl bg-orange-50 text-orange-600 font-black text-sm flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4" /> Refresh
+                    </button>
                 </div>
-              </div>
-              <div>
-                <label className="text-xs font-black text-gray-500 mb-1 block">Tiêu đề</label>
-                <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Ví dụ: Lỗi thanh toán..." className="w-full px-3 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm" required />
-              </div>
-              <div>
-                <label className="text-xs font-black text-gray-500 mb-1 block">Nội dung</label>
-                <textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} rows={3} placeholder="Mô tả chi tiết..." className="w-full px-3 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm resize-none" required />
-              </div>
-              {form.type === 'REPORT' && (
-                <div>
-                  <label className="text-xs font-black text-gray-500 mb-1 block">Mã lỗi (nếu có)</label>
-                  <input value={form.errorCode} onChange={e => setForm({ ...form, errorCode: e.target.value })} placeholder="Ví dụ: ERR-001" className="w-full px-3 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm" />
+
+                {error && <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 p-4 text-red-600 font-bold">{error}</div>}
+
+                <div className="grid lg:grid-cols-[360px_1fr] gap-6 min-h-[70vh]">
+                    <aside className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="p-5 border-b border-gray-100">
+                            <h1 className="text-2xl font-black flex items-center gap-2"><MessageCircle className="w-6 h-6 text-orange-500" /> Chat</h1>
+                            <p className="text-sm text-gray-400 font-semibold mt-1">REST chat cơ bản, có thể refresh để nhận tin mới.</p>
+                        </div>
+                        <div className="divide-y divide-gray-50">
+                            {conversations.length ? conversations.map((conversation) => (
+                                <button key={conversation.id} onClick={() => setActiveId(conversation.id)} className={`w-full p-5 text-left hover:bg-orange-50 transition-all ${activeId === conversation.id ? 'bg-orange-50' : ''}`}>
+                                    <div className="font-black text-gray-900">{conversation.title || 'Conversation'}</div>
+                                    <div className="text-xs text-gray-400 font-bold mt-1 uppercase">{conversation.type}</div>
+                                    <div className="text-sm text-gray-500 font-medium mt-2 line-clamp-2">{conversation.lastMessagePreview || 'Chưa có tin nhắn.'}</div>
+                                </button>
+                            )) : (
+                                <div className="p-8 text-center text-gray-400 font-bold">Chưa có conversation. Hãy bắt đầu từ nút chat ở provider hoặc Help Center.</div>
+                            )}
+                        </div>
+                    </aside>
+
+                    <section className="bg-white rounded-[2rem] border border-gray-100 shadow-sm flex flex-col overflow-hidden">
+                        <div className="p-5 border-b border-gray-100">
+                            <h2 className="text-xl font-black">{activeConversation?.title || 'Chọn conversation'}</h2>
+                            <p className="text-xs text-gray-400 font-bold mt-1">{activeConversation?.participants?.map((p) => p.fullName).filter(Boolean).join(', ')}</p>
+                        </div>
+                        <div className="flex-1 p-5 space-y-4 overflow-y-auto bg-gray-50/60">
+                            {messagesLoading ? <Loader2 className="w-6 h-6 animate-spin text-orange-500 mx-auto" /> : messages.length ? messages.map((message) => {
+                                const mine = Number(message.senderId) === Number(currentUserId);
+                                return (
+                                    <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[75%] rounded-[1.5rem] px-5 py-3 ${mine ? 'bg-orange-500 text-white' : 'bg-white border border-gray-100 text-gray-800'}`}>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className={`text-[10px] font-black uppercase mb-1 ${mine ? 'text-white/70' : 'text-gray-400'}`}>{message.senderName || 'Người gửi'}</div>
+                                                {message.canDelete && (
+                                                    <button type="button" onClick={() => handleDeleteMessage(message.id)} className={`text-[10px] font-black ${mine ? 'text-white/80 hover:text-white' : 'text-red-400 hover:text-red-600'}`} title="Xóa tin nhắn">
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {message.messageType === 'IMAGE' && message.attachmentUrl ? (
+                                                <a href={message.attachmentUrl} target="_blank" rel="noreferrer">
+                                                    <img src={message.attachmentUrl} alt="Ảnh chat" className="max-h-72 rounded-2xl object-contain bg-white/20" />
+                                                </a>
+                                            ) : (
+                                                <div className="font-semibold whitespace-pre-wrap break-words">{message.content}</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            }) : <div className="h-full flex items-center justify-center text-gray-400 font-bold">Chưa có tin nhắn.</div>}
+                        </div>
+                        <form onSubmit={handleSend} className="p-5 border-t border-gray-100 flex gap-3">
+                            <label className={`px-4 py-4 rounded-2xl bg-gray-100 text-gray-600 font-black cursor-pointer flex items-center gap-2 ${uploadingImage || !activeId ? 'opacity-50 pointer-events-none' : ''}`}>
+                                {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} disabled={!activeId || uploadingImage} />
+                            </label>
+                            <input value={draft} onChange={(e) => setDraft(e.target.value)} disabled={!activeId || sending} placeholder="Nhập tin nhắn..." className="flex-1 rounded-2xl bg-gray-50 border border-gray-100 px-5 py-4 font-semibold outline-none focus:border-orange-300" />
+                            <button disabled={!activeId || sending || !draft.trim()} className="px-6 py-4 rounded-2xl bg-orange-500 text-white font-black disabled:opacity-50 flex items-center gap-2">
+                                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Gửi
+                            </button>
+                        </form>
+                    </section>
                 </div>
-              )}
-              <div>
-                <label className="text-xs font-black text-gray-500 mb-1 block">Link ảnh (nếu có)</label>
-                <input value={form.imageUrl} onChange={e => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://..." className="w-full px-3 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm" />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setShowCreate(false)} className="flex-1 px-4 py-2.5 rounded-2xl border border-gray-200 font-black text-sm hover:bg-gray-50">Hủy</button>
-                <button type="submit" disabled={submitting || !form.title.trim() || !form.content.trim()} className="flex-1 px-4 py-2.5 bg-orange-500 text-white rounded-2xl font-black text-sm hover:bg-orange-600 disabled:opacity-50">
-                  {submitting ? 'Đang tạo...' : 'Tạo hội thoại'}
-                </button>
-              </div>
-            </form>
-          </div>
+            </div>
         </div>
-      )}
-    </div>
-  );
-}
+    );
+};
+
+export default ChatPage;
