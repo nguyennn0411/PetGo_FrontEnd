@@ -265,7 +265,7 @@ const PaymentPage = () => {
             </section>
 
             <div className="flex flex-col sm:flex-row gap-6">
-              <PolicyBox title="Trạng thái booking" desc={`Booking hiện ở trạng thái: ${checkoutContext.bookingStatus}. Checkout chỉ ghi nhận thanh toán/hóa đơn; booking vẫn cần provider duyệt/xếp lịch trước khi được nhận.`} />
+              <PolicyBox title="Trạng thái booking" desc={`Booking hiện ở trạng thái: ${checkoutContext.bookingStatus}. Checkout chỉ ghi nhận thanh toán/hóa đơn; booking vẫn cần được xác nhận trước khi hoàn tất.`} />
               <PolicyBox title="Chính sách hóa đơn" desc="Invoice sẽ được sinh tự động sau checkout. Bạn có thể mở lại từ màn hình thành công hoặc trang booking detail sau này." />
             </div>
           </div>
@@ -282,7 +282,7 @@ const PaymentPage = () => {
 
               <div className="p-8 space-y-6">
                 <SummaryRow label="Mã booking" value={checkoutContext.bookingCode} />
-                <SummaryRow label="Nhà cung cấp" value={checkoutContext.providerName} />
+                {checkoutContext.areaName ? <SummaryRow label="Khu vực" value={checkoutContext.areaName} /> : null}
                 <SummaryRow label="Dịch vụ" value={checkoutContext.serviceName} />
                 <SummaryRow label="Thú cưng" value={checkoutContext.petName} />
                 <SummaryRow label="Ngày & Giờ" value={`${checkoutContext.appointmentDate} • ${checkoutContext.startTime}`} />

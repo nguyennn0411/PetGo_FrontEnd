@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { CircleCheck, MapPin, Wallet } from 'lucide-react';
 import ShopLayout from '../../components/shop/ShopLayout';
@@ -27,7 +28,7 @@ export default function CheckoutPage() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!cart.items?.length) return alert('Giỏ hàng đang trống.');
+    if (!cart.items?.length) return toast.error('Giỏ hàng đang trống.');
     try {
       setSubmitting(true);
       const order = await shopApi.checkout({ userId, ...form });
@@ -38,10 +39,10 @@ export default function CheckoutPage() {
         }
         throw new Error('Không nhận được liên kết thanh toán PayOS.');
       }
-      alert(`Đặt hàng thành công: ${order.orderCode}`);
+      toast.success(`Đặt hàng thành công: ${order.orderCode}`);
       navigate('/my-orders');
     } catch (err) {
-      alert(err.response?.data?.message || err.message || 'Đặt hàng thất bại.');
+      toast.error(err.response?.data?.message || err.message || 'Đặt hàng thất bại.');
     } finally {
       setSubmitting(false);
     }

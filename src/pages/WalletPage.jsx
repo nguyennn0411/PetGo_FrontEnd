@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import Swal from 'sweetalert2';
 import { createWalletTopUp, getMyWallet, getMyWalletTransactions, requestWalletWithdraw, transferWalletMoney, verifyWalletTopUp } from '../api/wallet';
 
 const money = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(value || 0));
@@ -74,7 +75,8 @@ export default function WalletPage() {
         e.preventDefault(); setMessage(''); setError('');
         if (!transfer.recipientAccount.trim()) { setError('Vui lòng nhập UserCode / email / SĐT người nhận.'); return; }
         if (Number(transfer.amount) < 1000) { setError('Số tiền chuyển tối thiểu là 1.000đ.'); return; }
-        if (!window.confirm(`Xác nhận chuyển ${money(transfer.amount)} tới ${transfer.recipientAccount}?`)) return;
+        const ok = await Swal.fire({ icon: 'warning', title: 'Chuyển tiền?', text: `Xác nhận chuyển ${money(transfer.amount)} tới ${transfer.recipientAccount}?`, showCancelButton: true, confirmButtonText: 'Chuyển', cancelButtonText: 'Hủy', confirmButtonColor: '#f97316', reverseButtons: true });
+        if (!ok.isConfirmed) return;
         try { await transferWalletMoney({ ...transfer, amount: Number(transfer.amount), recipientAccount: transfer.recipientAccount.trim() }); setMessage('Chuyển tiền thành công.'); setTransfer({ recipientAccount: '', amount: 50000, note: '' }); await load(); }
         catch (err) { setError(err.response?.data?.message || 'Chuyển tiền thất bại.'); }
     };
@@ -83,7 +85,8 @@ export default function WalletPage() {
         e.preventDefault(); setMessage(''); setError('');
         if (Number(withdraw.amount) < 50000) { setError('Số tiền rút tối thiểu là 50.000đ.'); return; }
         if (!withdraw.bankName.trim() || !withdraw.bankAccountNumber.trim() || !withdraw.bankAccountHolder.trim()) { setError('Vui lòng nhập đủ ngân hàng, số tài khoản và tên chủ tài khoản.'); return; }
-        if (!window.confirm(`Xác nhận tạo yêu cầu rút ${money(withdraw.amount)}? Số tiền sẽ được giữ khỏi ví cho tới khi admin duyệt/từ chối.`)) return;
+        const ok = await Swal.fire({ icon: 'warning', title: 'Rút tiền?', text: `Xác nhận rút ${money(withdraw.amount)}?`, showCancelButton: true, confirmButtonText: 'Rút', cancelButtonText: 'Hủy', confirmButtonColor: '#f97316', reverseButtons: true });
+        if (!ok.isConfirmed) return;
         try { await requestWalletWithdraw({ ...withdraw, amount: Number(withdraw.amount), bankName: withdraw.bankName.trim(), bankAccountNumber: withdraw.bankAccountNumber.trim(), bankAccountHolder: withdraw.bankAccountHolder.trim() }); setMessage('Đã gửi yêu cầu rút tiền tới admin. Số tiền đã được giữ khỏi số dư khả dụng.'); setWithdraw({ amount: 50000, bankName: '', bankAccountNumber: '', bankAccountHolder: '', note: '' }); await load(); }
         catch (err) { setError(err.response?.data?.message || 'Tạo yêu cầu rút tiền thất bại.'); }
     };

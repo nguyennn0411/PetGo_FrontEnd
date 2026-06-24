@@ -1,0 +1,184 @@
+import { useCallback, useContext, useEffect, useState } from 'react';
+import { ArrowLeft, Clock, Heart, MapPin, Star } from 'lucide-react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { getPublicServiceById, getServiceAreas, toggleFavorite, getFavoriteIds } from '../api/services';
+import { AuthContext } from '../context/AuthContext';
+
+const formatPrice = (amount) => {
+  if (amount == null) return '0';
+  return Math.round(typeof amount === 'string' ? parseFloat(amount) : amount)
+    .toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+
+const priceUnitLabel = (unit) => {
+  const map = {
+    SESSION: '1 lần', PER_SESSION: '1 lần', ONCE: '1 lần', VISIT: '1 lần',
+    HOUR: 'giờ', PER_HOUR: 'giờ', DAY: 'ngày', PER_DAY: 'ngày',
+    PET: 'thú cưng', PER_PET: 'thú cưng',
+  };
+  return map?.[unit?.toUpperCase()] || unit || '1 lần';
+};
+
+export default function ServiceDetailPage() {
+  const { serviceId } = useParams();
+  const [searchParams] = useSearchParams();
+  const selectedAreaId = searchParams.get('areaId');
+  const navigate = useNavigate();
+  const { account } = useContext(AuthContext);
+  const [service, setService] = useState(null);
+  const [areas, setAreas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [favorited, setFavorited] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      getPublicServiceById(serviceId),
+      getServiceAreas(serviceId),
+      account ? getFavoriteIds().then(ids => setFavorited(ids?.includes(Number(serviceId)))) : Promise.resolve(),
+    ])
+      .then(([svc, areaData]) => { setService(svc); setAreas(Array.isArray(areaData) ? areaData : []); })
+      .catch(() => navigate('/services'))
+      .finally(() => setLoading(false));
+  }, [serviceId, account]);
+
+  const handleToggleFav = async () => {
+    if (!account) { navigate('/login'); return; }
+    try {
+      const res = await toggleFavorite(service.id);
+      setFavorited(res?.favorited ?? !favorited);
+    } catch { /* ignore */ }
+  };
+
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-sm font-bold text-gray-400">Đang tải...</div>
+    </div>
+  );
+
+  if (!service) return null;
+
+  const displayAreas = selectedAreaId
+    ? areas.filter((a) => String(a.id) === selectedAreaId)
+    : areas;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <Link to="/services" className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-orange-600 transition-colors mb-6">
+          <ArrowLeft className="w-4 h-4" /> Quay lại danh sách
+        </Link>
+
+        <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+          {/* Image */}
+          <div className="relative h-64 sm:h-80 bg-gradient-to-br from-orange-100 to-amber-50">
+            {service.imageUrl ? (
+              <img src={service.imageUrl} alt={service.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Star className="w-16 h-16 text-orange-300" />
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+            <div className="absolute top-4 left-4 flex gap-2">
+              <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-sm ${service.bookingType === 'LONG' ? 'bg-purple-500/90 text-white' : 'bg-orange-500/90 text-white'}`}>
+                {service.bookingType === 'LONG' ? 'Dài hạn' : 'Ngắn hạn'}
+              </span>
+              {!service.bookable && (
+                <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-sm bg-gray-500/80 text-white">
+                  Tạm ngừng
+                </span>
+              )}
+            </div>
+            <button onClick={handleToggleFav}
+              className="absolute top-4 right-4 p-2.5 rounded-full bg-white/90 hover:bg-white shadow-md transition-all active:scale-90">
+              <Heart className={`w-5 h-5 transition-all ${favorited ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 sm:p-8 space-y-6">
+            {/* Header */}
+            <div>
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {(service.categories || []).map(c => (
+                  <span key={c.id} className="text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">{c.name}</span>
+                ))}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">{service.name}</h1>
+              {service.serviceCode && (
+                <p className="text-xs font-medium text-gray-400 mt-1">Mã dịch vụ: {service.serviceCode}</p>
+              )}
+            </div>
+
+            {/* Price & Duration */}
+            <div className="flex items-center gap-6 p-4 bg-gray-50 rounded-2xl">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Giá</p>
+                <div className="flex items-baseline gap-0.5 mt-1">
+                  <span className="text-2xl font-black text-gray-900">{formatPrice(service.basePriceAmount)}</span>
+                  <span className="text-sm font-bold text-orange-500">₫</span>
+                  <span className="text-xs font-bold text-gray-400 ml-1">/ {priceUnitLabel(service.priceUnit)}</span>
+                </div>
+              </div>
+              <div className="w-px h-10 bg-gray-200" />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Thời gian</p>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <Clock className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm font-bold text-gray-900">{service.defaultDurationMinutes} phút</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            {service.shortDescription && (
+              <p className="text-sm font-medium text-gray-600 leading-relaxed">{service.shortDescription}</p>
+            )}
+            {service.description && (
+              <div className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{service.description}</div>
+            )}
+
+            {/* Areas */}
+            {displayAreas.length > 0 && (
+              <div>
+                <h2 className="text-sm font-black uppercase tracking-widest text-gray-900 mb-3">
+                  {selectedAreaId ? 'Khu vực' : 'Khu vực áp dụng'}
+                </h2>
+                <div className="space-y-2">
+                  {displayAreas.map(a => (
+                    <div key={a.id} className="flex items-start gap-3 p-3 rounded-xl border border-gray-100 hover:border-orange-200 transition-all">
+                      <div className="p-1.5 bg-orange-100 text-orange-600 rounded-lg mt-0.5">
+                        <MapPin className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{a.name}</p>
+                        {a.pickupAddress && <p className="text-xs text-gray-500 mt-0.5">{a.pickupAddress}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Book button */}
+            <button onClick={() => {
+              if (!account) {
+                navigate('/login');
+                return;
+              }
+              if (!service.bookable) return;
+              const params = new URLSearchParams({ serviceId: service.id });
+              if (displayAreas.length > 0) params.set('areaId', displayAreas[0].id);
+              else if (selectedAreaId) params.set('areaId', selectedAreaId);
+              navigate(`/booking?${params.toString()}`);
+            }}
+              disabled={!service.bookable}
+              className={`w-full py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all active:scale-[0.98] ${service.bookable ? 'bg-gray-900 text-white hover:bg-orange-500 hover:shadow-lg hover:shadow-orange-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
+              {service.bookable ? 'Đặt lịch ngay' : 'Tạm ngừng'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,29 +1,27 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Search,
-  Star,
   Calendar,
   User,
   PawPrint,
   ChevronRight,
-  ShieldCheck,
-  BadgeCheck,
-  Zap,
-  Tag,
   Navigation,
   Scissors,
   Stethoscope,
   Hotel,
   Award,
+  ArrowRight,
+  ChevronLeft,
+  Star,
+  ShieldCheck,
+  BadgeCheck,
+  Zap,
   Crown,
   Check,
-  ArrowRight,
   Quote,
-  ChevronLeft,
 } from 'lucide-react';
-import { getActiveProviderServices, getProviderFilterOptions } from '../api/providers';
 import { getHomePage } from '../api/home';
-import { formatCurrencyVnd, pickProviderImage } from '../utils/providerHelpers';
+
 
 const categoryMarqueeStyles = `
   @keyframes petgoCategoryMarquee {
@@ -34,67 +32,23 @@ const categoryMarqueeStyles = `
 
 const App = () => {
   const [serviceCategories, setServiceCategories] = useState([]);
-  const [loadingCategories, setLoadingCategories] = useState(true);
   const [sliders, setSliders] = useState([]);
   const [activeSlide, setActiveSlide] = useState(0);
-  const [featuredServices, setFeaturedServices] = useState([]);
-  const [loadingFeaturedServices, setLoadingFeaturedServices] = useState(true);
 
-  useEffect(() => {
-    const loadCategories = async () => {
-      setLoadingCategories(true);
-      try {
-        const data = await getProviderFilterOptions();
-        setServiceCategories(Array.isArray(data?.serviceCategories) ? data.serviceCategories : []);
-      } catch {
-        setServiceCategories([]);
-      } finally {
-        setLoadingCategories(false);
-      }
-    };
-
-    loadCategories();
-  }, []);
 
   useEffect(() => {
     const loadHome = async () => {
       try {
         const data = await getHomePage();
         setSliders(Array.isArray(data?.sliders) ? data.sliders : []);
+        setServiceCategories(Array.isArray(data?.categories) ? data.categories : []);
       } catch {
         setSliders([]);
+        setServiceCategories([]);
       }
     };
 
     loadHome();
-  }, []);
-
-  useEffect(() => {
-    const loadFeaturedServices = async () => {
-      setLoadingFeaturedServices(true);
-      try {
-        const data = await getActiveProviderServices({
-          sortBy: 'FEATURED',
-          featuredOnly: true,
-          page: 0,
-          size: 3,
-        });
-        const services = Array.isArray(data?.items)
-          ? data.items
-          : Array.isArray(data?.content)
-            ? data.content
-            : Array.isArray(data)
-              ? data
-              : [];
-        setFeaturedServices(services.slice(0, 3));
-      } catch {
-        setFeaturedServices([]);
-      } finally {
-        setLoadingFeaturedServices(false);
-      }
-    };
-
-    loadFeaturedServices();
   }, []);
 
   const fallbackSliders = [
@@ -138,18 +92,16 @@ const App = () => {
     return [current, ...flattenCategories(category?.children || [], category?.name || parentName)];
   });
 
-  const visibleCategories = useMemo(() => flattenCategories(serviceCategories).slice(0, 12), [serviceCategories]);
-  const marqueeCategories = useMemo(() => [...visibleCategories, ...visibleCategories], [visibleCategories]);
+  const activeCategories = useMemo(() => flattenCategories(serviceCategories), [serviceCategories]);
+  const marqueeCategories = useMemo(() => [...activeCategories, ...activeCategories], [activeCategories]);
 
   const introSteps = [
     { title: 'Tìm dịch vụ phù hợp', desc: 'Lọc spa, thú y, khách sạn thú cưng hoặc dịch vụ theo nhu cầu của bé.', icon: <Search className="w-5 h-5" /> },
-    { title: 'So sánh đối tác', desc: 'Xem đánh giá, khoảng cách, giá tham khảo và thông tin cửa hàng trước khi chọn.', icon: <BadgeCheck className="w-5 h-5" /> },
     { title: 'Đặt lịch & theo dõi', desc: 'Quản lý lịch hẹn, thanh toán, hóa đơn và nhắc lịch trong cùng một tài khoản.', icon: <Calendar className="w-5 h-5" /> },
   ];
 
   const audienceCards = [
     { title: 'Dành cho chủ nuôi', desc: 'Một nơi để tìm dịch vụ đáng tin cậy, lưu địa điểm yêu thích và chăm sóc thú cưng đều đặn hơn.', cta: 'Khám phá dịch vụ', href: '/search', icon: <User className="w-6 h-6" /> },
-    { title: 'Dành cho đối tác', desc: 'Cửa hàng có thể giới thiệu hồ sơ, quản lý dịch vụ, lịch làm việc và booking từ khách hàng.', cta: 'Đăng ký đối tác', href: '/partner-registration/provider', icon: <PawPrint className="w-6 h-6" /> },
   ];
 
   const getCategoryIcon = (categoryName = '') => {
@@ -237,7 +189,7 @@ const App = () => {
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500 mb-3">PetGo là gì?</p>
               <h2 className="text-3xl font-black tracking-tight text-gray-950 sm:text-5xl">
-                Nền tảng kết nối chủ nuôi với dịch vụ chăm sóc thú cưng đáng tin cậy.
+                Nền tảng kết cung cấp dịch vụ chăm sóc thú cưng cùng các sản phẩm đáng tin cậy.
               </h2>
               <p className="mt-5 text-base font-medium leading-8 text-gray-500">
                 PetGo giúp bạn tìm kiếm, so sánh, đặt lịch và quản lý các nhu cầu chăm sóc thú cưng hằng ngày — từ spa làm đẹp, khám thú y đến khách sạn lưu trú.
@@ -269,25 +221,19 @@ const App = () => {
           </div>
 
           <div className="rounded-[2rem] border border-gray-100 bg-gray-50/60 p-4 sm:p-6">
-            {loadingCategories ? (
-              <div className="flex gap-4 overflow-hidden">
-                {[...Array(8)].map((_, index) => (
-                  <div key={index} className="h-52 min-w-[260px] rounded-3xl bg-white animate-pulse sm:min-w-[300px]" />
-                ))}
-              </div>
-            ) : visibleCategories.length ? (
+            {activeCategories.length ? (
               <div className="group relative overflow-hidden py-2">
                 <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-gray-50 via-gray-50/90 to-transparent" />
                 <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-gray-50 via-gray-50/90 to-transparent" />
                 <div
                   className="flex w-max gap-4 motion-reduce:animate-none group-hover:[animation-play-state:paused]"
-                  style={{ animation: 'petgoCategoryMarquee 32s linear infinite' }}
+                  style={{ animation: 'petgoCategoryMarquee 80s linear infinite' }}
                 >
                   {marqueeCategories.map((cat, index) => (
                     <button
                       type="button"
                       key={`${getCategorySearchValue(cat)}-${index}`}
-                      onClick={() => window.location.href = `/search?serviceCategoryIds=${getCategorySearchValue(cat)}`}
+                      onClick={() => window.location.href = `/services?categoryId=${getCategorySearchValue(cat)}`}
                       className="group/card min-w-[260px] rounded-3xl border border-gray-100 bg-white p-5 text-left transition-all hover:-translate-y-1 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-100/60 sm:min-w-[300px] lg:min-w-[320px]"
                     >
                       <span className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-500 transition-all group-hover/card:bg-orange-500 group-hover/card:text-white">
@@ -299,7 +245,7 @@ const App = () => {
                       {cat?.description ? (
                         <span className="mt-2 block line-clamp-2 text-xs font-medium leading-5 text-gray-500">{cat.description}</span>
                       ) : (
-                        <span className="mt-2 block text-xs font-bold text-gray-400">Xem nhà cung cấp phù hợp</span>
+                        <span className="mt-2 block text-xs font-bold text-gray-400">Khám phá dịch vụ</span>
                       )}
                       <span className="mt-5 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-orange-500">
                         Khám phá <ChevronRight className="h-3.5 w-3.5" />
@@ -323,56 +269,12 @@ const App = () => {
         </div>
       </section>
 
-      {/* Featured Services */}
-      <section className="py-24 max-w-7xl mx-auto px-4">
-        <div className="mb-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.25em] text-orange-500">Dữ liệu thật từ PetGo</p>
-            <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Dịch vụ nổi bật</h2>
-          </div>
-          <button
-            onClick={() => window.location.href = '/search?featuredOnly=true'}
-            className="inline-flex w-fit items-center gap-2 rounded-2xl bg-orange-50 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-orange-600 transition-all hover:bg-orange-500 hover:text-white"
-          >
-            Xem thêm <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
-
-        {loadingFeaturedServices ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-            {[...Array(3)].map((_, index) => (
-              <div key={index} className="h-[430px] animate-pulse rounded-[2.5rem] border border-gray-100 bg-gray-50" />
-            ))}
-          </div>
-        ) : featuredServices.length ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-            {featuredServices.map((service, index) => (
-              <FeaturedServiceCard
-                key={`${service.providerServiceId || service.id || service.serviceName || service.name}-${index}`}
-                service={service}
-                badge={index === 0 ? 'Nổi bật' : index === 1 ? 'Phổ biến' : 'Gợi ý'}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-[2rem] border border-dashed border-gray-200 bg-gray-50 p-10 text-center">
-            <p className="text-sm font-bold text-gray-500">Chưa có dịch vụ nổi bật từ hệ thống.</p>
-            <button
-              onClick={() => window.location.href = '/search'}
-              className="mt-5 rounded-2xl bg-gray-900 px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-orange-500"
-            >
-              Khám phá dịch vụ
-            </button>
-          </div>
-        )}
-      </section>
-
       {/* Audiences */}
       <section className="py-20 bg-gray-50/70">
         <div className="max-w-7xl mx-auto px-4">
           <div className="mb-10 max-w-3xl">
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500 mb-3">PetGo dành cho ai?</p>
-            <h2 className="text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">Một hệ sinh thái cho cả chủ nuôi và đơn vị chăm sóc thú cưng.</h2>
+            <h2 className="text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">Một hệ sinh thái cho chủ nuôi.</h2>
           </div>
           <div className="grid gap-6 lg:grid-cols-2">
             {audienceCards.map((card) => (
@@ -533,73 +435,6 @@ const App = () => {
           <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest italic">© 2025 Nền tảng PetGo. Mọi quyền được bảo lưu.</p>
         </div>
       </footer>
-    </div>
-  );
-};
-
-// Component con: Card dịch vụ nổi bật
-const FeaturedServiceCard = ({ service, badge }) => {
-  const provider = service.provider || {};
-  const providerId = service.providerId || provider.id;
-  const serviceId = service.providerServiceId || service.id;
-  const serviceName = service.name || service.displayName || service.serviceName || service.customName || 'Dịch vụ PetGo';
-  const providerName = service.providerName || provider.name || 'Đối tác PetGo';
-  const serviceImage = service.photoUrls?.[0]
-    || service.imageUrl
-    || service.thumbnailUrl
-    || pickProviderImage({ image: service.providerImage || provider.image });
-  const categoryName = service.categoryName || service.categories?.[0]?.name || 'Dịch vụ';
-  const duration = service.duration || (service.durationMinutes ? `${service.durationMinutes} phút` : 'Theo lịch hẹn');
-  const rawPrice = service.priceAmount ?? service.price ?? service.priceFrom;
-  const priceLabel = service.priceDisplay
-    || service.priceAmountDisplay
-    || service.priceFromDisplay
-    || (rawPrice !== null && rawPrice !== undefined && rawPrice !== '' ? `${formatCurrencyVnd(rawPrice)}đ` : 'Liên hệ');
-  const rating = service.rating || service.providerRating || service.avgRating || provider.rating || '0.0';
-  const bookingParams = new URLSearchParams();
-  if (providerId) bookingParams.set('providerId', providerId);
-  if (serviceId && !String(serviceId).startsWith('provider-')) bookingParams.set('serviceId', serviceId);
-  const bookingUrl = bookingParams.toString() ? `/booking?${bookingParams.toString()}` : '/booking';
-  const detailUrl = providerId ? `/providers/${providerId}` : '/search?featuredOnly=true';
-
-  return (
-    <div className="group bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
-      <div className="relative h-56 overflow-hidden">
-        <img src={serviceImage} alt={serviceName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-gray-900 shadow-sm">
-          {badge}
-        </div>
-        <div className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-yellow-50/95 px-3 py-1.5 text-yellow-700 shadow-sm backdrop-blur-md">
-          <Star className="w-3.5 h-3.5 fill-current" />
-          <span className="text-[10px] font-black">{rating}</span>
-        </div>
-      </div>
-      <div className="p-8">
-        <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-orange-500">{categoryName}</p>
-        <h3 className="text-xl font-black text-gray-900 group-hover:text-orange-600 transition-colors leading-tight min-h-14">{serviceName}</h3>
-        <p className="mt-2 text-sm font-bold text-gray-500 line-clamp-1">Tại {providerName}</p>
-        <p className="mt-4 text-sm font-medium leading-6 text-gray-500 line-clamp-2">
-          {service.description || service.shortDescription || service.desc || 'Đang cập nhật mô tả dịch vụ.'}
-        </p>
-        <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-gray-400 uppercase tracking-widest my-6">
-          <div className="flex items-center gap-1"><Navigation className="w-3.5 h-3.5 text-blue-500" /> {duration}</div>
-          <div className="flex items-center gap-1"><Tag className="w-3.5 h-3.5 text-orange-500" /> {priceLabel}</div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => window.location.href = detailUrl}
-            className="py-3 px-2 bg-gray-100 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all"
-          >
-            Chi tiết
-          </button>
-          <button
-            onClick={() => window.location.href = bookingUrl}
-            className="py-3 px-2 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-500 transition-all"
-          >
-            Đặt lịch ngay
-          </button>
-        </div>
-      </div>
     </div>
   );
 };
