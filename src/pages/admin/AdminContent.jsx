@@ -1,17 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import AdminLayout from '../../components/AdminLayout';
-import { AdminDialog, AdminToastStack, getAdminErrorMessage, useAdminDialog, useAdminToast } from '../../components/admin/AdminFeedback';
+import React, { useContext, useEffect, useState } from 'react';
+import { AdminTitleContext } from '../../components/AdminLayout';
+import { AdminDialog, getAdminErrorMessage, useAdminDialog, useAdminToast } from '../../components/admin/AdminFeedback';
 import { createAdminHomeSlider, deleteAdminHomeSlider, getAdminHomeSliders, updateAdminHomeSlider, updateAdminHomeSliderVisibility } from '../../api/adminHomeSliders';
 
 const emptyForm = { title: '', subtitle: '', imageUrl: '', ctaLabel: '', ctaUrl: '', sortOrder: 0, active: true };
 
 const AdminContent = () => {
+  const setPageTitle = useContext(AdminTitleContext);
+  useEffect(() => { setPageTitle('Quản lý nội dung'); }, []);
   const [sliders, setSliders] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const { toasts, showToast, dismissToast } = useAdminToast();
+  const { showToast } = useAdminToast();
   const { dialog, confirmDialog, closeDialog } = useAdminDialog();
 
   const loadSliders = async () => {
@@ -112,8 +114,7 @@ const AdminContent = () => {
   };
 
   return (
-    <AdminLayout title="Quản lý nội dung">
-      <AdminToastStack toasts={toasts} onDismiss={dismissToast} />
+    <>
       <AdminDialog dialog={dialog} onResolve={closeDialog} />
 
       <div className="tabs">
@@ -161,7 +162,7 @@ const AdminContent = () => {
           ))}
         </div>
       </div>
-    </AdminLayout>
+    </>
   );
 };
 

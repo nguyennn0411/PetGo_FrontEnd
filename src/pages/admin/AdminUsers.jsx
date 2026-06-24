@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../components/AdminLayout';
-import { AdminDialog, AdminToastStack, getAdminErrorMessage, useAdminDialog, useAdminToast } from '../../components/admin/AdminFeedback';
+import React, { useContext, useEffect, useState } from 'react';
+import { AdminTitleContext } from '../../components/AdminLayout';
+import { AdminDialog, getAdminErrorMessage, useAdminDialog, useAdminToast } from '../../components/admin/AdminFeedback';
 import { getAdminUsers, updateUserStatus } from '../../api/admin';
 
 const AdminUsers = () => {
+  const setPageTitle = useContext(AdminTitleContext);
+  useEffect(() => { setPageTitle('Quản lý người dùng'); }, []);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const { toasts, showToast, dismissToast } = useAdminToast();
+  const { showToast } = useAdminToast();
   const { dialog, confirmDialog, closeDialog } = useAdminDialog();
 
   useEffect(() => {
@@ -99,8 +101,7 @@ const AdminUsers = () => {
   });
 
   return (
-    <AdminLayout title="Quản lý người dùng">
-      <AdminToastStack toasts={toasts} onDismiss={dismissToast} />
+    <>
       <AdminDialog dialog={dialog} onResolve={closeDialog} />
 
       <div className="metrics">
@@ -249,7 +250,7 @@ const AdminUsers = () => {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 };
 

@@ -1,7 +1,9 @@
-import AdminLayout from '../../components/AdminLayout';
+import { useContext, useEffect } from 'react';
+import { AdminTitleContext } from '../../components/AdminLayout';
 import PromotionManager from '../../components/promotions/PromotionManager';
 import {
   createAdminPromotion,
+  deleteAdminPromotion,
   getAdminPromotionOptions,
   getAdminPromotions,
   updateAdminPromotion,
@@ -9,16 +11,17 @@ import {
 } from '../../api/admin';
 
 const AdminVouchers = () => {
+  const setPageTitle = useContext(AdminTitleContext);
+  useEffect(() => { setPageTitle('Quản lý khuyến mãi'); }, []);
   return (
-    <AdminLayout title="Quản lý khuyến mãi">
-      <PromotionManager
-        loadPromotions={getAdminPromotions}
-        loadOptions={getAdminPromotionOptions}
-        createPromotion={createAdminPromotion}
-        updatePromotion={updateAdminPromotion}
-        updatePromotionStatus={updateAdminPromotionStatus}
-      />
-    </AdminLayout>
+    <PromotionManager
+      loadPromotions={getAdminPromotions}
+      loadOptions={getAdminPromotionOptions}
+      createPromotion={createAdminPromotion}
+      updatePromotion={updateAdminPromotion}
+      updatePromotionStatus={updateAdminPromotionStatus}
+      deletePromotion={deleteAdminPromotion}
+    />
   );
 };
 

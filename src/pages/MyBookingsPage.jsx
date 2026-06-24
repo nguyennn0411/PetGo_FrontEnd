@@ -1,265 +1,179 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
-import {
-  AlertCircle,
-  ArrowRight,
-  Calendar,
-  CheckCircle2,
-  ChevronRight,
-  Clock3,
-  Loader2,
-  PawPrint,
-  Search,
-  XCircle,
-} from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext';
-import { getMyBookings } from '../api/bookings';
-import { resolveUserId } from '../utils/userIdentity';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { getMyBookings, cancelMyBooking, getBookingDetail } from '../api/areas';
+import Swal from 'sweetalert2';
+import { toast } from 'react-hot-toast';
 
-const TABS = [
-  { key: 'ALL', label: 'All' },
-  { key: 'PENDING', label: 'Pending' },
-  { key: 'PENDING_PROVIDER_CONFIRMATION', label: 'Chờ provider' },
-  { key: 'CONFIRMED', label: 'Confirmed' },
-  { key: 'ADMIN_REVIEW', label: 'Admin review' },
-  { key: 'DISPUTED', label: 'Dispute' },
-  { key: 'COMPLETED', label: 'Completed' },
-  { key: 'CANCELLED', label: 'Cancelled' },
-];
-
-const STATUS_STYLES = {
-  PENDING_PAYMENT: 'bg-orange-50 text-orange-600 border-orange-100',
-  PENDING_CONFIRMATION: 'bg-orange-50 text-orange-600 border-orange-100',
-  PENDING_PROVIDER_CONFIRMATION: 'bg-orange-50 text-orange-600 border-orange-100',
-  CONFIRMED: 'bg-blue-50 text-blue-600 border-blue-100',
-  IN_PROGRESS: 'bg-blue-50 text-blue-600 border-blue-100',
-  AWAITING_COMPLETION_CONFIRMATION: 'bg-purple-50 text-purple-600 border-purple-100',
-  COMPLETED_BY_USER: 'bg-purple-50 text-purple-600 border-purple-100',
-  COMPLETED_BY_PROVIDER: 'bg-purple-50 text-purple-600 border-purple-100',
-  ADMIN_REVIEW: 'bg-amber-50 text-amber-700 border-amber-100',
-  DISPUTED: 'bg-red-50 text-red-600 border-red-100',
-  REJECTED: 'bg-red-50 text-red-600 border-red-100',
-  COMPLETED: 'bg-green-50 text-green-600 border-green-100',
-  CANCELLED: 'bg-red-50 text-red-600 border-red-100',
+const statusBadge = (status) => {
+    const map = {
+        PENDING: ['bg-yellow-100 text-yellow-800', 'Chờ xác nhận'],
+        CONFIRMED: ['bg-blue-100 text-blue-800', 'Đã xác nhận'],
+        IN_PROGRESS: ['bg-blue-100 text-blue-800', 'Đang thực hiện'],
+        COMPLETED: ['bg-green-100 text-green-800', 'Hoàn thành'],
+        CANCELLED: ['bg-gray-100 text-gray-500', 'Đã hủy'],
+        REJECTED: ['bg-red-100 text-red-800', 'Đã từ chối'],
+    };
+    const [cls, label] = map?.[status] || ['bg-gray-100 text-gray-500', status || 'Không rõ'];
+    return <span className={`px-2.5 py-0.5 rounded-full text-xs font-black ${cls}`}>{label}</span>;
 };
 
-const STATUS_LABELS = {
-  PENDING_PROVIDER_CONFIRMATION: 'Chờ provider xác nhận',
-  ADMIN_REVIEW: 'Chờ admin xử lý',
-  DISPUTED: 'Đang tranh chấp',
-  AWAITING_COMPLETION_CONFIRMATION: 'Chờ xác nhận hoàn tất',
-  COMPLETED_BY_USER: 'Bạn đã xác nhận hoàn tất',
-  COMPLETED_BY_PROVIDER: 'Provider đã xác nhận hoàn tất',
-  IN_PROGRESS: 'Đang thực hiện',
-  CONFIRMED: 'Đã xác nhận',
-  COMPLETED: 'Hoàn thành',
-  REJECTED: 'Provider từ chối',
-  CANCELLED: 'Đã hủy',
+const formatPrice = (amount) => {
+    if (amount == null) return '0';
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
-const STATUS_ICONS = {
-  PENDING_PAYMENT: <Clock3 className="w-3 h-3" />,
-  PENDING_CONFIRMATION: <Clock3 className="w-3 h-3" />,
-  PENDING_PROVIDER_CONFIRMATION: <Clock3 className="w-3 h-3" />,
-  CONFIRMED: <CheckCircle2 className="w-3 h-3" />,
-  ADMIN_REVIEW: <AlertCircle className="w-3 h-3" />,
-  DISPUTED: <AlertCircle className="w-3 h-3" />,
-  COMPLETED: <CheckCircle2 className="w-3 h-3" />,
-  CANCELLED: <XCircle className="w-3 h-3" />,
-};
+export default function MyBookingsPage() {
+    const [bookings, setBookings] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedBooking, setSelectedBooking] = useState(null);
+    const [detailLoading, setDetailLoading] = useState(false);
 
-const MyBookingsPage = () => {
-  const navigate = useNavigate();
-  const { account } = useContext(AuthContext);
-  const userId = resolveUserId(account);
+    const loadBookings = async () => {
+        setLoading(true);
+        try {
+            const data = await getMyBookings();
+            setBookings(Array.isArray(data) ? data : []);
+        } catch {
+            setBookings([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const [activeTab, setActiveTab] = useState('ALL');
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+    useEffect(() => { loadBookings(); }, []);
 
-  const loadBookings = async (status = activeTab) => {
-    if (!userId) {
-      setLoading(false);
-      setError('Chưa xác định được userId. Hãy đăng nhập hoặc lưu localStorage.petgo_user_id để test.');
-      return;
-    }
+    const openDetail = async (booking) => {
+        setDetailLoading(true);
+        try {
+            const detail = await getBookingDetail(booking.id);
+            setSelectedBooking(detail);
+        } catch {
+            toast.error('Không tải được chi tiết.', { duration: 4000 });
+        } finally {
+            setDetailLoading(false);
+        }
+    };
 
-    setLoading(true);
-    setError('');
-    try {
-      const response = await getMyBookings(userId, status);
-      setData(response);
-    } catch (err) {
-      setError(err?.response?.data?.message || 'Không tải được danh sách booking.');
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const handleCancel = async (id, code) => {
+        const ok = await Swal.fire({ icon: 'warning', title: 'Hủy đặt lịch?', text: `Bạn có chắc muốn hủy "${code}"?`, showCancelButton: true, confirmButtonText: 'Hủy', cancelButtonText: 'Không', confirmButtonColor: '#f97316', reverseButtons: true });
+        if (!ok.isConfirmed) return;
+        try {
+            await cancelMyBooking(id);
+            toast.success('Đặt lịch đã được hủy.', { duration: 3000 });
+            setSelectedBooking(null);
+            loadBookings();
+        } catch (e) {
+            toast.error(e?.response?.data?.message || 'Không thể hủy đặt lịch.', { duration: 4000 });
+        }
+    };
 
-  useEffect(() => {
-    loadBookings(activeTab);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, activeTab]);
-
-  const counts = useMemo(() => data?.counts || {}, [data]);
-  const bookings = data?.bookings || [];
-
-  const renderStatusBadge = (booking) => (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest ${STATUS_STYLES[booking.status] || 'bg-gray-50 text-gray-600 border-gray-100'}`}>
-      {STATUS_ICONS[booking.status] || <Clock3 className="w-3 h-3" />}
-      {STATUS_LABELS[booking.status] || booking.statusLabel || booking.status}
-    </span>
-  );
-
-  return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
-      <main className="max-w-5xl mx-auto px-4 py-10 sm:py-16">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10">
-          <div>
-            <h1 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">My Bookings</h1>
-            <p className="text-gray-500 font-medium">Danh sách booking thật lấy từ backend sau bước Payment / Invoice.</p>
-          </div>
-          <button
-            onClick={() => navigate('/search')}
-            className="flex items-center gap-2 text-sm font-black text-orange-600 hover:text-orange-700 transition-colors bg-orange-50 px-5 py-3 rounded-2xl border border-orange-100"
-          >
-            <Search className="w-4 h-4" /> Explore Services
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2 overflow-x-auto pb-6 no-scrollbar">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`px-6 py-2.5 rounded-2xl text-sm font-black transition-all whitespace-nowrap ${activeTab === tab.key
-                ? 'bg-gray-900 text-white shadow-xl scale-105'
-                : 'bg-white text-gray-500 border border-gray-100 hover:border-orange-200 hover:text-orange-600 shadow-sm'
-                }`}
-            >
-              {tab.label} <span className="ml-2 opacity-70">{counts[tab.key] ?? 0}</span>
-            </button>
-          ))}
-        </div>
-
-        {loading ? (
-          <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-12 text-center">
-            <Loader2 className="w-8 h-8 text-orange-500 animate-spin mx-auto mb-4" />
-            <h2 className="text-xl font-black text-gray-900 mb-2">Đang tải booking</h2>
-            <p className="text-sm text-gray-500 font-medium">PetGo đang đồng bộ danh sách đặt lịch của bạn.</p>
-          </div>
-        ) : error ? (
-          <div className="bg-white rounded-[2.5rem] border border-red-100 shadow-sm p-10 text-center">
-            <AlertCircle className="w-9 h-9 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-black text-gray-900 mb-2">Không tải được booking</h2>
-            <p className="text-sm text-gray-500 font-medium mb-6">{error}</p>
-            <button onClick={() => loadBookings(activeTab)} className="px-5 py-3 rounded-2xl bg-orange-500 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-600">
-              Thử lại
-            </button>
-          </div>
-        ) : bookings.length === 0 ? (
-          <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-12 text-center">
-            <Calendar className="w-10 h-10 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-2xl font-black text-gray-900 mb-2">Chưa có booking ở tab này</h2>
-            <p className="text-sm text-gray-500 font-medium mb-6">Bạn có thể quay lại tìm dịch vụ phù hợp cho thú cưng của mình.</p>
-            <button onClick={() => navigate('/search')} className="px-5 py-3 rounded-2xl bg-orange-500 text-white font-black text-xs uppercase tracking-widest hover:bg-orange-600">
-              Explore Services
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {bookings.map((booking) => (
-              <div key={booking.bookingId} className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group">
-                <div className="p-6 sm:p-8">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-gray-50">
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-sm border border-gray-100 shrink-0">
-                        {booking.providerImage ? <img src={booking.providerImage} alt={booking.providerName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" /> : <div className="w-full h-full bg-orange-50 flex items-center justify-center"><PawPrint className="w-7 h-7 text-orange-400" /></div>}
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="text-xl font-black text-gray-900 leading-tight group-hover:text-orange-600 transition-colors truncate">
-                          {booking.providerName}
-                        </h3>
-                        <p className="text-[10px] font-black text-gray-400 tracking-widest uppercase mt-1">Booking ID: {booking.bookingCode}</p>
-                      </div>
-                    </div>
-                    <div>{renderStatusBadge(booking)}</div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <MetaBlock icon={<CheckCircle2 className="w-4 h-4" />} title="Dịch vụ" value={booking.serviceName} tone="orange" />
-                    <MetaBlock icon={<PawPrint className="w-4 h-4" />} title="Thú cưng" value={booking.petLabel} tone="orange" />
-                    <MetaBlock icon={<Calendar className="w-4 h-4" />} title="Ngày giờ" value={`${booking.appointmentDateDisplay} • ${booking.appointmentTime}`} tone="blue" />
-                  </div>
-
-                  {['PENDING_PROVIDER_CONFIRMATION', 'ADMIN_REVIEW', 'DISPUTED'].includes(booking.status) ? (
-                    <div className="mb-6 rounded-2xl border border-orange-100 bg-orange-50 px-5 py-4 text-sm font-bold text-orange-800">
-                      {booking.status === 'PENDING_PROVIDER_CONFIRMATION' ? 'Booking đã giữ tiền ví và đang chờ provider xác nhận nhận lịch.' : booking.status === 'ADMIN_REVIEW' ? 'Booking đang chờ admin xử lý theo rule mới, tiền escrow chưa giải ngân.' : 'Booking đang tranh chấp, admin sẽ xử lý phân bổ escrow.'}
-                    </div>
-                  ) : null}
-
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    return (
+        <div className="min-h-screen bg-gray-50">
+            <div className="max-w-4xl mx-auto px-4 py-8">
+                <div className="flex items-center justify-between mb-6">
                     <div>
-                      <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">Tổng thanh toán</p>
-                      <p className="text-2xl font-black text-gray-900">{booking.totalAmountDisplay}</p>
+                        <h1 className="text-2xl font-black text-gray-900">Lịch sử đặt lịch</h1>
+                        <p className="text-sm text-gray-500 mt-1">Theo dõi và quản lý các đơn đặt lịch của bạn</p>
                     </div>
-
-                    <div className="flex flex-wrap gap-3 justify-end">
-                      <button onClick={() => navigate(`/bookings/${booking.bookingId}`)} className="px-5 py-3 rounded-2xl bg-gray-900 text-white text-xs font-black uppercase tracking-widest hover:bg-orange-500 transition-all shadow-lg shadow-gray-100 inline-flex items-center gap-2">
-                        Details <ChevronRight className="w-4 h-4" />
-                      </button>
-                      {booking.canReschedule ? (
-                        <button onClick={() => navigate(`/reschedule/${booking.bookingId}`)} className="px-5 py-3 rounded-2xl bg-blue-50 text-blue-600 text-xs font-black uppercase tracking-widest hover:bg-blue-100 transition-all border border-blue-100">
-                          Reschedule
-                        </button>
-                      ) : null}
-                      {booking.canCancel ? (
-                        <button onClick={() => navigate(`/cancel-booking/${booking.bookingId}`)} className="px-5 py-3 rounded-2xl bg-red-50 text-red-600 text-xs font-black uppercase tracking-widest hover:bg-red-100 transition-all border border-red-100">
-                          Cancel
-                        </button>
-                      ) : null}
-                      {booking.canReview ? (
-                        <button onClick={() => navigate(`/reviews/create/${booking.bookingId}`)} className="px-5 py-3 rounded-2xl bg-green-50 text-green-600 text-xs font-black uppercase tracking-widest hover:bg-green-100 transition-all border border-green-100">
-                          Review
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
+                    <Link to="/booking" className="px-5 py-2.5 rounded-xl bg-orange-500 text-white font-black text-sm hover:bg-orange-600 transition-all">
+                        + Đặt lịch mới
+                    </Link>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
 
-        <div className="text-center mt-10">
-          <button onClick={() => navigate('/search')} className="text-sm font-black text-orange-600 hover:text-orange-700 inline-flex items-center gap-2">
-            Explore more services <ArrowRight className="w-4 h-4" />
-          </button>
+                {loading ? (
+                    <div className="text-center py-16">
+                        <div className="animate-spin w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                        <p className="text-gray-500 font-bold">Đang tải...</p>
+                    </div>
+                ) : bookings.length === 0 ? (
+                    <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+                        <p className="text-gray-400 font-bold text-lg mb-2">Chưa có đặt lịch nào</p>
+                        <p className="text-gray-400 text-sm mb-6">Bắt đầu đặt lịch vận chuyển cho thú cưng của bạn</p>
+                        <Link to="/booking" className="px-6 py-3 rounded-xl bg-orange-500 text-white font-black hover:bg-orange-600 transition-all">
+                            Đặt lịch ngay
+                        </Link>
+                    </div>
+                ) : (
+                    <div className="grid gap-3">
+                        {bookings.map((b) => (
+                            <div key={b.id}
+                                onClick={() => openDetail(b)}
+                                className="bg-white rounded-2xl border border-gray-100 p-5 cursor-pointer hover:border-orange-200 hover:shadow-sm transition-all">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-black text-gray-900 text-sm">{b.bookingCode}</span>
+                                            {statusBadge(b.status)}
+                                        </div>
+                                        <div className="text-sm text-gray-600">
+                                            {b.serviceName} · {b.areaName}
+                                        </div>
+                                        <div className="text-xs text-gray-400 mt-1">
+                                            {b.appointmentDate} · {b.timeSlot} · {b.petName}
+                                        </div>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <div className="font-black text-orange-600">{formatPrice(b.totalAmount)}₫</div>
+                                        {b.status === 'PENDING' && (
+                                            <button onClick={(e) => { e.stopPropagation(); handleCancel(b.id, b.bookingCode); }}
+                                                className="mt-2 text-xs font-black text-red-500 hover:underline">
+                                                Hủy
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {selectedBooking && (
+                    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedBooking(null)}>
+                        <div className="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <h2 className="font-black text-lg">Chi tiết đặt lịch</h2>
+                                    <p className="text-sm text-gray-500">{selectedBooking.bookingCode}</p>
+                                </div>
+                                <button onClick={() => setSelectedBooking(null)} className="text-gray-400 hover:text-gray-600 text-2xl">✕</button>
+                            </div>
+                            {detailLoading ? (
+                                <div className="text-center py-8"><div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full mx-auto"></div></div>
+                            ) : (
+                                <div className="space-y-3">
+                                    <DetailRow label="Trạng thái" value={statusBadge(selectedBooking.status)} />
+                                    <DetailRow label="Dịch vụ" value={selectedBooking.serviceName} />
+                                    <DetailRow label="Khu vực" value={selectedBooking.areaName} />
+                                    <DetailRow label="Thú cưng" value={selectedBooking.petName} />
+                                    <DetailRow label="Ngày" value={selectedBooking.appointmentDate} />
+                                    <DetailRow label="Giờ" value={selectedBooking.timeSlot} />
+                                    <DetailRow label="Phí dịch vụ" value={`${formatPrice(selectedBooking.priceAmount)}₫`} />
+                                    <DetailRow label="Phí vận chuyển" value={`${formatPrice(selectedBooking.shippingFee)}₫`} />
+                                    <DetailRow label="Tổng tiền" value={<span className="font-black text-orange-600">{formatPrice(selectedBooking.totalAmount)}₫</span>} />
+                                    {selectedBooking.pickupAddress && <DetailRow label="Địa chỉ đón" value={selectedBooking.pickupAddress} />}
+                                    {selectedBooking.customerNote && <DetailRow label="Ghi chú" value={selectedBooking.customerNote} />}
+                                    {selectedBooking.status === 'PENDING' && (
+                                        <button onClick={() => handleCancel(selectedBooking.id, selectedBooking.bookingCode)}
+                                            className="w-full mt-4 py-3 rounded-xl border-2 border-red-200 text-red-600 font-black text-sm hover:bg-red-50 transition-all">
+                                            Hủy đặt lịch
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
-      </main>
-    </div>
-  );
-};
+    );
+}
 
-const MetaBlock = ({ icon, title, value, tone = 'orange' }) => {
-  const tones = {
-    orange: 'bg-orange-50 text-orange-500',
-    blue: 'bg-blue-50 text-blue-500',
-  };
-
-  return (
-    <div className="flex items-center gap-3">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${tones[tone] || tones.orange}`}>
-        {icon}
-      </div>
-      <div>
-        <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest leading-none mb-1">{title}</p>
-        <p className="text-sm font-bold text-gray-700">{value}</p>
-      </div>
-    </div>
-  );
-};
-
-export default MyBookingsPage;
+function DetailRow({ label, value }) {
+    return (
+        <div className="flex justify-between items-center py-1">
+            <span className="text-sm text-gray-500">{label}</span>
+            <span className="text-sm font-bold text-gray-900">{value}</span>
+        </div>
+    );
+}

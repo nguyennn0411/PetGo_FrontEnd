@@ -1,15 +1,4 @@
 export const resolveUserId = (account) => {
-  const roles = account?.roles || account?.user?.roles || account?.authorities || [];
-  const roleList = Array.isArray(roles) ? roles : [roles];
-  const hasPartnerRole = roleList.some((role) => {
-    const normalized = typeof role === 'string'
-      ? role.toUpperCase()
-      : String(role?.code?.code || role?.code || role?.roleCode || role?.name || role?.authority || role?.role || '').toUpperCase();
-    return ['SHOP', 'PARTNER', 'PROVIDER'].includes(normalized);
-  });
-
-  if (hasPartnerRole) return null;
-
   const candidates = [
     account?.userId,
     account?.userId,
