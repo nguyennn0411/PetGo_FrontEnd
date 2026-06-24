@@ -36,7 +36,7 @@ export default function CheckoutPage() {
   const isValidPhone = (value) => /^\d{9,12}$/.test(value || '');
 
   useEffect(() => {
-    shopApi.getCart(userId).then(setCart).catch(() => { });
+    shopApi.getCart(userId).then(setCart).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -73,10 +73,10 @@ export default function CheckoutPage() {
         }
         throw new Error('Không nhận được liên kết thanh toán PayOS.');
       }
-      toast.success(`Đặt hàng thành công: ${order.orderCode}`);
+      alert(`Đặt hàng thành công: ${order.orderCode}`);
       navigate('/my-orders');
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Đặt hàng thất bại.');
+      alert(err.response?.data?.message || err.message || 'Đặt hàng thất bại.');
     } finally {
       setSubmitting(false);
     }

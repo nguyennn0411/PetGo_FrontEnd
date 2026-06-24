@@ -90,12 +90,21 @@ const RegisterPage = () => {
               <span className="text-3xl font-black tracking-tight">PetGo</span>
             </div>
             <h1 className="text-5xl font-black leading-[1.1] mb-6 text-white">
-              Tham gia với chúng tôi <br />
-              <span className="text-orange-500">PetGo</span>
+              Join the biggest <br />
+              <span className="text-orange-500">pet community.</span>
             </h1>
             <p className="text-gray-400 text-xl font-medium max-w-md leading-relaxed">
-              Tạo một tài khoản để bắt đầu đặt lịch các dịch vụ tốt nhất cho những người bạn thú cưng của bạn.
+              Create an account to start booking the best services for your furry friends.
             </p>
+          </div>
+          <div className="relative z-10 flex items-center gap-6">
+            <div className="w-12 h-12 rounded-2xl bg-orange-500/20 flex items-center justify-center border border-orange-500/30">
+              <ShieldCheck className="w-6 h-6 text-orange-500" />
+            </div>
+            <div>
+              <p className="text-lg font-black">Trusted Platform</p>
+              <p className="text-gray-400 font-medium italic">Verified by thousands of pet users</p>
+            </div>
           </div>
         </div>
 
@@ -108,32 +117,32 @@ const RegisterPage = () => {
           </div>
 
           <div className="mb-8">
-            <h2 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">Tạo tài khoản</h2>
-            <p className="text-gray-500 font-medium">Nhập đủ thông tin để tạo tài khoản.</p>
+            <h2 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">Create Account</h2>
+            <p className="text-gray-500 font-medium">Start your journey with us today.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <InputField label="Tên đầy đủ" icon={<User className="w-5 h-5" />} value={name} onChange={setName} placeholder="Nguyễn Văn Nam" />
-            <InputField label="Email" type="email" icon={<Mail className="w-5 h-5" />} value={email} onChange={setEmail} placeholder="name@example.com" />
-            <InputField label="Số điện thoại" type="tel" icon={<Phone className="w-5 h-5" />} value={phone} onChange={setPhone} placeholder="0901234567" />
+            <InputField label="Full Name" icon={<User className="w-5 h-5" />} value={name} onChange={setName} placeholder="John Doe" />
+            <InputField label="Email Address" type="email" icon={<Mail className="w-5 h-5" />} value={email} onChange={setEmail} placeholder="name@example.com" />
+            <InputField label="Phone Number" type="tel" icon={<Phone className="w-5 h-5" />} value={phone} onChange={setPhone} placeholder="0901234567" />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <PasswordField label="Mật khẩu" value={password} setValue={setPassword} showPassword={showPassword} setShowPassword={setShowPassword} icon={<Lock className="w-5 h-5" />} />
-              <PasswordField label="Xác nhận mật khẩu" value={confirmPassword} setValue={setConfirmPassword} showPassword={showPassword} setShowPassword={setShowPassword} icon={<ShieldCheck className="w-5 h-5" />} />
+              <PasswordField label="Password" value={password} setValue={setPassword} showPassword={showPassword} setShowPassword={setShowPassword} icon={<Lock className="w-5 h-5" />} />
+              <PasswordField label="Confirm" value={confirmPassword} setValue={setConfirmPassword} showPassword={showPassword} setShowPassword={setShowPassword} icon={<ShieldCheck className="w-5 h-5" />} />
             </div>
 
             {error && <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">{error}</div>}
             {success && <div className="rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-sm font-bold text-green-600">{success}</div>}
 
             <button type="submit" disabled={isLoading} className="w-full py-4 rounded-2xl bg-gray-900 text-white font-black hover:bg-orange-500 transition-all disabled:opacity-60">
-              {isLoading ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}
+              {isLoading ? 'Đang tạo tài khoản...' : 'Create Account'}
             </button>
           </form>
 
           <p className="text-center text-sm text-gray-500 font-medium mt-8">
-            Bạn đã có tài khoản?{' '}
+            Already have an account?{' '}
             <Link to="/login" className="font-black text-orange-600 hover:text-orange-700 transition-colors">
-              Đăng nhập
+              Sign in
             </Link>
           </p>
         </div>

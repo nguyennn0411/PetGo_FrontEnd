@@ -1,14 +1,12 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { AdminTitleContext } from '../../components/AdminLayout';
-import { AdminDialog, getAdminErrorMessage, useAdminDialog, useAdminToast } from '../../components/admin/AdminFeedback';
+import React, { useEffect, useState } from 'react';
+import AdminLayout from '../../components/AdminLayout';
+import { AdminDialog, AdminToastStack, getAdminErrorMessage, useAdminDialog, useAdminToast } from '../../components/admin/AdminFeedback';
 import { formatVnd, shopApi } from '../../api/shop';
 
 const emptyForm = { name: '', slug: '', brand: 'PetGo', categoryId: '', targetSpecies: 'ALL', priceAmount: '', salePriceAmount: '', stockQuantity: 0, sku: '', mainImageUrl: '', shortDescription: '', description: '', featured: true, hot: false, active: true, status: 'ACTIVE' };
 const slugify = (value) => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
 export default function AdminProducts() {
-  const setPageTitle = useContext(AdminTitleContext);
-  useEffect(() => { setPageTitle('Quản lý sản phẩm shop'); }, []);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -16,7 +14,7 @@ export default function AdminProducts() {
   const [form, setForm] = useState(emptyForm);
   const [keyword, setKeyword] = useState('');
 
-  const { toast, showToast } = useAdminToast();
+  const { toasts, showToast, dismissToast } = useAdminToast();
   const { dialog, confirmDialog, closeDialog } = useAdminDialog();
 
   const load = async () => {
@@ -97,20 +95,9 @@ export default function AdminProducts() {
   //   }
   // };
   const remove = async (id) => {
-    const accepted = await confirmDialog({
-      tone: 'warning',
-      title: 'Xóa sản phẩm?',
-      message: 'Bạn có chắc chắn muốn xóa sản phẩm này khỏi hệ thống?',
-      confirmLabel: 'Xóa',
-      cancelLabel: 'Hủy',
-    });
-    if (!accepted) return;
-    try {
+    if (await window.confirmAsync('Bạn có chắc chắn muốn xóa sản phẩm này khỏi hệ thống?')) {
       await shopApi.deleteAdminProduct(id);
-      showToast({ tone: 'success', title: 'Đã xóa', message: 'Sản phẩm đã được xóa khỏi hệ thống.' });
       load();
-    } catch (err) {
-      showToast({ tone: 'error', title: 'Xóa thất bại', message: getAdminErrorMessage(err, 'Không thể xóa sản phẩm.') });
     }
   };
 
@@ -121,12 +108,13 @@ export default function AdminProducts() {
       const url = await shopApi.uploadAdminStoreImage(file);
       setForm({ ...form, mainImageUrl: url });
     } catch (err) {
-      toast.error('Không thể tải ảnh lên. Vui lòng thử lại.');
+      window.alert('Lỗi tải ảnh lên');
     }
   };
 
   return (
-    <>
+    <AdminLayout title="Quản lý sản phẩm shop">
+      <AdminToastStack toasts={toasts} onDismiss={dismissToast} />
       <AdminDialog dialog={dialog} onResolve={closeDialog} />
 
       <div className="metrics metrics-3">
@@ -165,7 +153,7 @@ export default function AdminProducts() {
         </div>
         <Input label="Thương hiệu" value={form.brand || ''} onChange={(v) => setForm({ ...form, brand: v })} />
       </div><div style={{ marginTop: 12 }}><label>Mô tả ngắn</label><input value={form.shortDescription || ''} onChange={(e) => setForm({ ...form, shortDescription: e.target.value })} /></div><div style={{ marginTop: 12 }}><label>Mô tả</label><textarea rows={4} value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}><button type="button" className="btn" onClick={() => setShowForm(false)}>Hủy</button><button className="btn btn-primary">Lưu</button></div></form></div>}
-    </>
+    </AdminLayout>
   );
 }
 function Input({ label, value, onChange, type = 'text', required = false }) { return <div><label>{label}</label><input type={type} required={required} value={value} onChange={(e) => onChange(e.target.value)} /></div>; }

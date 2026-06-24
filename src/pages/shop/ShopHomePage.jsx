@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import Swal from 'sweetalert2';
-import { toast } from 'react-hot-toast';
 import { ArrowRight, BadgeCheck, Bone, PackageCheck, Truck } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import ShopLayout from '../../components/shop/ShopLayout';
@@ -36,15 +34,16 @@ export default function ShopHomePage() {
     load();
   }, []);
 
-    const addToCart = async (product) => {
+  const addToCart = async (product) => {
     const userId = getCurrentUserId();
     if (!userId) {
-      const result = await Swal.fire({ icon: 'question', title: 'Đăng nhập', text: 'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng. Đăng nhập ngay?', showCancelButton: true, confirmButtonText: 'Đăng nhập', cancelButtonText: 'Để sau', confirmButtonColor: '#f97316', reverseButtons: true });
-      if (result.isConfirmed) navigate('/login');
+      if (confirm('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng. Đăng nhập ngay?')) {
+        navigate('/login');
+      }
       return;
     }
     await shopApi.addCartItem({ userId, productId: product.id, quantity: 1 });
-    toast.success('Đã thêm sản phẩm vào giỏ hàng!');
+    window.alert('Đã thêm sản phẩm vào giỏ hàng!');
   };
 
   return (

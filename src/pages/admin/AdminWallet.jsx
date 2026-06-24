@@ -1,40 +1,30 @@
-import { useContext, useEffect, useState } from 'react';
-import { AdminTitleContext } from '../../components/AdminLayout';
-import { AdminDialog, getAdminErrorMessage, useAdminDialog, useAdminToast } from '../../components/admin/AdminFeedback';
-import { getAdminBookingDisputes, getAdminSystemWalletTransactions, getAdminWalletAutoConfirm, getAdminWalletFailedTopUps, getAdminWalletPendingTransactions, resolveAdminBookingDispute, resolveAdminWalletFailedTopUp, reviewAdminWalletTransaction, updateAdminWalletAutoConfirm, updateAdminWalletStatus } from '../../api/wallet';
+import { useEffect, useState } from 'react';
+import AdminLayout from '../../components/AdminLayout';
+import { AdminDialog, AdminToastStack, getAdminErrorMessage, useAdminDialog, useAdminToast } from '../../components/admin/AdminFeedback';
+import { getAdminBookingDisputes, getAdminWalletAutoConfirm, getAdminWalletFailedTopUps, getAdminWalletPendingTransactions, openAdminBookingDisputeChat, resolveAdminBookingDispute, resolveAdminWalletFailedTopUp, reviewAdminWalletTransaction, updateAdminWalletAutoConfirm, updateAdminWalletStatus } from '../../api/wallet';
 
 const money = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(value || 0));
 const labels = { TOP_UP: 'Nạp ví', WITHDRAW: 'Rút tiền', PENDING_ADMIN_APPROVAL: 'Chờ duyệt', COMPLETED: 'Hoàn tất', REJECTED: 'Từ chối', FAILED: 'Thất bại/hết hạn' };
 
 export default function AdminWallet() {
-    const setPageTitle = useContext(AdminTitleContext);
-    useEffect(() => { setPageTitle('Quản lý ví'); }, []);
     const [pending, setPending] = useState([]);
     const [failedTopUps, setFailedTopUps] = useState([]);
     const [bookingDisputes, setBookingDisputes] = useState([]);
     const [autoConfirm, setAutoConfirm] = useState(false);
-    const [systemTxs, setSystemTxs] = useState([]);
     const [walletLock, setWalletLock] = useState({ userId: '', status: 'ACTIVE', note: '' });
     const [loading, setLoading] = useState(true);
     
-    const { showToast } = useAdminToast();
+    const { toasts, showToast, dismissToast } = useAdminToast();
     const { dialog, confirmDialog, promptDialog, closeDialog } = useAdminDialog();
 
     const load = async () => {
         setLoading(true);
         try {
-            const [txs, failed, setting, disputes, sysTxs] = await Promise.all([
-                getAdminWalletPendingTransactions(),
-                getAdminWalletFailedTopUps(),
-                getAdminWalletAutoConfirm(),
-                getAdminBookingDisputes(),
-                getAdminSystemWalletTransactions(),
-            ]);
+            const [txs, failed, setting, disputes] = await Promise.all([getAdminWalletPendingTransactions(), getAdminWalletFailedTopUps(), getAdminWalletAutoConfirm(), getAdminBookingDisputes()]);
             setPending(Array.isArray(txs) ? txs : []);
             setFailedTopUps(Array.isArray(failed) ? failed : []);
             setAutoConfirm(Boolean(setting?.enabled));
             setBookingDisputes(Array.isArray(disputes) ? disputes : []);
-            setSystemTxs(Array.isArray(sysTxs) ? sysTxs : []);
         } catch (err) {
             showToast({
                 tone: 'error',
@@ -192,9 +182,9 @@ export default function AdminWallet() {
         const refundToUserAmount = Number(refundToUserText || 0);
 
         const maxRelease = Math.max(0, escrow - refundToUserAmount);
-        const releaseToPartnerText = await promptDialog({
+        const releaseToProviderText = await promptDialog({
             tone: 'info',
-            title: 'Giải ngân cho đối tác',
+            title: 'Giải ngân cho nhà cung cấp',
             message: `Nhập số tiền muốn giải ngân cho đối tác (max: ${money(maxRelease)})`,
             defaultValue: String(maxRelease),
             required: true,
@@ -202,14 +192,14 @@ export default function AdminWallet() {
             confirmLabel: 'Tiếp tục',
             cancelLabel: 'Hủy',
         });
-        if (releaseToPartnerText === null) return;
-        const releaseToPartnerAmount = Number(releaseToPartnerText || 0);
+        if (releaseToProviderText === null) return;
+        const releaseToProviderAmount = Number(releaseToProviderText || 0);
 
-        if (refundToUserAmount < 0 || releaseToPartnerAmount < 0) {
+        if (refundToUserAmount < 0 || releaseToProviderAmount < 0) {
             showToast({ tone: 'error', title: 'Lỗi số tiền', message: 'Số tiền phân bổ không được âm.' });
             return;
         }
-        if (refundToUserAmount + releaseToPartnerAmount > escrow) {
+        if (refundToUserAmount + releaseToProviderAmount > escrow) {
             showToast({ tone: 'error', title: 'Lỗi số tiền', message: 'Tổng phân bổ không được vượt escrow.' });
             return;
         }
@@ -218,7 +208,7 @@ export default function AdminWallet() {
             tone: 'info',
             title: 'Lý do xử lý khiếu nại',
             message: 'Nhập ghi chú/lý do xử lý dispute booking này (bắt buộc):',
-            placeholder: 'Ví dụ: Hoàn trả 100% cho khách hàng do dịch vụ không được thực hiện...',
+            placeholder: 'Ví dụ: Hoàn trả 100% cho khách hàng do nhà cung cấp không phục vụ...',
             required: true,
             multiline: true,
             confirmLabel: 'Tiếp tục',
@@ -229,14 +219,14 @@ export default function AdminWallet() {
         const accepted = await confirmDialog({
             tone: 'warning',
             title: 'Xác nhận phân bổ tiền Booking Dispute',
-            message: `Bạn có chắc muốn xử lý khiếu nại booking ${dispute.bookingCode}: hoàn khách hàng ${money(refundToUserAmount)}, chuyển đối tác ${money(releaseToPartnerAmount)}?`,
+            message: `Bạn có chắc muốn xử lý khiếu nại booking ${dispute.bookingCode}: hoàn khách hàng ${money(refundToUserAmount)}, chuyển đối tác ${money(releaseToProviderAmount)}?`,
             confirmLabel: 'Xác nhận phân bổ',
             cancelLabel: 'Hủy',
         });
         if (!accepted) return;
 
         try {
-            await resolveAdminBookingDispute(dispute.bookingId, { refundToUserAmount, releaseToPartnerAmount, reason });
+            await resolveAdminBookingDispute(dispute.bookingId, { refundToUserAmount, releaseToProviderAmount, reason });
             showToast({
                 tone: 'success',
                 title: 'Đã xử lý khiếu nại',
@@ -252,7 +242,22 @@ export default function AdminWallet() {
         }
     };
 
-    return <>
+    const openBookingDisputeChat = async (dispute) => {
+        try {
+            const conversation = await openAdminBookingDisputeChat(dispute.bookingId);
+            const conversationId = conversation?.conversationId || conversation?.id;
+            if (conversationId) window.location.href = `/chat?conversationId=${conversationId}`;
+        } catch (err) {
+            showToast({
+                tone: 'error',
+                title: 'Lỗi mở chat',
+                message: getAdminErrorMessage(err, 'Không mở được chat dispute booking.'),
+            });
+        }
+    };
+
+    return <AdminLayout title="Quản lý ví">
+        <AdminToastStack toasts={toasts} onDismiss={dismissToast} />
         <AdminDialog dialog={dialog} onResolve={closeDialog} />
 
         <div className="metrics">
@@ -279,8 +284,8 @@ export default function AdminWallet() {
         </div>
         <div className="card" style={{ marginTop: 24 }}>
             <h3>Booking dispute / escrow cần admin xử lý</h3>
-            <table><thead><tr><th>Booking</th><th>User</th><th>Khu vực</th><th>Dịch vụ</th><th>Lịch hẹn</th><th>Escrow</th><th>Lý do</th><th>Thao tác</th></tr></thead><tbody>
-                {loading ? <tr><td colSpan="8">Đang tải...</td></tr> : bookingDisputes.length === 0 ? <tr><td colSpan="8">Không có booking dispute cần xử lý.</td></tr> : bookingDisputes.map(dispute => <tr key={dispute.bookingId}><td>{dispute.bookingCode}<br /><span className="badge badge-danger">{dispute.statusLabel || dispute.status}</span></td><td>#{dispute.customerUserId}<br /><span className="text-muted">{dispute.customerName || '—'}</span></td><td>{dispute.areaName || (dispute.areaId ? `#${dispute.areaId}` : '—')}</td><td>{dispute.serviceName || '—'}</td><td>{dispute.appointmentDate}<br /><span className="text-muted">{dispute.appointmentTime}</span></td><td className="fw-500">{dispute.escrowAmountDisplay || money(dispute.escrowAmount)}</td><td>{dispute.disputeReason || '—'}</td><td><button className="btn btn-sm btn-primary" onClick={() => resolveBookingDispute(dispute)}>Resolve split</button></td></tr>)}
+            <table><thead><tr><th>Booking</th><th>User</th><th>Provider</th><th>Dịch vụ</th><th>Lịch hẹn</th><th>Escrow</th><th>Lý do</th><th>Thao tác</th></tr></thead><tbody>
+                {loading ? <tr><td colSpan="8">Đang tải...</td></tr> : bookingDisputes.length === 0 ? <tr><td colSpan="8">Không có booking dispute cần xử lý.</td></tr> : bookingDisputes.map(dispute => <tr key={dispute.bookingId}><td>{dispute.bookingCode}<br /><span className="badge badge-danger">{dispute.statusLabel || dispute.status}</span></td><td>#{dispute.customerUserId}<br /><span className="text-muted">{dispute.customerName || '—'}</span></td><td>{dispute.providerName || `#${dispute.providerId}`}</td><td>{dispute.serviceName}</td><td>{dispute.appointmentDate}<br /><span className="text-muted">{dispute.appointmentTime}</span></td><td className="fw-500">{dispute.escrowAmountDisplay || money(dispute.escrowAmount)}</td><td>{dispute.disputeReason || '—'}</td><td><button className="btn btn-sm btn-primary" onClick={() => resolveBookingDispute(dispute)}>Resolve split</button> <button className="btn btn-sm" onClick={() => openBookingDisputeChat(dispute)}>Mở chat</button></td></tr>)}
             </tbody></table>
         </div>
         <div className="card" style={{ marginTop: 24 }}>
@@ -289,11 +294,5 @@ export default function AdminWallet() {
                 {loading ? <tr><td colSpan="7">Đang tải...</td></tr> : failedTopUps.length === 0 ? <tr><td colSpan="7">Không có giao dịch nạp thất bại cần xử lý.</td></tr> : failedTopUps.map(tx => <tr key={tx.id}><td>{tx.transactionCode}</td><td>{tx.userCode}<br /><span className="text-muted">{tx.userName}</span></td><td className="fw-500">{money(tx.amount)}</td><td>{tx.gatewayName}<br /><span className="text-muted">{tx.gatewayTransactionId}</span></td><td>{tx.reviewNote || tx.note || '—'}</td><td>{tx.createdAt || '—'}</td><td><button className="btn btn-sm btn-success" onClick={() => resolveFailed(tx.id, 'APPROVE')}>Đã nhận tiền - cộng ví</button> <button className="btn btn-sm btn-danger" onClick={() => resolveFailed(tx.id, 'REJECT')}>Đóng/Từ chối</button></td></tr>)}
             </tbody></table>
         </div>
-        <div className="card" style={{ marginTop: 24 }}>
-            <h3>Ví hệ thống (SYSTEM_WALLET) — nhận tiền giải ngân booking</h3>
-            <table><thead><tr><th>Mã GD</th><th>Loại</th><th>Số tiền</th><th>Số dư trước</th><th>Số dư sau</th><th>Đối tác</th><th>Ghi chú</th><th>Thời gian</th></tr></thead><tbody>
-                {loading ? <tr><td colSpan="8">Đang tải...</td></tr> : systemTxs.length === 0 ? <tr><td colSpan="8">Chưa có giao dịch nào.</td></tr> : systemTxs.map(tx => <tr key={tx.id}><td>{tx.transactionCode}</td><td>{tx.type}</td><td className="fw-500">{money(tx.amount)}</td><td>{tx.balanceBefore != null ? money(tx.balanceBefore) : '—'}</td><td>{tx.balanceAfter != null ? money(tx.balanceAfter) : '—'}</td><td>{tx.counterpartyUserName || tx.counterpartyUserCode || '—'}</td><td>{tx.note || '—'}</td><td>{tx.createdAt || '—'}</td></tr>)}
-            </tbody></table>
-        </div>
-    </>;
+    </AdminLayout>;
 }

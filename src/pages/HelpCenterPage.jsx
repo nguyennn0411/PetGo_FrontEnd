@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { toast } from 'react-hot-toast';
 import {
   Search,
   ChevronDown,
@@ -21,7 +20,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
+import { startSupportChat } from '../api/chat';
 
 const HelpCenterPage = () => {
   const navigate = useNavigate();
@@ -75,13 +74,14 @@ const HelpCenterPage = () => {
   const handleStartSupportChat = async () => {
     try {
       setSupportLoading(true);
-      navigate(`/`);
+      const conversation = await startSupportChat();
+      navigate(`/chat/${conversation.id}`);
     } catch (err) {
       if (err?.response?.status === 401) {
         navigate('/login', { state: { redirectTo: '/help-center' } });
         return;
       }
-      toast.error(err?.response?.data?.message || 'Không thể mở live chat lúc này.');
+      window.alert(err?.response?.data?.message || 'Không thể mở live chat lúc này.');
     } finally {
       setSupportLoading(false);
     }

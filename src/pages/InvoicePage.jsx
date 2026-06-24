@@ -4,6 +4,7 @@ import {
   Calendar,
   CheckCircle2,
   ChevronLeft,
+  Clock,
   CreditCard,
   Download,
   FileText,
@@ -12,6 +13,7 @@ import {
   PawPrint,
   Printer,
   ShieldCheck,
+  User,
 } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getInvoiceByBookingId, getInvoiceById } from '../api/invoices';
@@ -137,7 +139,7 @@ const InvoicePage = () => {
           </div>
 
           <div className="p-10 space-y-12">
-            <div className="grid grid-cols-1 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               <div>
                 <h3 className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-4">Thông tin thanh toán</h3>
                 <div className="space-y-4">
@@ -146,12 +148,33 @@ const InvoicePage = () => {
                   <InfoBlock icon={<ShieldCheck className="w-4 h-4 text-orange-500" />} label="Trạng thái payment" value={invoice.paymentStatus || 'Chưa rõ'} />
                 </div>
               </div>
+              <div>
+                <h3 className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-4">Đơn vị cung cấp</h3>
+                <div className="space-y-1">
+                  <p className="text-sm font-black text-gray-900">{invoice.providerName}</p>
+                  <p className="text-xs font-medium text-gray-500 leading-relaxed">{invoice.providerAddress}</p>
+                  <p className="text-xs font-bold text-gray-400 mt-2 italic">Tel: {invoice.providerPhone || 'Chưa có'}</p>
+                </div>
+              </div>
             </div>
 
             <div className="bg-gray-50 rounded-[2rem] overflow-hidden border border-gray-100">
-              <div className="p-6 border-b border-gray-200">
-                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Chi tiết hóa đơn</h4>
-                <p className="text-base font-black text-gray-900">PetGo Platform</p>
+              <div className="p-6 border-b border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                <div>
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Dịch vụ & Thú cưng</h4>
+                  <p className="text-base font-black text-gray-900">{invoice.serviceName}</p>
+                  <p className="text-xs font-bold text-orange-600 uppercase tracking-tight mt-1 flex items-center gap-1">
+                    <PawPrint className="w-3 h-3" /> Pet: {invoice.petName}
+                  </p>
+                </div>
+                <div className="sm:text-right">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Thời gian lịch hẹn</p>
+                  <div className="flex sm:justify-end items-center gap-2 text-sm font-bold text-gray-700">
+                    <Calendar className="w-4 h-4" /> {invoice.appointmentDate}
+                    <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
+                    <Clock className="w-4 h-4" /> {invoice.appointmentTime}
+                  </div>
+                </div>
               </div>
 
               <div className="p-8 space-y-4">

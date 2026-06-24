@@ -1,8 +1,27 @@
 import React, { createContext, useEffect, useMemo, useState } from 'react';
 import { getMyAccount } from '../api/auth';
 
+const PARTNER_ROLE_CODES = ['SHOP', 'PARTNER', 'PROVIDER'];
+
+const normalizeRoleCode = (role) => {
+  if (!role) return '';
+  if (typeof role === 'string') return role.toUpperCase();
+  return String(role.code?.code || role.code || role.roleCode || role.name || role.authority || role.role || '').toUpperCase();
+};
+
+const hasPartnerRole = (account) => {
+  const roles = account?.roles || account?.user?.roles || account?.authorities || [];
+  const roleList = Array.isArray(roles) ? roles : [roles];
+  return roleList.some((role) => PARTNER_ROLE_CODES.includes(normalizeRoleCode(role)));
+};
+
 const syncUserId = (account) => {
-  const userId = account?.userId || account?.id;
+  if (hasPartnerRole(account)) {
+    localStorage.removeItem('petgo_user_id');
+    return;
+  }
+
+  const userId = account?.userId || account?.userId || account?.id;
   if (userId) {
     localStorage.setItem('petgo_user_id', String(userId));
   }

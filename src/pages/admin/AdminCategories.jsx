@@ -1,16 +1,11 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { AdminTitleContext } from '../../components/AdminLayout';
-import { getAdminErrorMessage, useAdminDialog, useAdminToast } from '../../components/admin/AdminFeedback';
+import React, { useEffect, useState } from 'react';
+import AdminLayout from '../../components/AdminLayout';
 import { shopApi } from '../../api/shop';
 
 const emptyForm = { name: '', slug: '', iconKey: '', description: '', sortOrder: 0, active: true };
 const slugify = (value) => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
 export default function AdminCategories() {
-  const setPageTitle = useContext(AdminTitleContext);
-  useEffect(() => { setPageTitle('Quản lý Danh mục Store'); }, []);
-  const { toast } = useAdminToast();
-  const { confirmDialog } = useAdminDialog();
   const [categories, setCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -23,7 +18,7 @@ export default function AdminCategories() {
       setCategories(data || []);
     } catch (e) {
       console.error(e);
-      toast.error('Không thể tải danh mục.');
+      alert('Lỗi khi tải danh mục');
     }
   };
   useEffect(() => { load(); }, []);
@@ -38,17 +33,11 @@ export default function AdminCategories() {
     e.preventDefault();
     try {
       const payload = { ...form, slug: form.slug || slugify(form.name), sortOrder: Number(form.sortOrder || 0) };
-      if (editing) {
-        await shopApi.updateAdminCategory(editing.id, payload);
-        toast.success('Danh mục đã được cập nhật.');
-      } else {
-        await shopApi.createAdminCategory(payload);
-        toast.success('Danh mục mới đã được tạo.');
-      }
+      if (editing) await shopApi.updateAdminCategory(editing.id, payload); else await shopApi.createAdminCategory(payload);
       setShowForm(false); setEditing(null); setForm(emptyForm); load();
     } catch (e) {
       console.error(e);
-      toast.error('Không thể lưu danh mục.');
+      alert('Lỗi khi lưu danh mục');
     }
   };
 
@@ -63,33 +52,26 @@ export default function AdminCategories() {
       }
     } catch (err) {
       console.error(err);
-      toast.error('Không thể tải ảnh lên. Vui lòng thử lại.');
+      alert('Lỗi khi tải ảnh lên');
     } finally {
       setUploadingImage(false);
     }
   };
 
-  const remove = async (id) => {
-    const accepted = await confirmDialog({
-      tone: 'warning',
-      title: 'Ẩn danh mục?',
-      message: 'Ẩn danh mục này khỏi Store?',
-      confirmLabel: 'Ẩn',
-      cancelLabel: 'Hủy',
-    });
-    if (!accepted) return;
-    try {
-      await shopApi.deleteAdminCategory(id);
-      toast.success('Danh mục đã được ẩn khỏi cửa hàng.');
-      load();
-    } catch (e) {
-      console.error(e);
-      toast.error('Không thể ẩn danh mục.');
-    }
+  const remove = async (id) => { 
+    if (await window.confirmAsync('Ẩn danh mục này khỏi Store?')) { 
+      try {
+        await shopApi.deleteAdminCategory(id); 
+        load(); 
+      } catch (e) {
+        console.error(e);
+        alert('Lỗi khi ẩn danh mục');
+      }
+    } 
   };
 
   return (
-    <>
+    <AdminLayout title="Quản lý Danh mục Store">
       <div className="metrics metrics-3">
         <div className="metric-card"><div className="metric-label">Tổng danh mục</div><div className="metric-value">{categories.length}</div></div>
         <div className="metric-card"><div className="metric-label">Đang hiển thị</div><div className="metric-value">{categories.filter(c => c.active !== false).length}</div></div>
@@ -145,7 +127,7 @@ export default function AdminCategories() {
           </div>
         </form>
       </div>}
-    </>
+    </AdminLayout>
   );
 }
 

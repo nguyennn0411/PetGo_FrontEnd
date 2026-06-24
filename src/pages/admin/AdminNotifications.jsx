@@ -1,7 +1,7 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getAdminUsers } from '../../api/admin';
 import { createAdminNotification, getAdminNotifications } from '../../api/notifications';
-import { AdminTitleContext } from '../../components/AdminLayout';
+import AdminLayout from '../../components/AdminLayout';
 import { getAdminErrorMessage, useAdminToast } from '../../components/admin/AdminFeedback';
 
 const initialForm = {
@@ -15,8 +15,10 @@ const initialForm = {
   expiresAt: '',
 };
 
-const categoryOptions = ['SYSTEM', 'ACCOUNT', 'BOOKING', 'MEMBERSHIP', 'PAYMENT', 'PROMOTION'];
+const categoryOptions = ['SYSTEM', 'ACCOUNT', 'BOOKING', 'MEMBERSHIP', 'PAYMENT', 'PARTNER', 'PROMOTION'];
 const priorityOptions = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
+const userRoleFilters = ['ALL', 'USER', 'SHOP', 'ADMIN'];
+const userStatusFilters = ['ALL', 'ACTIVE', 'INACTIVE', 'SUSPENDED'];
 
 const priorityBadgeClass = {
   LOW: 'badge-gray',
@@ -26,8 +28,6 @@ const priorityBadgeClass = {
 };
 
 const AdminNotifications = () => {
-  const setPageTitle = useContext(AdminTitleContext);
-  useEffect(() => { setPageTitle('Quản lý thông báo'); }, []);
   const [form, setForm] = useState(initialForm);
   const [users, setUsers] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -36,6 +36,8 @@ const AdminNotifications = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('ALL');
+  const [userStatusFilter, setUserStatusFilter] = useState('ALL');
   const { showToast } = useAdminToast();
 
   const loadData = async () => {
@@ -51,21 +53,38 @@ const AdminNotifications = () => {
     } catch (err) {
       const message = getAdminErrorMessage(err, 'Không thể tải dữ liệu thông báo.');
       setError(message);
-      showToast({ tone: 'error', title: 'Không tải được dữ liệu thông báo', message });
+      showToast({
+        tone: 'error',
+        title: 'Không tải được dữ liệu thông báo',
+        message,
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const filteredUsers = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
     return users.filter((user) => {
-      const values = [user.fullName, user.email, user.phoneNumber, user.userCode, user.status];
-      return !keyword || values.some((value) => String(value || '').toLowerCase().includes(keyword));
+      const values = [
+        user.fullName,
+        user.email,
+        user.phoneNumber,
+        user.userCode,
+        user.status,
+        ...(user.roles || []),
+      ];
+      const matchesSearch = !keyword || values.some((value) => String(value || '').toLowerCase().includes(keyword));
+      const roles = (user.roles || []).map((role) => String(role || '').toUpperCase());
+      const matchesRole = userRoleFilter === 'ALL' || roles.includes(userRoleFilter);
+      const matchesStatus = userStatusFilter === 'ALL' || String(user.status || '').toUpperCase() === userStatusFilter;
+      return matchesSearch && matchesRole && matchesStatus;
     });
-  }, [searchTerm, users]);
+  }, [searchTerm, userRoleFilter, userStatusFilter, users]);
 
   const metrics = useMemo(() => {
     const totalRecipients = notifications.reduce((sum, item) => sum + (item.totalRecipients || 0), 0);
@@ -126,6 +145,9 @@ const AdminNotifications = () => {
     if (form.audienceType === 'INDIVIDUAL') {
       payload.recipientUserIds = form.recipientUserIds.map(Number).filter(Boolean);
     }
+    if (form.audienceType === 'ALL') {
+      payload.targetRoles = ['USER', 'SHOP'];
+    }
     return payload;
   };
 
@@ -135,7 +157,11 @@ const AdminNotifications = () => {
     if (validationMessage) {
       setSuccess('');
       setError(validationMessage);
-      showToast({ tone: 'warning', title: 'Thiếu thông tin gửi thông báo', message: validationMessage });
+      showToast({
+        tone: 'warning',
+        title: 'Thiếu thông tin gửi thông báo',
+        message: validationMessage,
+      });
       return;
     }
 
@@ -146,13 +172,23 @@ const AdminNotifications = () => {
       await createAdminNotification(buildPayload());
       setForm(initialForm);
       setSearchTerm('');
+      setUserRoleFilter('ALL');
+      setUserStatusFilter('ALL');
       setSuccess('Đã tạo và gửi thông báo thành công.');
-      showToast({ tone: 'success', title: 'Đã gửi thông báo', message: 'Thông báo đã được tạo và gửi đến người nhận.' });
+      showToast({
+        tone: 'success',
+        title: 'Đã gửi thông báo',
+        message: 'Thông báo đã được tạo và gửi đến nhóm người nhận đã chọn.',
+      });
       await loadData();
     } catch (err) {
       const message = getAdminErrorMessage(err, 'Tạo thông báo thất bại.');
       setError(message);
-      showToast({ tone: 'error', title: 'Tạo thông báo thất bại', message });
+      showToast({
+        tone: 'error',
+        title: 'Tạo thông báo thất bại',
+        message,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -160,16 +196,17 @@ const AdminNotifications = () => {
 
   const audienceLabel = (notification) => {
     if (notification.audienceType === 'ALL') return 'Gửi tất cả';
+    if (notification.audienceType === 'ROLE') return `Role: ${(notification.targetRoles || []).join(', ')}`;
     return `${notification.totalRecipients || 0} người nhận riêng`;
   };
 
   const formatDateTime = (value) => (value ? new Date(value).toLocaleString('vi-VN') : '—');
 
   return (
-    <>
+    <AdminLayout title="Quản lý thông báo">
       <div className="metrics metrics-3">
         <Metric label="Thông báo đã gửi" value={notifications.length} hint="" />
-        <Metric label="Tổng lượt nhận" value={metrics.totalRecipients} hint="Tổng số người nhận" />
+        <Metric label="Tổng lượt nhận" value={metrics.totalRecipients} hint="Bao gồm user và partner" />
         <Metric label="Chưa đọc" value={metrics.unreadRecipients} hint={`${metrics.urgentCount} thông báo ưu tiên cao`} danger />
       </div>
 
@@ -203,12 +240,20 @@ const AdminNotifications = () => {
 
             {form.audienceType === 'INDIVIDUAL' && (
               <Field label={`Người nhận riêng (${form.recipientUserIds.length} đã chọn)`}>
-                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Tìm theo tên, email, mã user..." style={{ marginBottom: 8 }} />
+                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Tìm theo tên, email, mã user, role..." style={{ marginBottom: 8 }} />
+                <div className="grid2" style={{ marginBottom: 8 }}>
+                  <select value={userRoleFilter} onChange={(event) => setUserRoleFilter(event.target.value)}>
+                    {userRoleFilters.map((role) => <option key={role} value={role}>{role === 'ALL' ? 'Tất cả role' : role}</option>)}
+                  </select>
+                  <select value={userStatusFilter} onChange={(event) => setUserStatusFilter(event.target.value)}>
+                    {userStatusFilters.map((status) => <option key={status} value={status}>{status === 'ALL' ? 'Tất cả trạng thái' : status}</option>)}
+                  </select>
+                </div>
                 <div className="d-flex align-center justify-between flex-wrap" style={{ gap: 8, marginBottom: 8 }}>
-                  <div className="text-tiny">Hiển thị {filteredUsers.length} tài khoản phù hợp.</div>
+                  <div className="text-tiny">Hiển thị {filteredUsers.length} tài khoản phù hợp bộ lọc.</div>
                   <div className="d-flex gap-6">
-                    <button type="button" className="btn btn-sm" onClick={selectVisibleRecipients} disabled={filteredUsers.length === 0}>Chọn tất cả</button>
-                    <button type="button" className="btn btn-sm" onClick={clearVisibleRecipients} disabled={filteredUsers.length === 0}>Bỏ chọn</button>
+                    <button type="button" className="btn btn-sm" onClick={selectVisibleRecipients} disabled={filteredUsers.length === 0}>Chọn tất cả đang lọc</button>
+                    <button type="button" className="btn btn-sm" onClick={clearVisibleRecipients} disabled={filteredUsers.length === 0}>Bỏ chọn đang lọc</button>
                   </div>
                 </div>
                 <div style={{ maxHeight: 260, overflowY: 'auto', border: '0.5px solid var(--border-tertiary)', borderRadius: 8 }}>
@@ -221,7 +266,7 @@ const AdminNotifications = () => {
                         <input type="checkbox" checked={form.recipientUserIds.includes(userId)} onChange={() => toggleRecipient(userId)} style={{ width: 'auto' }} />
                         <div className="flex-1">
                           <div className="fw-500">{user.fullName} <span className="text-tiny">({user.userCode})</span></div>
-                          <div className="text-muted text-small">{user.email} • {user.status || '—'}</div>
+                          <div className="text-muted text-small">{user.email} • {(user.roles || ['USER']).join(', ')} • {user.status || '—'}</div>
                         </div>
                       </label>
                     );
@@ -230,7 +275,7 @@ const AdminNotifications = () => {
               </Field>
             )}
 
-            {form.audienceType === 'ALL' && <div className="card" style={{ marginBottom: 0, background: 'var(--bg-info)', color: 'var(--text-info)', padding: 12 }}>Thông báo sẽ được gửi tới toàn bộ người dùng.</div>}
+            {form.audienceType === 'ALL' && <div className="card" style={{ marginBottom: 0, background: 'var(--bg-info)', color: 'var(--text-info)', padding: 12 }}>Thông báo sẽ được gửi tới toàn bộ tài khoản.</div>}
 
             <div className="grid2" style={{ marginBottom: 0 }}>
               <Field label="Mức ưu tiên">
@@ -244,6 +289,7 @@ const AdminNotifications = () => {
                 </select>
               </Field>
             </div>
+
 
             <div className="grid2" style={{ marginBottom: 0 }}>
               <Field label="Hết hạn (tuỳ chọn)">
@@ -295,7 +341,7 @@ const AdminNotifications = () => {
           </div>
         </div>
       </div>
-    </>
+    </AdminLayout>
   );
 };
 
@@ -312,6 +358,15 @@ const Field = ({ label, children }) => (
     {label}
     <div className="notification-field">{children}</div>
   </label>
+);
+
+const InfoItem = ({ title, content }) => (
+  <div className="stack-item" style={{ alignItems: 'flex-start' }}>
+    <div>
+      <div className="fw-500">{title}</div>
+      <div className="text-muted text-small">{content}</div>
+    </div>
+  </div>
 );
 
 export default AdminNotifications;
