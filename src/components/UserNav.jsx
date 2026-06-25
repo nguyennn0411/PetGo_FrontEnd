@@ -14,6 +14,7 @@ const navItems = [
     { to: '/services', label: 'Dịch vụ', icon: Search },
     { to: '/ai-grooming', label: 'AI Grooming', icon: Sparkles },
     { to: '/shop', label: 'Cửa hàng', icon: ShoppingBag },
+    { to: '/help-center', label: 'Hỗ trợ', icon: MessageCircle },
 ];
 
 const UserNav = ({ activePath = '' }) => {

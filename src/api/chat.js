@@ -11,3 +11,9 @@ export const sendMessage = async (id, payload) => unwrap(await api.post(`/chat/c
 export const getAdminConversations = async (type) => unwrap(await api.get('/chat/admin/conversations', { params: { type } }));
 export const updateConversationStatus = async (id, payload) => unwrap(await api.patch(`/chat/admin/conversations/${id}/status`, payload));
 export const deleteConversation = async (id) => unwrap(await api.delete(`/chat/admin/conversations/${id}`));
+
+export const uploadChatImage = async (file) => {
+  const form = new FormData();
+  form.append('file', file);
+  return unwrap(await api.post('/chat/upload-image', form));
+};

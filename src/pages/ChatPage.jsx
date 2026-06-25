@@ -1,7 +1,7 @@
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { createConversation, getConversationDetail, getMessages, getMyConversations, sendMessage } from '../api/chat';
+import { createConversation, getConversationDetail, getMessages, getMyConversations, sendMessage, uploadChatImage } from '../api/chat';
 
 const STATUS_LABEL = { OPEN: 'Mở', PROCESSING: 'Đang xử lý', COMPLETED: 'Hoàn thành' };
 const TYPE_OPTIONS = [
@@ -17,14 +17,43 @@ export default function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ type: 'REPORT', title: '', content: '', imageUrl: '', errorCode: '' });
+  const [form, setForm] = useState({ type: 'REPORT', title: '', content: '', errorCode: '' });
   const [input, setInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [dragZone, setDragZone] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
   const bottomRef = useRef(null);
+  const fileRef = useRef(null);
+  const bodyRef = useRef(null);
+
+  const sortMessages = (data) =>
+    (Array.isArray(data) ? data : []).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
   useEffect(() => { loadConversations(); }, []);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  const scrollToBottom = () => {
+    requestAnimationFrame(() => {
+      if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+    });
+  };
+
+  useLayoutEffect(scrollToBottom, [messages]);
+
+  useEffect(() => {
+    if (!activeConv) return;
+    getMessages(activeConv.id).then(d => setMessages(sortMessages(d))).catch(() => {});
+    const timer = setInterval(() => {
+      getMessages(activeConv.id).then(d => setMessages(sortMessages(d))).catch(() => {});
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [activeConv]);
+
+  useEffect(() => {
+    const timer = setInterval(loadConversations, 8000);
+    return () => clearInterval(timer);
+  }, []);
 
   const loadConversations = async () => {
     try {
@@ -37,21 +66,29 @@ export default function ChatPage() {
     setActiveConv(conv);
     try {
       const data = await getMessages(conv.id);
-      setMessages(Array.isArray(data) ? data : []);
+      setMessages(sortMessages(data));
+      scrollToBottom();
     } catch (_) { setMessages([]); }
   };
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    if (!form.title.trim() || !form.content.trim()) return;
+  const handleCreate = async (e, overrideType) => {
+    if (e?.preventDefault) e.preventDefault();
+    const type = overrideType || form.type;
     setSubmitting(true);
     try {
-      const payload = { type: form.type, title: form.title.trim(), content: form.content.trim() };
-      if (form.imageUrl.trim()) payload.imageUrl = form.imageUrl.trim();
-      if (form.errorCode.trim()) payload.errorCode = form.errorCode.trim();
+      let payload;
+      if (type === 'QA') {
+        const now = new Date();
+        const ts = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+        payload = { type: 'QA', title: 'Hỗ trợ & tư vấn (' + ts + ' ' + now.toLocaleDateString('vi-VN') + ')', content: 'Tôi cần được hỗ trợ thêm về dịch vụ.' };
+      } else {
+        if (!form.title.trim() || !form.content.trim()) return;
+        payload = { type: 'REPORT', title: form.title.trim(), content: form.content.trim() };
+        if (form.errorCode?.trim()) payload.errorCode = form.errorCode.trim();
+      }
       const conv = await createConversation(payload);
       setShowCreate(false);
-      setForm({ type: 'REPORT', title: '', content: '', imageUrl: '', errorCode: '' });
+      setForm({ type: 'REPORT', title: '', content: '', errorCode: '' });
       await loadConversations();
       if (conv?.id) openConversation(conv);
     } catch (_) { /* ignore */ } finally { setSubmitting(false); }
@@ -59,17 +96,91 @@ export default function ChatPage() {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!input.trim() || !activeConv) return;
-    const text = input.trim();
-    setInput('');
-    try {
-      const msg = await sendMessage(activeConv.id, { content: text });
-      setMessages(prev => [...prev, msg]);
-    } catch (_) { /* ignore */ }
+    if (!activeConv) return;
+    if (previewImage) {
+      setUploadingImage(true);
+      try {
+        const url = await uploadChatImage(previewImage);
+        if (url) {
+          const msg = await sendMessage(activeConv.id, { content: input.trim() || '[Hình ảnh]', imageUrl: url });
+          setMessages(prev => [...prev, msg]);
+        }
+      } catch {} finally { setUploadingImage(false); setPreviewImage(null); setInput(''); }
+    } else if (input.trim()) {
+      const text = input.trim();
+      setInput('');
+      try {
+        const msg = await sendMessage(activeConv.id, { content: text });
+        setMessages(prev => [...prev, msg]);
+      } catch {}
+    }
   };
 
+  const quickSendImage = useCallback(async (file) => {
+    if (!activeConv || activeConv.status === 'COMPLETED' || !file.type.startsWith('image/')) return;
+    setUploadingImage(true);
+    try {
+      const url = await uploadChatImage(file);
+      if (url) {
+        const msg = await sendMessage(activeConv.id, { content: '[Hình ảnh]', imageUrl: url });
+        setMessages(prev => [...prev, msg]);
+      }
+    } catch {} finally { setUploadingImage(false); }
+  }, [activeConv]);
+
+  const handlePaste = useCallback((e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) { setPreviewImage(file); }
+        break;
+      }
+    }
+  }, []);
+
+  const handleFileChange = useCallback((e) => {
+    const file = e.target.files?.[0];
+    if (file?.type.startsWith('image/')) setPreviewImage(file);
+    e.target.value = '';
+  }, []);
+
+  const handleBodyDragOver = useCallback((e) => { e.preventDefault(); setDragZone('body'); setDragOver(true); }, []);
+  const handleBodyDragLeave = useCallback(() => { setDragZone(null); setDragOver(false); }, []);
+  const handleBodyDrop = useCallback((e) => {
+    e.preventDefault(); setDragOver(false); setDragZone(null);
+    const file = e.dataTransfer?.files?.[0];
+    if (file?.type.startsWith('image/')) quickSendImage(file);
+  }, [quickSendImage]);
+
+  const handleFooterDragOver = useCallback((e) => { e.preventDefault(); setDragZone('footer'); setDragOver(true); }, []);
+  const handleFooterDragLeave = useCallback(() => { setDragZone(null); setDragOver(false); }, []);
+  const handleFooterDrop = useCallback((e) => {
+    e.preventDefault(); setDragOver(false); setDragZone(null);
+    const file = e.dataTransfer?.files?.[0];
+    if (file?.type.startsWith('image/')) setPreviewImage(file);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 flex relative" onPaste={handlePaste}>
+      {dragOver && (
+        <div className="absolute inset-0 z-50 pointer-events-none">
+          {dragZone === 'footer' ? (
+            <div className="absolute bottom-20 left-4 right-4 bg-orange-50 border-2 border-dashed border-orange-300 rounded-2xl py-4 text-center">
+              <p className="text-sm font-black text-orange-600">Thả ảnh để xem trước</p>
+            </div>
+          ) : (
+            <div className="absolute inset-0 bg-orange-500/5 flex items-center justify-center">
+              <div className="bg-white rounded-2xl shadow-xl px-8 py-6 text-center">
+                <p className="text-lg font-black text-orange-600">Thả để gửi nhanh</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {uploadingImage && <div className="absolute top-0 left-0 right-0 h-1 bg-orange-100 z-50"><div className="h-full w-1/3 bg-orange-500 rounded-full" style={{ animation: 'uploadProgress 1s ease-in-out infinite' }} /></div>}
+      <style>{`@keyframes uploadProgress { 0% { transform: translateX(-100%) } 100% { transform: translateX(400%) } }`}</style>
       <div className="w-96 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-100 flex items-center justify-between">
           <h1 className="text-lg font-black">Hỗ trợ & Liên hệ</h1>
@@ -119,7 +230,8 @@ export default function ChatPage() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+            <div ref={bodyRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50"
+              onDragOver={handleBodyDragOver} onDragLeave={handleBodyDragLeave} onDrop={handleBodyDrop}>
               {messages.map(msg => (
                 <div key={msg.id} className={`flex ${msg.senderId === account?.userId ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-md rounded-2xl p-3 ${msg.isSystemMessage ? 'bg-gray-200 text-gray-600 text-center text-xs w-full max-w-full italic' : msg.senderId === account?.userId ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200'}`}>
@@ -134,9 +246,25 @@ export default function ChatPage() {
             </div>
 
             {activeConv.status !== 'COMPLETED' ? (
-              <form onSubmit={handleSend} className="p-4 bg-white border-t border-gray-200 flex gap-2">
-                <input value={input} onChange={e => setInput(e.target.value)} placeholder="Nhập tin nhắn..." className="flex-1 px-4 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm" />
-                <button type="submit" disabled={!input.trim()} className="px-5 py-2.5 bg-orange-500 text-white rounded-2xl font-black text-sm hover:bg-orange-600 disabled:opacity-50">Gửi</button>
+              <form onSubmit={handleSend} className="p-4 bg-white border-t border-gray-200 flex flex-col gap-2"
+                onDragOver={handleFooterDragOver} onDragLeave={handleFooterDragLeave} onDrop={handleFooterDrop}>
+                {previewImage && (
+                  <div className="flex items-center gap-2 pb-2 border-b border-dashed border-gray-200">
+                    <div className="w-14 h-14 rounded-xl overflow-hidden border border-gray-200 relative">
+                      <img src={URL.createObjectURL(previewImage)} alt="" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => setPreviewImage(null)} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center leading-none">&times;</button>
+                    </div>
+                    <span className="text-xs text-gray-400 font-semibold">Xem trước</span>
+                  </div>
+                )}
+                <div className="flex gap-2 items-center">
+                  <button type="button" onClick={() => fileRef.current?.click()} className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 shrink-0">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  </button>
+                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                  <input value={input} onChange={e => setInput(e.target.value)} placeholder={previewImage ? 'Thêm ghi chú...' : 'Nhập tin nhắn...'} className="flex-1 px-4 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm" />
+                  <button type="submit" disabled={(!input.trim() && !previewImage) || uploadingImage} className="px-5 py-2.5 bg-orange-500 text-white rounded-2xl font-black text-sm hover:bg-orange-600 disabled:opacity-50">{uploadingImage ? '...' : 'Gửi'}</button>
+                </div>
               </form>
             ) : (
               <div className="p-4 bg-gray-100 text-center text-sm text-gray-500 font-semibold">Hội thoại đã kết thúc.</div>
@@ -149,44 +277,45 @@ export default function ChatPage() {
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShowCreate(false)}>
           <div className="bg-white rounded-3xl p-6 w-full max-w-lg mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
             <h2 className="text-lg font-black mb-4">Tạo hội thoại mới</h2>
-            <form onSubmit={handleCreate} className="space-y-3">
+            <div className="space-y-3">
               <div>
                 <label className="text-xs font-black text-gray-500 mb-1 block">Loại</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {TYPE_OPTIONS.map(opt => (
-                    <button key={opt.value} type="button" onClick={() => setForm({ ...form, type: opt.value })}
-                      className={`p-3 rounded-2xl text-left border-2 transition-all ${form.type === opt.value ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                      <p className="font-black text-sm">{opt.label}</p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">{opt.desc}</p>
-                    </button>
-                  ))}
+                  <button type="button" onClick={() => handleCreate(null, 'QA')} disabled={submitting}
+                    className="p-4 rounded-2xl text-left border-2 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 transition-all cursor-pointer">
+                    <p className="font-black text-sm">Hỏi đáp</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Bấm một chạm để bắt đầu</p>
+                  </button>
+                  <button type="button" onClick={() => setForm({ ...form, type: 'REPORT' })}
+                    className={`p-4 rounded-2xl text-left border-2 transition-all cursor-pointer ${form.type === 'REPORT' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                    <p className="font-black text-sm">Báo cáo lỗi</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Gửi báo cáo chi tiết</p>
+                  </button>
                 </div>
-              </div>
-              <div>
-                <label className="text-xs font-black text-gray-500 mb-1 block">Tiêu đề</label>
-                <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Ví dụ: Lỗi thanh toán..." className="w-full px-3 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm" required />
-              </div>
-              <div>
-                <label className="text-xs font-black text-gray-500 mb-1 block">Nội dung</label>
-                <textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} rows={3} placeholder="Mô tả chi tiết..." className="w-full px-3 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm resize-none" required />
               </div>
               {form.type === 'REPORT' && (
-                <div>
-                  <label className="text-xs font-black text-gray-500 mb-1 block">Mã lỗi (nếu có)</label>
-                  <input value={form.errorCode} onChange={e => setForm({ ...form, errorCode: e.target.value })} placeholder="Ví dụ: ERR-001" className="w-full px-3 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm" />
-                </div>
+                <form onSubmit={handleCreate} className="space-y-3">
+                  <div>
+                    <label className="text-xs font-black text-gray-500 mb-1 block">Tiêu đề báo lỗi</label>
+                    <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Ví dụ: Lỗi thanh toán..." className="w-full px-3 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm" required />
+                  </div>
+                  <div>
+                    <label className="text-xs font-black text-gray-500 mb-1 block">Mô tả chi tiết</label>
+                    <textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} rows={3} placeholder="Mô tả chi tiết lỗi..." className="w-full px-3 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm resize-none" required />
+                  </div>
+                  <div>
+                    <label className="text-xs font-black text-gray-500 mb-1 block">Mã lỗi (nếu có)</label>
+                    <input value={form.errorCode} onChange={e => setForm({ ...form, errorCode: e.target.value })} placeholder="Ví dụ: ERR-001" className="w-full px-3 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm" />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button type="button" onClick={() => setShowCreate(false)} className="flex-1 px-4 py-2.5 rounded-2xl border border-gray-200 font-black text-sm hover:bg-gray-50">Hủy</button>
+                    <button type="submit" disabled={submitting || !form.title.trim() || !form.content.trim()} className="flex-1 px-4 py-2.5 bg-orange-500 text-white rounded-2xl font-black text-sm hover:bg-orange-600 disabled:opacity-50">
+                      {submitting ? 'Đang gửi...' : 'Gửi báo cáo'}
+                    </button>
+                  </div>
+                </form>
               )}
-              <div>
-                <label className="text-xs font-black text-gray-500 mb-1 block">Link ảnh (nếu có)</label>
-                <input value={form.imageUrl} onChange={e => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://..." className="w-full px-3 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm" />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setShowCreate(false)} className="flex-1 px-4 py-2.5 rounded-2xl border border-gray-200 font-black text-sm hover:bg-gray-50">Hủy</button>
-                <button type="submit" disabled={submitting || !form.title.trim() || !form.content.trim()} className="flex-1 px-4 py-2.5 bg-orange-500 text-white rounded-2xl font-black text-sm hover:bg-orange-600 disabled:opacity-50">
-                  {submitting ? 'Đang tạo...' : 'Tạo hội thoại'}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

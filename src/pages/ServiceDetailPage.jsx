@@ -1,8 +1,21 @@
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { ArrowLeft, Clock, Heart, MapPin, Star } from 'lucide-react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { getPublicServiceById, getServiceAreas, toggleFavorite, getFavoriteIds } from '../api/services';
 import { AuthContext } from '../context/AuthContext';
+
+const defaultIcon = L.icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
 
 const formatPrice = (amount) => {
   if (amount == null) return '0';
@@ -29,6 +42,7 @@ export default function ServiceDetailPage() {
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [favorited, setFavorited] = useState(false);
+  const [placeNames, setPlaceNames] = useState({});
 
   useEffect(() => {
     Promise.all([
@@ -36,7 +50,24 @@ export default function ServiceDetailPage() {
       getServiceAreas(serviceId),
       account ? getFavoriteIds().then(ids => setFavorited(ids?.includes(Number(serviceId)))) : Promise.resolve(),
     ])
-      .then(([svc, areaData]) => { setService(svc); setAreas(Array.isArray(areaData) ? areaData : []); })
+      .then(([svc, areaData]) => {
+        setService(svc);
+        const list = Array.isArray(areaData) ? areaData : [];
+        setAreas(list);
+        list.forEach(a => {
+          if (a.pickupLatitude != null && a.pickupLongitude != null) {
+            const lat = Number(a.pickupLatitude);
+            const lng = Number(a.pickupLongitude);
+            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=vi`)
+              .then(r => r.json())
+              .then(data => {
+                if (data?.display_name)
+                  setPlaceNames(prev => ({ ...prev, [a.id]: data.display_name }));
+              })
+              .catch(() => {});
+          }
+        });
+      })
       .catch(() => navigate('/services'))
       .finally(() => setLoading(false));
   }, [serviceId, account]);
@@ -144,15 +175,35 @@ export default function ServiceDetailPage() {
                 <h2 className="text-sm font-black uppercase tracking-widest text-gray-900 mb-3">
                   {selectedAreaId ? 'Khu vực' : 'Khu vực áp dụng'}
                 </h2>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {displayAreas.map(a => (
-                    <div key={a.id} className="flex items-start gap-3 p-3 rounded-xl border border-gray-100 hover:border-orange-200 transition-all">
-                      <div className="p-1.5 bg-orange-100 text-orange-600 rounded-lg mt-0.5">
-                        <MapPin className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-gray-900">{a.name}</p>
-                        {a.pickupAddress && <p className="text-xs text-gray-500 mt-0.5">{a.pickupAddress}</p>}
+                    <div key={a.id} className="rounded-xl border border-gray-100 overflow-hidden">
+                      {(a.pickupLatitude != null && a.pickupLongitude != null) && (
+                        <div className="h-40">
+                          <MapContainer center={[Number(a.pickupLatitude), Number(a.pickupLongitude)]} zoom={15}
+                            style={{ height: '100%', width: '100%' }}
+                            dragging={false} zoomControl={false} scrollWheelZoom={false} touchZoom={false} doubleClickZoom={false}>
+                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                            <Marker position={[Number(a.pickupLatitude), Number(a.pickupLongitude)]} icon={defaultIcon}>
+                              <Popup>{a.name}</Popup>
+                            </Marker>
+                          </MapContainer>
+                        </div>
+                      )}
+                      <div className="flex items-start gap-3 p-3">
+                        <div className="p-1.5 bg-orange-100 text-orange-600 rounded-lg mt-0.5 shrink-0">
+                          <MapPin className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-gray-900">{a.name}</p>
+                          {placeNames[a.id] && <p className="text-xs text-gray-400 mt-0.5 truncate">{placeNames[a.id]}</p>}
+                          {a.pickupAddress && <p className="text-xs text-gray-500 mt-0.5">{a.pickupAddress}</p>}
+                          {(a.pickupLatitude != null && a.pickupLongitude != null) && (
+                            <p className="text-[10px] text-gray-400 mt-0.5 font-mono">
+                              {Number(a.pickupLatitude).toFixed(6)}, {Number(a.pickupLongitude).toFixed(6)}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}

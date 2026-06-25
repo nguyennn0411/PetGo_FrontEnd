@@ -23,6 +23,19 @@ export default function AdminChat() {
   useEffect(() => { loadConversations(); }, [tab]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
+  useEffect(() => {
+    if (!activeConv) return;
+    const timer = setInterval(() => {
+      getMessages(activeConv.id).then(setMessages).catch(() => {});
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [activeConv]);
+
+  useEffect(() => {
+    const timer = setInterval(loadConversations, 8000);
+    return () => clearInterval(timer);
+  }, [tab]);
+
   const loadConversations = async () => {
     setLoading(true);
     try {

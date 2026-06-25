@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
@@ -39,6 +40,8 @@ import CheckoutPage from './pages/shop/CheckoutPage';
 import ShopOrdersPage from './pages/shop/ShopOrdersPage';
 
 import UserNav from './components/UserNav';
+import AiChatWidget from './components/AiChatWidget';
+import ChatWidget from './components/ChatWidget';
 import AiGroomingPage from './pages/AiGroomingPage';
 import BookingPage from './pages/BookingPage';
 import MyBookingsPage from './pages/MyBookingsPage';
@@ -55,6 +58,8 @@ const withUserShell = (element, activePath = '') => (
 
 
 export default function App() {
+  const [activeChat, setActiveChat] = useState(null);
+
   return (
     <BrowserRouter>
       <Toaster position="top-right" toastOptions={{ duration: 3000, style: { borderRadius: 12, fontWeight: 600, fontSize: 13 } }} />
@@ -76,6 +81,7 @@ export default function App() {
         <Route path='/membership' element={withUserShell(<MembershipPage />, '/membership')} />
         <Route path='/membership-payment' element={withUserShell(<MembershipPaymentPage />, '/membership')} />
         <Route path='/chat' element={withUserShell(<ChatPage />, '/chat')} />
+        <Route path='/chat/:conversationId' element={withUserShell(<ChatPage />, '/chat')} />
         <Route path='/booking' element={withUserShell(<BookingPage />, '/booking')} />
         <Route path='/my-bookings' element={withUserShell(<MyBookingsPage />, '/my-bookings')} />
 
@@ -117,6 +123,8 @@ export default function App() {
         <Route path='/favorites' element={withUserShell(<FavoritesPage />, '/favorites')} />
         <Route path='*' element={<Navigate to='/' replace />} />
       </Routes>
+      <AiChatWidget open={activeChat === 'ai'} setOpen={(val) => setActiveChat(val ? 'ai' : null)} />
+      <ChatWidget open={activeChat === 'support'} setOpen={(val) => setActiveChat(val ? 'support' : null)} />
     </BrowserRouter>
   );
 }
