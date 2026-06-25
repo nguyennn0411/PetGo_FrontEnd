@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Gift, Loader2, Plus, RefreshCw, Save, Tag, X } from 'lucide-react';
+import Swal from 'sweetalert2';
+import { ChevronDown, Gift, Loader2, Plus, RefreshCw, Save, Tag, Trash2, X } from 'lucide-react';
+import { useAppToast } from '../AppFeedback';
 import '../../styles/AdminDashboard.css';
 
 const fallbackOptions = {
@@ -12,10 +14,10 @@ const fallbackOptions = {
         { value: 'SEASONAL', label: 'Theo mùa/sự kiện' },
         { value: 'BUNDLE', label: 'Combo/bundle' },
         { value: 'FREE_SERVICE', label: 'Tặng dịch vụ' },
-        { value: 'PARTNER_EXCLUSIVE', label: 'Riêng cho nhà cung cấp' },
     ],
     targetTypes: [
         { value: 'BOOKING', label: 'Booking dịch vụ' },
+        { value: 'SHIPPING', label: 'Phí vận chuyển' },
         { value: 'MEMBERSHIP', label: 'Membership' },
         { value: 'BOTH', label: 'Cả hai' },
     ],
@@ -45,15 +47,14 @@ const fallbackOptions = {
 };
 
 const statusOptions = ['ALL', 'ACTIVE', 'SCHEDULED', 'INACTIVE', 'EXPIRED', 'USED_UP'];
-const targetFilterOptions = ['ALL', 'BOOKING', 'MEMBERSHIP', 'BOTH'];
+const targetFilterOptions = ['ALL', 'BOOKING', 'SHIPPING', 'MEMBERSHIP', 'BOTH'];
 
-const makeEmptyForm = (partnerMode = false) => ({
-    id: null,
-    code: '',
+const makeEmptyForm = () => ({
     name: '',
+    code: '',
     description: '',
-    promotionType: partnerMode ? 'PARTNER_EXCLUSIVE' : 'PROMO_CODE',
-    targetType: partnerMode ? 'BOOKING' : 'BOTH',
+    promotionType: 'PROMO_CODE',
+    targetType: 'BOTH',
     discountType: 'PERCENTAGE',
     discountValue: '',
     maxDiscountAmount: '',
@@ -62,12 +63,11 @@ const makeEmptyForm = (partnerMode = false) => ({
     usageLimitPerUser: '',
     stackable: false,
     autoApply: false,
-    priority: partnerMode ? 5 : 10,
+    priority: 10,
     userSegment: 'ALL',
     minCompletedBookings: '',
     applicableDaysOfWeek: [],
-    providerIds: [],
-    providerServiceIds: [],
+    areaIds: [],
     serviceCategoryIds: [],
     membershipPlanIds: [],
     badgeText: '',
@@ -109,8 +109,8 @@ const isNonNegativeIntegerValue = (value) => {
     return Number.isInteger(parsed) && parsed >= 0;
 };
 
-const hasAdvancedConfig = (promotion = {}, partnerMode = false) => {
-    const defaultPriority = partnerMode ? 5 : 10;
+const hasAdvancedConfig = (promotion = {}) => {
+    const defaultPriority = 10;
     return Boolean(
         Number(promotion.usageLimitTotal || 0) > 0
         || Number(promotion.usageLimitPerUser || 0) > 0
@@ -120,8 +120,7 @@ const hasAdvancedConfig = (promotion = {}, partnerMode = false) => {
         || (promotion.userSegment && promotion.userSegment !== 'ALL')
         || Number(promotion.minCompletedBookings || 0) > 0
         || normalizeArray(promotion.applicableDaysOfWeek).length > 0
-        || normalizeArray(promotion.providerIds).length > 0
-        || normalizeArray(promotion.providerServiceIds).length > 0
+        || normalizeArray(promotion.areaIds).length > 0
         || normalizeArray(promotion.serviceCategoryIds).length > 0
         || normalizeArray(promotion.membershipPlanIds).length > 0
         || Boolean(promotion.badgeText)
@@ -164,38 +163,35 @@ const statusBadgeClass = (status) => {
 };
 
 const PromotionManager = ({
-    partnerMode = false,
     loadPromotions,
     loadOptions,
     createPromotion,
     updatePromotion,
     updatePromotionStatus,
+    deletePromotion,
 }) => {
     const [promotions, setPromotions] = useState([]);
     const [options, setOptions] = useState(fallbackOptions);
     const [filters, setFilters] = useState({ status: 'ALL', targetType: 'ALL' });
-    const [form, setForm] = useState(makeEmptyForm(partnerMode));
+    const [form, setForm] = useState(makeEmptyForm());
     const [showForm, setShowForm] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const { toast } = useAppToast();
 
     const mergedOptions = useMemo(() => ({ ...fallbackOptions, ...(options || {}) }), [options]);
     const minDateTime = getCurrentDateTimeInput();
-    const visibleTargetFilterOptions = partnerMode ? ['ALL', 'BOOKING'] : targetFilterOptions;
+    const visibleTargetFilterOptions = targetFilterOptions;
     const availablePromotionTypes = useMemo(
-        () => partnerMode
-            ? (mergedOptions.promotionTypes || []).filter((option) => option.value !== 'MEMBERSHIP')
-            : (mergedOptions.promotionTypes || []),
-        [mergedOptions.promotionTypes, partnerMode],
+        () => mergedOptions.promotionTypes || [],
+        [mergedOptions.promotionTypes],
     );
     const availableTargetTypes = useMemo(
-        () => partnerMode
-            ? (mergedOptions.targetTypes || []).filter((option) => option.value === 'BOOKING')
-            : (mergedOptions.targetTypes || []),
-        [mergedOptions.targetTypes, partnerMode],
+        () => mergedOptions.targetTypes || [],
+        [mergedOptions.targetTypes],
     );
 
     const metrics = useMemo(() => {
@@ -228,7 +224,7 @@ const PromotionManager = ({
     useEffect(() => { fetchData(); }, [filters.status, filters.targetType]);
 
     const resetForm = () => {
-        setForm(makeEmptyForm(partnerMode));
+        setForm(makeEmptyForm(false));
         setShowForm(false);
         setShowAdvanced(false);
     };
@@ -236,7 +232,7 @@ const PromotionManager = ({
     const startCreate = () => {
         setError('');
         setSuccess('');
-        setForm(makeEmptyForm(partnerMode));
+        setForm(makeEmptyForm(false));
         setShowAdvanced(false);
         setShowForm(true);
     };
@@ -245,7 +241,7 @@ const PromotionManager = ({
         setError('');
         setSuccess('');
         setForm({
-            ...makeEmptyForm(partnerMode),
+            ...makeEmptyForm(false),
             ...promotion,
             id: promotion.id,
             discountValue: promotion.discountValue ?? '',
@@ -256,8 +252,7 @@ const PromotionManager = ({
             priority: promotion.priority ?? 0,
             minCompletedBookings: promotion.minCompletedBookings || '',
             applicableDaysOfWeek: normalizeArray(promotion.applicableDaysOfWeek),
-            providerIds: normalizeArray(promotion.providerIds),
-            providerServiceIds: normalizeArray(promotion.providerServiceIds),
+            areaIds: normalizeArray(promotion.areaIds),
             serviceCategoryIds: normalizeArray(promotion.serviceCategoryIds),
             membershipPlanIds: normalizeArray(promotion.membershipPlanIds),
             startsAt: normalizeDateTimeInput(promotion.startsAt),
@@ -266,7 +261,7 @@ const PromotionManager = ({
             originalEndsAt: normalizeDateTimeInput(promotion.endsAt),
             active: promotion.active !== false,
         });
-        setShowAdvanced(hasAdvancedConfig(promotion, partnerMode));
+        setShowAdvanced(hasAdvancedConfig(promotion, false));
         setShowForm(true);
     };
 
@@ -276,12 +271,11 @@ const PromotionManager = ({
         usageLimitPerUser: '',
         stackable: false,
         autoApply: false,
-        priority: partnerMode ? 5 : 10,
+    priority: 10,
         userSegment: 'ALL',
         minCompletedBookings: '',
         applicableDaysOfWeek: [],
-        providerIds: [],
-        providerServiceIds: [],
+        areaIds: [],
         serviceCategoryIds: [],
         membershipPlanIds: [],
         badgeText: '',
@@ -306,8 +300,6 @@ const PromotionManager = ({
             }
         }
         if (field === 'targetType' && value === 'MEMBERSHIP') {
-            next.providerIds = [];
-            next.providerServiceIds = [];
             next.serviceCategoryIds = [];
         }
         return next;
@@ -331,7 +323,7 @@ const PromotionManager = ({
         name: form.name.trim(),
         description: form.description.trim() || null,
         promotionType: form.promotionType,
-        targetType: partnerMode ? 'BOOKING' : form.targetType,
+        targetType: form.targetType,
         discountType: form.discountType,
         discountValue: form.discountType === 'FREE_SERVICE' ? 1 : Number(form.discountValue),
         maxDiscountAmount: form.discountType === 'FREE_SERVICE' ? null : toNumberOrNull(form.maxDiscountAmount),
@@ -340,14 +332,13 @@ const PromotionManager = ({
         usageLimitPerUser: showAdvanced ? toNumberOrNull(form.usageLimitPerUser) : null,
         stackable: showAdvanced ? Boolean(form.stackable) : false,
         autoApply: showAdvanced ? Boolean(form.autoApply) : false,
-        priority: showAdvanced ? (toNumberOrNull(form.priority) ?? (partnerMode ? 5 : 10)) : (partnerMode ? 5 : 10),
+        priority: showAdvanced ? (toNumberOrNull(form.priority) ?? 10) : 10,
         userSegment: showAdvanced ? form.userSegment : 'ALL',
         minCompletedBookings: showAdvanced ? toNumberOrNull(form.minCompletedBookings) : null,
         applicableDaysOfWeek: showAdvanced ? form.applicableDaysOfWeek : [],
-        providerIds: partnerMode || !showAdvanced ? [] : toIdArray(form.providerIds),
-        providerServiceIds: showAdvanced ? toIdArray(form.providerServiceIds) : [],
+        areaIds: showAdvanced ? toIdArray(form.areaIds) : [],
         serviceCategoryIds: showAdvanced ? toIdArray(form.serviceCategoryIds) : [],
-        membershipPlanIds: partnerMode || !showAdvanced ? [] : toIdArray(form.membershipPlanIds),
+        membershipPlanIds: !showAdvanced ? [] : toIdArray(form.membershipPlanIds),
         badgeText: showAdvanced ? (form.badgeText.trim() || null) : null,
         landingPageUrl: showAdvanced ? (form.landingPageUrl.trim() || null) : null,
         termsAndConditions: showAdvanced ? (form.termsAndConditions.trim() || null) : null,
@@ -395,12 +386,18 @@ const PromotionManager = ({
             setError('');
             setSuccess('');
             const payload = buildPayload();
-            if (form.id) await updatePromotion(form.id, payload);
-            else await createPromotion(payload);
+            if (form.id) {
+                await updatePromotion(form.id, payload);
+                toast.success('Ưu đãi đã được cập nhật.');
+            } else {
+                await createPromotion(payload);
+                toast.success('Ưu đãi mới đã được tạo.');
+            }
             setSuccess(form.id ? 'Đã cập nhật ưu đãi.' : 'Đã tạo ưu đãi mới.');
             resetForm();
             await fetchData();
         } catch (err) {
+            toast.error(getErrorMessage(err, 'Lưu ưu đãi thất bại.'));
             setError(getErrorMessage(err, 'Lưu ưu đãi thất bại.'));
         } finally {
             setSaving(false);
@@ -409,25 +406,52 @@ const PromotionManager = ({
 
     const toggleStatus = async (promotion) => {
         const nextActive = !promotion.active;
-        if (!window.confirm(`${nextActive ? 'Bật' : 'Tạm dừng'} mã ${promotion.code}?`)) return;
+        const result = await Swal.fire({ icon: 'warning', title: `${nextActive ? 'Bật' : 'Tạm dừng'} mã?`, text: `${nextActive ? 'Bật' : 'Tạm dừng'} mã ${promotion.code}?`, showCancelButton: true, confirmButtonText: 'Xác nhận', cancelButtonText: 'Hủy', confirmButtonColor: '#f97316', reverseButtons: true });
+        if (!result.isConfirmed) return;
         try {
             setError('');
             setSuccess('');
             await updatePromotionStatus(promotion.id, nextActive);
+            toast.success(nextActive ? 'Ưu đãi đã được bật.' : 'Ưu đãi đã được tạm dừng.');
             setSuccess(nextActive ? 'Đã bật ưu đãi.' : 'Đã tạm dừng ưu đãi.');
             await fetchData();
         } catch (err) {
+            toast.error(getErrorMessage(err, 'Cập nhật trạng thái thất bại.'));
             setError(getErrorMessage(err, 'Cập nhật trạng thái thất bại.'));
         }
     };
 
-    const canEditPromotion = (promotion) => partnerMode || promotion.userType === 'ADMIN';
+    const handleDelete = async (promotion) => {
+        if (!deletePromotion) return;
+        const result = await Swal.fire({
+            icon: 'warning',
+            title: 'Xóa ưu đãi?',
+            text: `Xóa mã ${promotion.code}? Mã đã có lượt sử dụng sẽ không xóa được.`,
+            showCancelButton: true,
+            confirmButtonText: 'Xóa',
+            cancelButtonText: 'Hủy',
+            confirmButtonColor: '#ef4444',
+            reverseButtons: true,
+        });
+        if (!result.isConfirmed) return;
+        try {
+            setError('');
+            setSuccess('');
+            await deletePromotion(promotion.id);
+            toast.success('Đã xóa ưu đãi.');
+            setSuccess('Đã xóa ưu đãi.');
+            await fetchData();
+        } catch (err) {
+            toast.error(getErrorMessage(err, 'Xóa ưu đãi thất bại.'));
+            setError(getErrorMessage(err, 'Xóa ưu đãi thất bại.'));
+        }
+    };
 
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <MetricCard label="Đang chạy" value={metrics.active} hint="Ưu đãi active hiện tại" />
-                <MetricCard label="Tổng ưu đãi" value={promotions.length} hint={partnerMode ? 'Do nhà cung cấp của bạn tạo' : 'Do admin tạo'} />
+                <MetricCard label="Tổng ưu đãi" value={promotions.length} hint="Do admin phát hành" />
                 <MetricCard label="Lượt sử dụng" value={metrics.totalUsage} hint="Tổng redemption ghi nhận" />
             </div>
 
@@ -437,9 +461,8 @@ const PromotionManager = ({
             <div className="bg-white border border-gray-100 rounded-[2rem] p-5 shadow-sm">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div>
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-orange-500 font-black">Promotion center</p>
                         <h2 className="text-2xl font-black text-gray-900">Quản lý khuyến mãi</h2>
-                        <p className="text-sm text-gray-500 font-semibold">Hỗ trợ mã giảm giá, flash sale, khách mới, membership, combo, miễn phí dịch vụ và phạm vi áp dụng chi tiết.</p>
+                        <p className="text-sm text-gray-500 font-semibold">Admin phát mã ưu đãi cho người dùng. Có thể giới hạn theo khu vực, nhóm dịch vụ, membership và phân khúc khách.</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <button type="button" onClick={fetchData} className="px-4 py-3 rounded-2xl border border-gray-100 text-gray-600 font-black text-xs uppercase tracking-widest hover:bg-gray-50 flex items-center gap-2" disabled={loading}>
@@ -462,7 +485,7 @@ const PromotionManager = ({
                 <form onSubmit={handleSubmit} className="w-full max-w-5xl bg-white border border-orange-100 rounded-[2rem] p-5 shadow-2xl space-y-5" onMouseDown={(event) => event.stopPropagation()}>
                     <div className="flex items-start justify-between gap-4">
                         <div>
-                            <p className="text-[10px] uppercase tracking-[0.18em] text-orange-500 font-black">{form.id ? 'Update promotion' : 'New promotion'}</p>
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-orange-500 font-black">{form.id ? 'Cập nhật ưu đãi' : 'Tạo ưu đãi mới'}</p>
                             <h3 className="text-xl font-black text-gray-900">{form.id ? `Sửa ${form.code}` : 'Tạo ưu đãi mới'}</h3>
                         </div>
                         <button type="button" onClick={resetForm} className="p-3 rounded-2xl bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-500"><X className="w-5 h-5" /></button>
@@ -487,7 +510,7 @@ const PromotionManager = ({
                                 </select>
                             </Field>
                             <Field label="Phạm vi áp dụng">
-                                <select value={partnerMode ? 'BOOKING' : form.targetType} onChange={(event) => updateField('targetType', event.target.value)} disabled={partnerMode}>
+                                <select value={form.targetType} onChange={(event) => updateField('targetType', event.target.value)}>
                                     {availableTargetTypes.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                                 </select>
                             </Field>
@@ -517,7 +540,7 @@ const PromotionManager = ({
                         </div>
 
                         <Field label="Mô tả ưu đãi">
-                            <textarea rows={3} value={form.description} onChange={(event) => updateField('description', event.target.value)} placeholder="Mô tả ngắn để admin/partner hiểu mục tiêu chiến dịch..." />
+                            <textarea rows={3} value={form.description} onChange={(event) => updateField('description', event.target.value)} placeholder="Mô tả ngắn để admin hiểu mục tiêu chiến dịch..." />
                         </Field>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -547,7 +570,7 @@ const PromotionManager = ({
                         <label className="flex items-center justify-between gap-4 p-4 cursor-pointer">
                             <div>
                                 <p className="text-xs font-black uppercase tracking-widest text-gray-700">Cài đặt nâng cao</p>
-                                <p className="text-xs font-semibold text-gray-500 mt-1">Bật khi cần giới hạn lượt dùng, phân khúc khách, ngày áp dụng, scope dịch vụ/category/membership hoặc nội dung vận hành.</p>
+                                <p className="text-xs font-semibold text-gray-500 mt-1">Bật khi cần giới hạn lượt dùng, phân khúc khách, ngày áp dụng, khu vực, nhóm dịch vụ/membership hoặc nội dung vận hành.</p>
                             </div>
                             <div className="flex items-center gap-3">
                                 <input type="checkbox" checked={showAdvanced} onChange={(event) => toggleAdvanced(event.target.checked)} className="w-5 h-5" />
@@ -597,16 +620,13 @@ const PromotionManager = ({
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {!partnerMode && form.targetType !== 'MEMBERSHIP' && (
-                                        <MultiSelect label="Giới hạn nhà cung cấp" value={form.providerIds} onChange={(event) => handleMultiSelect('providerIds', event)} options={(mergedOptions.providers || []).map((item) => ({ value: item.id, label: item.name }))} />
-                                    )}
                                     {form.targetType !== 'MEMBERSHIP' && (
                                         <>
-                                            <MultiSelect label="Giới hạn dịch vụ partner" value={form.providerServiceIds} onChange={(event) => handleMultiSelect('providerServiceIds', event)} options={(mergedOptions.providerServices || []).map((item) => ({ value: item.id, label: `${item.serviceName}${item.providerName ? ` • ${item.providerName}` : ''}` }))} />
+                                            <MultiSelect label="Giới hạn khu vực" value={form.areaIds} onChange={(event) => handleMultiSelect('areaIds', event)} options={(mergedOptions.areas || []).map((item) => ({ value: item.id, label: item.pickupAddress ? `${item.name} — ${item.pickupAddress}` : item.name }))} />
                                             <MultiSelect label="Giới hạn nhóm dịch vụ" value={form.serviceCategoryIds} onChange={(event) => handleMultiSelect('serviceCategoryIds', event)} options={(mergedOptions.serviceCategories || []).map((item) => ({ value: item.id, label: `${item.name}${item.parentName ? ` (${item.parentName})` : ''}` }))} />
                                         </>
                                     )}
-                                    {!partnerMode && form.targetType !== 'BOOKING' && (
+                                    {(form.targetType === 'MEMBERSHIP' || form.targetType === 'BOTH') && (
                                         <MultiSelect label="Giới hạn gói membership" value={form.membershipPlanIds} onChange={(event) => handleMultiSelect('membershipPlanIds', event)} options={(mergedOptions.membershipPlans || []).map((item) => ({ value: item.id, label: `${item.name} • ${item.billingCycle || ''}` }))} />
                                     )}
                                 </div>
@@ -622,7 +642,7 @@ const PromotionManager = ({
                                         <textarea rows={3} value={form.termsAndConditions} onChange={(event) => updateField('termsAndConditions', event.target.value)} placeholder="Điều kiện sử dụng, ngoại lệ, thời gian áp dụng..." />
                                     </Field>
                                     <Field label="Ghi chú nội bộ">
-                                        <textarea rows={3} value={form.internalNote} onChange={(event) => updateField('internalNote', event.target.value)} placeholder="Ghi chú chỉ dành cho vận hành/admin/partner..." />
+                                        <textarea rows={3} value={form.internalNote} onChange={(event) => updateField('internalNote', event.target.value)} placeholder="Ghi chú chỉ dành cho vận hành/admin..." />
                                     </Field>
                                 </div>
                             </div>
@@ -662,6 +682,9 @@ const PromotionManager = ({
                                     </div>
                                     <h3 className="text-xl font-black text-gray-900 truncate">{promotion.name}</h3>
                                     <p className="text-sm text-gray-500 font-semibold mt-1">{promotion.description || promotion.scopeSummary}</p>
+                                    {promotion.createdByName && (
+                                        <p className="text-xs text-gray-400 font-semibold mt-1">Phát hành bởi: {promotion.createdByName}</p>
+                                    )}
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4">
                                         <MiniInfo label="Giảm giá" value={promotion.discountSummary || labelOf(mergedOptions.discountTypes, promotion.discountType)} />
                                         <MiniInfo label="Đơn tối thiểu" value={formatCurrency(promotion.minOrderAmount)} />
@@ -674,8 +697,13 @@ const PromotionManager = ({
                                     </div>
                                 </div>
                                 <div className="flex lg:flex-col gap-2 lg:min-w-36">
-                                    {canEditPromotion(promotion) && <button type="button" onClick={() => startEdit(promotion)} className="px-4 py-2 rounded-xl border border-gray-100 text-gray-600 font-black text-xs uppercase hover:bg-gray-50">Sửa</button>}
-                                    <button type="button" onClick={() => toggleStatus(promotion)} className={`px-4 py-2 rounded-xl font-black text-xs uppercase ${promotion.active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>{promotion.active ? 'Dừng' : 'Bật'}</button>
+                                    <button type="button" onClick={() => startEdit(promotion)} className="px-4 py-2 rounded-xl border border-gray-100 text-gray-600 font-black text-xs uppercase hover:bg-gray-50">Sửa</button>
+                                    <button type="button" onClick={() => toggleStatus(promotion)} className={`px-4 py-2 rounded-xl font-black text-xs uppercase ${promotion.active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>{promotion.active ? 'Tắt' : 'Bật'}</button>
+                                    {deletePromotion && (
+                                        <button type="button" onClick={() => handleDelete(promotion)} className="px-4 py-2 rounded-xl border border-red-100 text-red-600 font-black text-xs uppercase hover:bg-red-50 flex items-center justify-center gap-1.5">
+                                            <Trash2 className="w-3.5 h-3.5" /> Xóa
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>

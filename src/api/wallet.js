@@ -16,6 +16,6 @@ export const resolveAdminWalletFailedTopUp = async (transactionId, payload) => u
 export const updateAdminWalletStatus = async (userId, payload) => unwrap(await api.patch(`/admin/wallet/users/${userId}/status`, payload));
 export const getAdminWalletAutoConfirm = async () => unwrap(await api.get('/admin/wallet/settings/auto-confirm-top-up'));
 export const updateAdminWalletAutoConfirm = async (enabled) => unwrap(await api.patch('/admin/wallet/settings/auto-confirm-top-up', { enabled }));
+export const getAdminSystemWalletTransactions = async () => unwrap(await api.get('/admin/wallet/system-transactions'));
 export const getAdminBookingDisputes = async () => unwrap(await api.get('/admin/disputes'));
 export const resolveAdminBookingDispute = async (bookingId, payload) => unwrap(await api.put(`/admin/disputes/${bookingId}/resolve`, payload));
-export const openAdminBookingDisputeChat = async (bookingId) => unwrap(await api.post(`/admin/disputes/${bookingId}/chat`));

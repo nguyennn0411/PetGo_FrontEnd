@@ -14,7 +14,7 @@ import { useContext, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { forgotPasswordRequest, loginRequest } from '../api/auth';
 import { AuthContext } from '../context/AuthContext';
-import { getRoleLandingPath } from '../utils/partnerAccess';
+import { hasAdminRole } from '../utils/partnerAccess';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -36,7 +36,7 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (!loadingAccount && account) {
-      navigate(getRoleLandingPath(account), { replace: true });
+      navigate(hasAdminRole(account) ? '/admin/users' : '/', { replace: true });
     }
   }, [account, loadingAccount, navigate]);
 
@@ -126,7 +126,7 @@ const LoginPage = () => {
       }
 
       const authenticatedAccount = login(response);
-      navigate(getRoleLandingPath(authenticatedAccount), { replace: true });
+      navigate(hasAdminRole(authenticatedAccount) ? '/admin/users' : '/', { replace: true });
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
       const errorCode = err.response?.data?.code;
@@ -170,22 +170,12 @@ const LoginPage = () => {
             </div>
 
             <h1 className="text-5xl font-black leading-[1.1] mb-6">
-              Welcome back to <br />
-              <span className="text-orange-100">PetCare Paradise.</span>
+              Chào Mừng trở lại <br />
+              <span className="text-orange-100">PetGo</span>
             </h1>
             <p className="text-orange-50 text-xl font-medium max-w-md opacity-90 leading-relaxed">
-              Managing your pet&apos;s happiness is just a few clicks away. Log in to access your dashboard and bookings.
+              Hệ thống cung cấp dịch vụ & sản phẩm cho thú cưng hàng đầu. Đăng nhập để trải nghiệm các tính năng tuyệt vời của chúng tôi.
             </p>
-          </div>
-
-          <div className="relative z-10 bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20 flex items-center gap-4">
-            <div className="bg-white/20 p-3 rounded-2xl">
-              <ShieldCheck className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-bold">Secure Authentication</p>
-              <p className="text-xs font-medium opacity-70 italic whitespace-nowrap">Your data is protected with 128-bit encryption</p>
-            </div>
           </div>
 
           <div className="absolute bottom-[-10%] right-[-5%] opacity-10">
@@ -213,14 +203,14 @@ const LoginPage = () => {
 
           <div className="mb-10">
             <h2 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">
-              Sign In
+              Đăng nhập
             </h2>
-            <p className="text-gray-500 font-medium">Please enter your details to login.</p>
+            <p className="text-gray-500 font-medium">Vui lòng nhập đủ thông tin bên dưới để đăng nhập.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-black text-gray-900 ml-1 uppercase tracking-widest">Email Address</label>
+              <label className="text-sm font-black text-gray-900 ml-1 uppercase tracking-widest">Email</label>
               <div className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors">
                   <Mail className="w-5 h-5" />
@@ -238,8 +228,8 @@ const LoginPage = () => {
 
             <div className="space-y-2">
               <div className="flex justify-between items-end mr-1">
-                <label className="text-sm font-black text-gray-900 ml-1 uppercase tracking-widest">Password</label>
-                <button type="button" onClick={openForgotPassword} className="text-xs font-bold text-orange-600 hover:text-orange-700 transition-colors">Forgot password?</button>
+                <label className="text-sm font-black text-gray-900 ml-1 uppercase tracking-widest">Mật khẩu</label>
+                <button type="button" onClick={openForgotPassword} className="text-xs font-bold text-orange-600 hover:text-orange-700 transition-colors">Quên mật khẩu?</button>
               </div>
               <div className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors">
@@ -266,7 +256,7 @@ const LoginPage = () => {
               disabled={isLoading}
               className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-4 rounded-2xl font-black tracking-wide hover:bg-orange-500 transition-all disabled:opacity-60"
             >
-              {isLoading ? 'Đang đăng nhập...' : 'Sign In'}
+              {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
               {!isLoading && <ArrowRight className="w-5 h-5" />}
             </button>
           </form>
@@ -277,19 +267,10 @@ const LoginPage = () => {
             <div className="flex-1 h-px bg-gray-100"></div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <button className="py-3.5 rounded-2xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all flex items-center justify-center gap-2 font-bold text-gray-700">
-              <Facebook className="w-5 h-5" /> Facebook
-            </button>
-            <button className="py-3.5 rounded-2xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all flex items-center justify-center gap-2 font-bold text-gray-700">
-              <Github className="w-5 h-5" /> Github
-            </button>
-          </div>
-
           <p className="text-center text-sm text-gray-500 font-medium mt-8">
-            Don&apos;t have an account?{' '}
+            Không có tài khoản?{' '}
             <Link to="/register" className="font-black text-orange-600 hover:text-orange-700 transition-colors">
-              Sign up
+              Đăng ký
             </Link>
           </p>
         </div>

@@ -1,210 +1,324 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ImagePlus, Loader2, MessageCircle, RefreshCw, Send, Trash2 } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { deleteChatMessage, getChatConversations, getChatMessages, markChatAsRead, sendChatImage, sendChatMessage } from '../api/chat';
+import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { resolveUserId } from '../utils/userIdentity';
+import { createConversation, getConversationDetail, getMessages, getMyConversations, sendMessage, uploadChatImage } from '../api/chat';
 
-const ChatPage = () => {
-    const navigate = useNavigate();
-    const { conversationId } = useParams();
-    const { account, loadingAccount } = useContext(AuthContext);
-    const currentUserId = useMemo(() => resolveUserId(account), [account]);
+const STATUS_LABEL = { OPEN: 'Mở', PROCESSING: 'Đang xử lý', COMPLETED: 'Hoàn thành' };
+const TYPE_OPTIONS = [
+  { value: 'REPORT', label: 'Báo cáo lỗi', desc: 'Báo cáo lỗi hệ thống, thanh toán, booking...' },
+  { value: 'QA', label: 'Hỏi đáp', desc: 'Hỏi đáp thắc mắc về dịch vụ, chính sách...' },
+];
 
-    const [conversations, setConversations] = useState([]);
-    const [activeId, setActiveId] = useState(conversationId ? Number(conversationId) : null);
-    const [messages, setMessages] = useState([]);
-    const [draft, setDraft] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [messagesLoading, setMessagesLoading] = useState(false);
-    const [sending, setSending] = useState(false);
-    const [uploadingImage, setUploadingImage] = useState(false);
-    const [error, setError] = useState('');
+export default function ChatPage() {
+  const { account } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const [conversations, setConversations] = useState([]);
+  const [activeConv, setActiveConv] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ type: 'REPORT', title: '', content: '', errorCode: '' });
+  const [input, setInput] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [dragZone, setDragZone] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+  const bottomRef = useRef(null);
+  const fileRef = useRef(null);
+  const bodyRef = useRef(null);
 
-    const activeConversation = conversations.find((item) => item.id === activeId) || null;
+  const sortMessages = (data) =>
+    (Array.isArray(data) ? data : []).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
-    const loadConversations = async () => {
-        setLoading(true);
-        setError('');
-        try {
-            const data = await getChatConversations();
-            const list = Array.isArray(data) ? data : [];
-            setConversations(list);
-            if (!activeId && list.length) setActiveId(list[0].id);
-        } catch (err) {
-            setError(err?.response?.data?.message || 'Không tải được danh sách chat.');
-        } finally {
-            setLoading(false);
+  useEffect(() => { loadConversations(); }, []);
+
+  const scrollToBottom = () => {
+    requestAnimationFrame(() => {
+      if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+    });
+  };
+
+  useLayoutEffect(scrollToBottom, [messages]);
+
+  useEffect(() => {
+    if (!activeConv) return;
+    getMessages(activeConv.id).then(d => setMessages(sortMessages(d))).catch(() => {});
+    const timer = setInterval(() => {
+      getMessages(activeConv.id).then(d => setMessages(sortMessages(d))).catch(() => {});
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [activeConv]);
+
+  useEffect(() => {
+    const timer = setInterval(loadConversations, 8000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const loadConversations = async () => {
+    try {
+      const data = await getMyConversations();
+      setConversations(Array.isArray(data) ? data : []);
+    } catch (_) { /* ignore */ } finally { setLoading(false); }
+  };
+
+  const openConversation = async (conv) => {
+    setActiveConv(conv);
+    try {
+      const data = await getMessages(conv.id);
+      setMessages(sortMessages(data));
+      scrollToBottom();
+    } catch (_) { setMessages([]); }
+  };
+
+  const handleCreate = async (e, overrideType) => {
+    if (e?.preventDefault) e.preventDefault();
+    const type = overrideType || form.type;
+    setSubmitting(true);
+    try {
+      let payload;
+      if (type === 'QA') {
+        const now = new Date();
+        const ts = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+        payload = { type: 'QA', title: 'Hỗ trợ & tư vấn (' + ts + ' ' + now.toLocaleDateString('vi-VN') + ')', content: 'Tôi cần được hỗ trợ thêm về dịch vụ.' };
+      } else {
+        if (!form.title.trim() || !form.content.trim()) return;
+        payload = { type: 'REPORT', title: form.title.trim(), content: form.content.trim() };
+        if (form.errorCode?.trim()) payload.errorCode = form.errorCode.trim();
+      }
+      const conv = await createConversation(payload);
+      setShowCreate(false);
+      setForm({ type: 'REPORT', title: '', content: '', errorCode: '' });
+      await loadConversations();
+      if (conv?.id) openConversation(conv);
+    } catch (_) { /* ignore */ } finally { setSubmitting(false); }
+  };
+
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!activeConv) return;
+    if (previewImage) {
+      setUploadingImage(true);
+      try {
+        const url = await uploadChatImage(previewImage);
+        if (url) {
+          const msg = await sendMessage(activeConv.id, { content: input.trim() || '[Hình ảnh]', imageUrl: url });
+          setMessages(prev => [...prev, msg]);
         }
-    };
-
-    const loadMessages = async (id = activeId) => {
-        if (!id) {
-            setMessages([]);
-            return;
-        }
-        setMessagesLoading(true);
-        setError('');
-        try {
-            const data = await getChatMessages(id);
-            setMessages(Array.isArray(data) ? data : []);
-            await markChatAsRead(id).catch(() => null);
-        } catch (err) {
-            setError(err?.response?.data?.message || 'Không tải được tin nhắn.');
-        } finally {
-            setMessagesLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (loadingAccount) return;
-        if (!account) {
-            navigate('/login', { state: { redirectTo: conversationId ? `/chat/${conversationId}` : '/chat' } });
-            return;
-        }
-        loadConversations();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loadingAccount, account]);
-
-    useEffect(() => {
-        if (conversationId) setActiveId(Number(conversationId));
-    }, [conversationId]);
-
-    useEffect(() => {
-        if (!activeId) return;
-        loadMessages(activeId);
-        if (String(activeId) !== conversationId) navigate(`/chat/${activeId}`, { replace: true });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeId]);
-
-    const handleSend = async (event) => {
-        event.preventDefault();
-        const content = draft.trim();
-        if (!content || !activeId) return;
-        try {
-            setSending(true);
-            const sent = await sendChatMessage(activeId, content);
-            setMessages((prev) => [...prev, sent]);
-            setDraft('');
-            await loadConversations();
-        } catch (err) {
-            setError(err?.response?.data?.message || 'Gửi tin nhắn thất bại.');
-        } finally {
-            setSending(false);
-        }
-    };
-
-    const handleImageChange = async (event) => {
-        const file = event.target.files?.[0];
-        event.target.value = '';
-        if (!file || !activeId) return;
-        try {
-            setUploadingImage(true);
-            const sent = await sendChatImage(activeId, file);
-            setMessages((prev) => [...prev, sent]);
-            await loadConversations();
-            await loadMessages(activeId);
-        } catch (err) {
-            setError(err?.response?.data?.message || 'Gửi ảnh thất bại.');
-        } finally {
-            setUploadingImage(false);
-        }
-    };
-
-    const handleDeleteMessage = async (messageId) => {
-        if (!activeId || !messageId || !window.confirm('Xóa tin nhắn này?')) return;
-        try {
-            const deleted = await deleteChatMessage(activeId, messageId);
-            setMessages((prev) => prev.filter((message) => message.id !== deleted.id));
-            await loadConversations();
-        } catch (err) {
-            setError(err?.response?.data?.message || 'Xóa tin nhắn thất bại.');
-        }
-    };
-
-    if (loadingAccount || loading) {
-        return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-orange-500" /></div>;
+      } catch {} finally { setUploadingImage(false); setPreviewImage(null); setInput(''); }
+    } else if (input.trim()) {
+      const text = input.trim();
+      setInput('');
+      try {
+        const msg = await sendMessage(activeConv.id, { content: text });
+        setMessages(prev => [...prev, msg]);
+      } catch {}
     }
+  };
 
-    return (
-        <div className="min-h-screen bg-gray-50 text-gray-900">
-            <div className="max-w-7xl mx-auto px-4 py-6">
-                <div className="flex items-center justify-between gap-4 mb-6">
-                    <button onClick={() => navigate(-1)} className="px-4 py-3 rounded-2xl bg-white border border-gray-100 font-black text-sm flex items-center gap-2">
-                        <ArrowLeft className="w-4 h-4" /> Quay lại
-                    </button>
-                    <button onClick={() => { loadConversations(); loadMessages(); }} className="px-4 py-3 rounded-2xl bg-orange-50 text-orange-600 font-black text-sm flex items-center gap-2">
-                        <RefreshCw className="w-4 h-4" /> Refresh
-                    </button>
-                </div>
+  const quickSendImage = useCallback(async (file) => {
+    if (!activeConv || activeConv.status === 'COMPLETED' || !file.type.startsWith('image/')) return;
+    setUploadingImage(true);
+    try {
+      const url = await uploadChatImage(file);
+      if (url) {
+        const msg = await sendMessage(activeConv.id, { content: '[Hình ảnh]', imageUrl: url });
+        setMessages(prev => [...prev, msg]);
+      }
+    } catch {} finally { setUploadingImage(false); }
+  }, [activeConv]);
 
-                {error && <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 p-4 text-red-600 font-bold">{error}</div>}
+  const handlePaste = useCallback((e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) { setPreviewImage(file); }
+        break;
+      }
+    }
+  }, []);
 
-                <div className="grid lg:grid-cols-[360px_1fr] gap-6 min-h-[70vh]">
-                    <aside className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
-                        <div className="p-5 border-b border-gray-100">
-                            <h1 className="text-2xl font-black flex items-center gap-2"><MessageCircle className="w-6 h-6 text-orange-500" /> Chat</h1>
-                            <p className="text-sm text-gray-400 font-semibold mt-1">REST chat cơ bản, có thể refresh để nhận tin mới.</p>
-                        </div>
-                        <div className="divide-y divide-gray-50">
-                            {conversations.length ? conversations.map((conversation) => (
-                                <button key={conversation.id} onClick={() => setActiveId(conversation.id)} className={`w-full p-5 text-left hover:bg-orange-50 transition-all ${activeId === conversation.id ? 'bg-orange-50' : ''}`}>
-                                    <div className="font-black text-gray-900">{conversation.title || 'Conversation'}</div>
-                                    <div className="text-xs text-gray-400 font-bold mt-1 uppercase">{conversation.type}</div>
-                                    <div className="text-sm text-gray-500 font-medium mt-2 line-clamp-2">{conversation.lastMessagePreview || 'Chưa có tin nhắn.'}</div>
-                                </button>
-                            )) : (
-                                <div className="p-8 text-center text-gray-400 font-bold">Chưa có conversation. Hãy bắt đầu từ nút chat ở provider hoặc Help Center.</div>
-                            )}
-                        </div>
-                    </aside>
+  const handleFileChange = useCallback((e) => {
+    const file = e.target.files?.[0];
+    if (file?.type.startsWith('image/')) setPreviewImage(file);
+    e.target.value = '';
+  }, []);
 
-                    <section className="bg-white rounded-[2rem] border border-gray-100 shadow-sm flex flex-col overflow-hidden">
-                        <div className="p-5 border-b border-gray-100">
-                            <h2 className="text-xl font-black">{activeConversation?.title || 'Chọn conversation'}</h2>
-                            <p className="text-xs text-gray-400 font-bold mt-1">{activeConversation?.participants?.map((p) => p.fullName).filter(Boolean).join(', ')}</p>
-                        </div>
-                        <div className="flex-1 p-5 space-y-4 overflow-y-auto bg-gray-50/60">
-                            {messagesLoading ? <Loader2 className="w-6 h-6 animate-spin text-orange-500 mx-auto" /> : messages.length ? messages.map((message) => {
-                                const mine = Number(message.senderId) === Number(currentUserId);
-                                return (
-                                    <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-[75%] rounded-[1.5rem] px-5 py-3 ${mine ? 'bg-orange-500 text-white' : 'bg-white border border-gray-100 text-gray-800'}`}>
-                                            <div className="flex items-center justify-between gap-3">
-                                                <div className={`text-[10px] font-black uppercase mb-1 ${mine ? 'text-white/70' : 'text-gray-400'}`}>{message.senderName || 'Người gửi'}</div>
-                                                {message.canDelete && (
-                                                    <button type="button" onClick={() => handleDeleteMessage(message.id)} className={`text-[10px] font-black ${mine ? 'text-white/80 hover:text-white' : 'text-red-400 hover:text-red-600'}`} title="Xóa tin nhắn">
-                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                            {message.messageType === 'IMAGE' && message.attachmentUrl ? (
-                                                <a href={message.attachmentUrl} target="_blank" rel="noreferrer">
-                                                    <img src={message.attachmentUrl} alt="Ảnh chat" className="max-h-72 rounded-2xl object-contain bg-white/20" />
-                                                </a>
-                                            ) : (
-                                                <div className="font-semibold whitespace-pre-wrap break-words">{message.content}</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            }) : <div className="h-full flex items-center justify-center text-gray-400 font-bold">Chưa có tin nhắn.</div>}
-                        </div>
-                        <form onSubmit={handleSend} className="p-5 border-t border-gray-100 flex gap-3">
-                            <label className={`px-4 py-4 rounded-2xl bg-gray-100 text-gray-600 font-black cursor-pointer flex items-center gap-2 ${uploadingImage || !activeId ? 'opacity-50 pointer-events-none' : ''}`}>
-                                {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
-                                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} disabled={!activeId || uploadingImage} />
-                            </label>
-                            <input value={draft} onChange={(e) => setDraft(e.target.value)} disabled={!activeId || sending} placeholder="Nhập tin nhắn..." className="flex-1 rounded-2xl bg-gray-50 border border-gray-100 px-5 py-4 font-semibold outline-none focus:border-orange-300" />
-                            <button disabled={!activeId || sending || !draft.trim()} className="px-6 py-4 rounded-2xl bg-orange-500 text-white font-black disabled:opacity-50 flex items-center gap-2">
-                                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Gửi
-                            </button>
-                        </form>
-                    </section>
-                </div>
+  const handleBodyDragOver = useCallback((e) => { e.preventDefault(); setDragZone('body'); setDragOver(true); }, []);
+  const handleBodyDragLeave = useCallback(() => { setDragZone(null); setDragOver(false); }, []);
+  const handleBodyDrop = useCallback((e) => {
+    e.preventDefault(); setDragOver(false); setDragZone(null);
+    const file = e.dataTransfer?.files?.[0];
+    if (file?.type.startsWith('image/')) quickSendImage(file);
+  }, [quickSendImage]);
+
+  const handleFooterDragOver = useCallback((e) => { e.preventDefault(); setDragZone('footer'); setDragOver(true); }, []);
+  const handleFooterDragLeave = useCallback(() => { setDragZone(null); setDragOver(false); }, []);
+  const handleFooterDrop = useCallback((e) => {
+    e.preventDefault(); setDragOver(false); setDragZone(null);
+    const file = e.dataTransfer?.files?.[0];
+    if (file?.type.startsWith('image/')) setPreviewImage(file);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex relative" onPaste={handlePaste}>
+      {dragOver && (
+        <div className="absolute inset-0 z-50 pointer-events-none">
+          {dragZone === 'footer' ? (
+            <div className="absolute bottom-20 left-4 right-4 bg-orange-50 border-2 border-dashed border-orange-300 rounded-2xl py-4 text-center">
+              <p className="text-sm font-black text-orange-600">Thả ảnh để xem trước</p>
             </div>
+          ) : (
+            <div className="absolute inset-0 bg-orange-500/5 flex items-center justify-center">
+              <div className="bg-white rounded-2xl shadow-xl px-8 py-6 text-center">
+                <p className="text-lg font-black text-orange-600">Thả để gửi nhanh</p>
+              </div>
+            </div>
+          )}
         </div>
-    );
-};
+      )}
+      {uploadingImage && <div className="absolute top-0 left-0 right-0 h-1 bg-orange-100 z-50"><div className="h-full w-1/3 bg-orange-500 rounded-full" style={{ animation: 'uploadProgress 1s ease-in-out infinite' }} /></div>}
+      <style>{`@keyframes uploadProgress { 0% { transform: translateX(-100%) } 100% { transform: translateX(400%) } }`}</style>
+      <div className="w-96 bg-white border-r border-gray-200 flex flex-col">
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+          <h1 className="text-lg font-black">Hỗ trợ & Liên hệ</h1>
+          <button onClick={() => setShowCreate(true)} className="px-3 py-1.5 bg-orange-500 text-white rounded-xl text-sm font-black hover:bg-orange-600">
+            + Tạo mới
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {loading ? <p className="text-center text-gray-400 py-8">Đang tải...</p> :
+           conversations.length === 0 ? <p className="text-center text-gray-400 py-8">Chưa có hội thoại nào.</p> :
+           conversations.map(conv => (
+            <button key={conv.id} onClick={() => openConversation(conv)}
+              className={`w-full text-left p-3 rounded-2xl transition-all ${activeConv?.id === conv.id ? 'bg-orange-50 border-2 border-orange-200' : 'hover:bg-gray-50 border-2 border-transparent'}`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-black uppercase tracking-wider text-gray-400">{conv.typeLabel}</span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${conv.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : conv.status === 'PROCESSING' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                  {conv.statusLabel}
+                </span>
+              </div>
+              <p className="font-black text-sm truncate">{conv.title}</p>
+              {conv.lastMessage && <p className="text-xs text-gray-500 truncate mt-1">{conv.lastMessage.content}</p>}
+            </button>
+          ))}
+        </div>
+      </div>
 
-export default ChatPage;
+      <div className="flex-1 flex flex-col">
+        {!activeConv ? (
+          <div className="flex-1 flex items-center justify-center text-gray-400">
+            <div className="text-center">
+              <p className="text-5xl mb-4">💬</p>
+              <p className="font-black text-lg">Chọn hoặc tạo hội thoại</p>
+              <p className="text-sm">Báo cáo lỗi hoặc hỏi đáp thắc mắc</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="p-4 border-b border-gray-200 bg-white flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-black uppercase tracking-wider text-gray-400">{activeConv.typeLabel}</span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${activeConv.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : activeConv.status === 'PROCESSING' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    {activeConv.statusLabel}
+                  </span>
+                </div>
+                <h2 className="font-black">{activeConv.title}</h2>
+              </div>
+            </div>
+
+            <div ref={bodyRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50"
+              onDragOver={handleBodyDragOver} onDragLeave={handleBodyDragLeave} onDrop={handleBodyDrop}>
+              {messages.map(msg => (
+                <div key={msg.id} className={`flex ${msg.senderId === account?.userId ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-md rounded-2xl p-3 ${msg.isSystemMessage ? 'bg-gray-200 text-gray-600 text-center text-xs w-full max-w-full italic' : msg.senderId === account?.userId ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200'}`}>
+                    {msg.errorCode && <div className="text-xs font-black mb-1 opacity-70">Mã lỗi: {msg.errorCode}</div>}
+                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    {msg.imageUrl && <img src={msg.imageUrl} alt="attachment" className="mt-2 rounded-xl max-h-60 object-cover" />}
+                    <p className="text-[10px] mt-1 opacity-60">{new Date(msg.createdAt).toLocaleString('vi-VN')}</p>
+                  </div>
+                </div>
+              ))}
+              <div ref={bottomRef} />
+            </div>
+
+            {activeConv.status !== 'COMPLETED' ? (
+              <form onSubmit={handleSend} className="p-4 bg-white border-t border-gray-200 flex flex-col gap-2"
+                onDragOver={handleFooterDragOver} onDragLeave={handleFooterDragLeave} onDrop={handleFooterDrop}>
+                {previewImage && (
+                  <div className="flex items-center gap-2 pb-2 border-b border-dashed border-gray-200">
+                    <div className="w-14 h-14 rounded-xl overflow-hidden border border-gray-200 relative">
+                      <img src={URL.createObjectURL(previewImage)} alt="" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => setPreviewImage(null)} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center leading-none">&times;</button>
+                    </div>
+                    <span className="text-xs text-gray-400 font-semibold">Xem trước</span>
+                  </div>
+                )}
+                <div className="flex gap-2 items-center">
+                  <button type="button" onClick={() => fileRef.current?.click()} className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 shrink-0">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  </button>
+                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                  <input value={input} onChange={e => setInput(e.target.value)} placeholder={previewImage ? 'Thêm ghi chú...' : 'Nhập tin nhắn...'} className="flex-1 px-4 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm" />
+                  <button type="submit" disabled={(!input.trim() && !previewImage) || uploadingImage} className="px-5 py-2.5 bg-orange-500 text-white rounded-2xl font-black text-sm hover:bg-orange-600 disabled:opacity-50">{uploadingImage ? '...' : 'Gửi'}</button>
+                </div>
+              </form>
+            ) : (
+              <div className="p-4 bg-gray-100 text-center text-sm text-gray-500 font-semibold">Hội thoại đã kết thúc.</div>
+            )}
+          </>
+        )}
+      </div>
+
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShowCreate(false)}>
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-black mb-4">Tạo hội thoại mới</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-black text-gray-500 mb-1 block">Loại</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => handleCreate(null, 'QA')} disabled={submitting}
+                    className="p-4 rounded-2xl text-left border-2 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 transition-all cursor-pointer">
+                    <p className="font-black text-sm">Hỏi đáp</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Bấm một chạm để bắt đầu</p>
+                  </button>
+                  <button type="button" onClick={() => setForm({ ...form, type: 'REPORT' })}
+                    className={`p-4 rounded-2xl text-left border-2 transition-all cursor-pointer ${form.type === 'REPORT' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                    <p className="font-black text-sm">Báo cáo lỗi</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Gửi báo cáo chi tiết</p>
+                  </button>
+                </div>
+              </div>
+              {form.type === 'REPORT' && (
+                <form onSubmit={handleCreate} className="space-y-3">
+                  <div>
+                    <label className="text-xs font-black text-gray-500 mb-1 block">Tiêu đề báo lỗi</label>
+                    <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Ví dụ: Lỗi thanh toán..." className="w-full px-3 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm" required />
+                  </div>
+                  <div>
+                    <label className="text-xs font-black text-gray-500 mb-1 block">Mô tả chi tiết</label>
+                    <textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} rows={3} placeholder="Mô tả chi tiết lỗi..." className="w-full px-3 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm resize-none" required />
+                  </div>
+                  <div>
+                    <label className="text-xs font-black text-gray-500 mb-1 block">Mã lỗi (nếu có)</label>
+                    <input value={form.errorCode} onChange={e => setForm({ ...form, errorCode: e.target.value })} placeholder="Ví dụ: ERR-001" className="w-full px-3 py-2.5 rounded-2xl border border-gray-200 focus:outline-none focus:border-orange-400 text-sm" />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button type="button" onClick={() => setShowCreate(false)} className="flex-1 px-4 py-2.5 rounded-2xl border border-gray-200 font-black text-sm hover:bg-gray-50">Hủy</button>
+                    <button type="submit" disabled={submitting || !form.title.trim() || !form.content.trim()} className="flex-1 px-4 py-2.5 bg-orange-500 text-white rounded-2xl font-black text-sm hover:bg-orange-600 disabled:opacity-50">
+                      {submitting ? 'Đang gửi...' : 'Gửi báo cáo'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

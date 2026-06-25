@@ -10,32 +10,6 @@ export const updateUserStatus = async (userId, status) => {
   return response.data;
 };
 
-export const getPendingProviders = async () => {
-  const response = await api.get("/admin/providers/pending");
-  return response.data;
-};
-
-export const getVerifiedProviders = async () => {
-  const response = await api.get("/admin/providers/verified");
-  return response.data;
-};
-
-export const getAdminProviderDetail = async (providerId) => {
-  const response = await api.get(`/admin/providers/${providerId}`);
-  return response.data;
-};
-
-export const updateProviderVerification = async (providerId, status) => {
-  const response = await api.put("/admin/providers/verification", { providerId, status });
-  return response.data;
-};
-
-export const updateProviderAccountStatus = async (providerId, status) => {
-  const response = await api.put("/admin/providers/status", { providerId, status });
-  return response.data;
-};
-
-
 export const getCategories = async () => {
   const response = await api.get("/admin/categories");
   return response.data;
@@ -56,24 +30,11 @@ export const deleteCategory = async (id) => {
   return response.data;
 };
 
-export const getPartnerServiceRequests = async (params = {}) => {
-  const response = await api.get('/admin/partner-service-requests', { params });
-  return response.data?.result || response.data;
-};
-
-export const getPartnerServiceRequestDetail = async (id) => {
-  const response = await api.get(`/admin/partner-service-requests/${id}`);
-  return response.data?.result || response.data;
-};
-
-export const approvePartnerServiceRequest = async (id, payload = {}) => {
-  const response = await api.post(`/admin/partner-service-requests/${id}/approve`, payload);
-  return response.data?.result || response.data;
-};
-
-export const rejectPartnerServiceRequest = async (id, payload = {}) => {
-  const response = await api.post(`/admin/partner-service-requests/${id}/reject`, payload);
-  return response.data?.result || response.data;
+export const deleteCategoryHard = async (id, moveServicesToCategoryId) => {
+  const response = await api.delete(`/admin/categories/${id}`, {
+    params: { hardDelete: true, moveServicesToCategoryId },
+  });
+  return response.data;
 };
 
 export const getAdminPromotions = async (params = {}) => {
@@ -100,3 +61,39 @@ export const updateAdminPromotionStatus = async (id, active) => {
   const response = await api.patch(`/admin/promotions/${id}/status`, { active });
   return response.data?.result || response.data;
 };
+
+export const deleteAdminPromotion = async (id) => {
+  const response = await api.delete(`/admin/promotions/${id}`);
+  return response.data;
+};
+
+export const getAdminServiceList = async () => {
+  const response = await api.get('/admin/services/list');
+  return response.data?.result || response.data;
+};
+
+export const createAdminService = async (data) => {
+  const response = await api.post('/admin/services', data);
+  return response.data?.result || response.data;
+};
+
+export const updateAdminService = async (id, data) => {
+  const response = await api.put(`/admin/services/${id}`, data);
+  return response.data?.result || response.data;
+};
+
+export const deleteAdminService = async (id) => {
+  const response = await api.delete(`/admin/services/${id}`);
+  return response.data?.result || response.data;
+};
+
+export const uploadAdminServiceImage = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post('/admin/services/upload-image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data?.result || response.data;
+};
+
+

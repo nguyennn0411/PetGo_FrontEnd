@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Search,
   ChevronDown,
@@ -7,108 +7,120 @@ import {
   Phone,
   Mail,
   FileWarning,
-  PawPrint,
-  User,
+  CheckCircle2,
+  HelpCircle,
+  ExternalLink,
+  Scissors,
+  Bath,
+  Syringe,
+  Home,
+  ShoppingBag,
   Calendar,
   CreditCard,
   XCircle,
-  RotateCcw,
-  Star,
-  CheckCircle2,
-  ArrowLeft,
-  HelpCircle,
-  ExternalLink
+  User,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { startSupportChat } from '../api/chat';
+
+const HELP_CENTER_PHONE = '1900 1234';
+const HELP_CENTER_EMAIL = 'hotro@petgo.vn';
 
 const HelpCenterPage = () => {
   const navigate = useNavigate();
   const [activeAccordion, setActiveAccordion] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [supportLoading, setSupportLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Danh mục FAQ
   const categories = [
-    { id: 'booking', name: 'Booking', icon: <Calendar className="w-5 h-5" />, color: 'bg-blue-100 text-blue-600' },
-    { id: 'payment', name: 'Payment', icon: <CreditCard className="w-5 h-5" />, color: 'bg-green-100 text-green-600' },
-    { id: 'cancellation', name: 'Cancellation', icon: <XCircle className="w-5 h-5" />, color: 'bg-red-100 text-red-600' },
-    { id: 'reschedule', name: 'Reschedule', icon: <RotateCcw className="w-5 h-5" />, color: 'bg-orange-100 text-orange-600' },
-    { id: 'reviews', name: 'Reviews', icon: <Star className="w-5 h-5" />, color: 'bg-yellow-100 text-yellow-600' },
-    { id: 'account', name: 'Account', icon: <User className="w-5 h-5" />, color: 'bg-purple-100 text-purple-600' },
+    { id: 'dich-vu', name: 'Dịch vụ', icon: <Scissors className="w-5 h-5" />, color: 'bg-blue-100 text-blue-600' },
+    { id: 'spa', name: 'Spa & Grooming', icon: <Bath className="w-5 h-5" />, color: 'bg-pink-100 text-pink-600' },
+    { id: 'thu-y', name: 'Thú y', icon: <Syringe className="w-5 h-5" />, color: 'bg-red-100 text-red-600' },
+    { id: 'boarding', name: 'Board & Daycare', icon: <Home className="w-5 h-5" />, color: 'bg-green-100 text-green-600' },
+    { id: 'shop', name: 'Shop thú cưng', icon: <ShoppingBag className="w-5 h-5" />, color: 'bg-purple-100 text-purple-600' },
+    { id: 'booking', name: 'Đặt lịch', icon: <Calendar className="w-5 h-5" />, color: 'bg-orange-100 text-orange-600' },
+    { id: 'thanh-toan', name: 'Thanh toán', icon: <CreditCard className="w-5 h-5" />, color: 'bg-emerald-100 text-emerald-600' },
+    { id: 'tai-khoan', name: 'Tài khoản', icon: <User className="w-5 h-5" />, color: 'bg-amber-100 text-amber-600' },
   ];
 
-  // Dữ liệu câu hỏi FAQ
   const faqs = [
     {
+      category: 'dich-vu',
+      question: 'PetGo cung cấp những dịch vụ gì?',
+      answer: 'PetGo cung cấp đa dạng dịch vụ chăm sóc thú cưng: tắm gội & spa, cắt tỉa lông, khám thú y, tiêm phòng, board & daycare, huấn luyện, dắt chó đi dạo, và shop bán đồ thú cưng. Bạn có thể dễ dàng đặt lịch qua ứng dụng hoặc website.',
+    },
+    {
       category: 'booking',
-      question: "Làm thế nào để tôi đặt lịch hẹn trên PetGo?",
-      answer: "Bạn có thể đặt lịch bằng cách tìm kiếm dịch vụ tại trang chủ hoặc trang tìm kiếm, chọn nhà cung cấp ưng ý, chọn thú cưng và khung giờ phù hợp, sau đó nhấn 'Xác nhận đặt lịch'."
+      question: 'Làm thế nào để đặt lịch trên PetGo?',
+      answer: 'Bạn chỉ cần chọn dịch vụ mong muốn, chọn khu vực, chọn thú cưng, chọn ngày và khung giờ phù hợp, sau đó xác nhận đặt lịch. Hệ thống sẽ giữ chỗ cho bạn và thông báo đến nhà cung cấp dịch vụ.',
     },
     {
-      category: 'payment',
-      question: "PetGo hỗ trợ những phương thức thanh toán nào?",
-      answer: "Chúng tôi hỗ trợ thanh toán tại cửa hàng (COD), ví điện tử MoMo, VNPay và thẻ tín dụng/ghi nợ (Visa, Mastercard, JCB)."
+      category: 'booking',
+      question: 'Tôi có thể đặt lịch cho nhiều thú cưng cùng lúc không?',
+      answer: 'Hiện tại mỗi lần đặt lịch chỉ phục vụ một thú cưng. Nếu bạn có nhiều thú cưng, bạn có thể tạo nhiều đơn đặt lịch khác nhau cho từng bé.',
     },
     {
-      category: 'cancellation',
-      question: "Tôi có được hoàn tiền khi hủy lịch không?",
-      answer: "Nếu bạn hủy lịch trước thời gian quy định (thường là 12-24 tiếng tùy nhà cung cấp), bạn sẽ được hoàn tiền 100% vào ví PetGo hoặc tài khoản ngân hàng trong vòng 3-5 ngày làm việc."
+      category: 'thanh-toan',
+      question: 'PetGo hỗ trợ những phương thức thanh toán nào?',
+      answer: 'Chúng tôi hỗ trợ thanh toán online qua VNPay, ví điện tử, và thẻ tín dụng/ghi nợ (Visa, Mastercard). Ngoài ra bạn cũng có thể thanh toán trực tiếp khi nhận dịch vụ.',
     },
     {
-      category: 'reschedule',
-      question: "Tôi có thể đổi lịch hẹn bao nhiêu lần?",
-      answer: "Hiện tại PetGo hỗ trợ đổi lịch miễn phí 01 lần cho mỗi mã đặt chỗ, với điều kiện thay đổi trước giờ hẹn ít nhất 12 tiếng."
+      category: 'thanh-toan',
+      question: 'Phí ship được tính như thế nào?',
+      answer: 'Phí vận chuyển được tính dựa trên khoảng cách đường bộ từ điểm đón của khu vực đến vị trí của bạn. 3km đầu tiên được miễn phí, các km sau được tính theo cấu hình phí ship của từng khu vực.',
     },
     {
-      category: 'reviews',
-      question: "Tại sao đánh giá của tôi không hiển thị?",
-      answer: "Mọi đánh giá đều trải qua quy trình kiểm duyệt để đảm bảo tính xác thực và không vi phạm tiêu chuẩn cộng đồng. Quá trình này thường mất khoảng 30 phút."
-    }
+      category: 'booking',
+      question: 'Tôi có thể hủy hoặc đổi lịch không?',
+      answer: 'Bạn có thể hủy lịch trước ít nhất 12 tiếng so với giờ hẹn để được hoàn tiền. Đổi lịch được hỗ trợ miễn phí 1 lần cho mỗi đơn, với điều kiện thông báo trước ít nhất 12 tiếng.',
+    },
+    {
+      category: 'tai-khoan',
+      question: 'Làm sao để đăng ký tài khoản PetGo?',
+      answer: 'Bạn có thể đăng ký tài khoản bằng số điện thoại hoặc email. Chỉ mất 30 giây để tạo tài khoản và bắt đầu đặt lịch chăm sóc thú cưng.',
+    },
+    {
+      category: 'spa',
+      question: 'Dịch vụ spa & grooming bao gồm những gì?',
+      answer: 'Dịch vụ spa & grooming của PetGo bao gồm: tắm gội bằng sản phẩm chuyên dụng, cắt tỉa lông theo yêu cầu, vệ sinh tai - mắt - răng, cắt móng, và ủ lông thư giãn. Thời gian trung bình từ 45-90 phút tùy giống và kích thước thú cưng.',
+    },
+    {
+      category: 'thu-y',
+      question: 'PetGo có bác sĩ thú y không?',
+      answer: 'PetGo có đội ngũ bác sĩ thú y giàu kinh nghiệm, cung cấp các dịch vụ khám tổng quát, tiêm phòng, xét nghiệm, điều trị bệnh thông thường. Bạn có thể đặt lịch khám tại nhà hoặc tại cơ sở của đối tác.',
+    },
+    {
+      category: 'boarding',
+      question: 'Dịch vụ board & daycare hoạt động thế nào?',
+      answer: 'Board (gửi thú cưng qua đêm) và Daycare (gửi ban ngày) là dịch vụ trông giữ thú cưng tại cơ sở đối tác. Thú cưng sẽ được chăm sóc, cho ăn, dắt đi dạo và giám sát 24/7. Bạn có thể đặt lịch theo giờ, theo ngày hoặc theo tuần.',
+    },
   ];
 
-  const toggleAccordion = (index) => {
-    setActiveAccordion(activeAccordion === index ? null : index);
-  };
-
-  const handleStartSupportChat = async () => {
-    try {
-      setSupportLoading(true);
-      const conversation = await startSupportChat();
-      navigate(`/chat/${conversation.id}`);
-    } catch (err) {
-      if (err?.response?.status === 401) {
-        navigate('/login', { state: { redirectTo: '/help-center' } });
-        return;
-      }
-      window.alert(err?.response?.data?.message || 'Không thể mở live chat lúc này.');
-    } finally {
-      setSupportLoading(false);
-    }
-  };
+  const filteredFaqs = searchQuery
+    ? faqs.filter(f => f.question.toLowerCase().includes(searchQuery.toLowerCase()) || f.answer.toLowerCase().includes(searchQuery.toLowerCase()))
+    : faqs;
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800 pb-20">
-      {/* Header PetGo */}
-      
 
-      {/* Hero Section with Search */}
-      <section className="bg-white border-b border-gray-100 py-16 sm:py-24 overflow-hidden relative">
-        <div className="absolute top-0 right-0 p-20 opacity-5 -z-0">
-          <HelpCircle className="w-64 h-64 rotate-12" />
+      {/* Hero Search */}
+      <section className="bg-gradient-to-b from-orange-500 to-orange-600 py-16 sm:py-20 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-5">
+          <HelpCircle className="w-96 h-96 absolute -top-20 -right-20 rotate-12" />
+          <HelpCircle className="w-64 h-64 absolute -bottom-20 -left-20 -rotate-12" />
         </div>
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-          <h1 className="text-4xl sm:text-6xl font-black text-gray-900 mb-6 tracking-tight">Help Center</h1>
-          <p className="text-gray-500 text-lg mb-10 font-medium italic">Chúng tôi ở đây để giúp bạn chăm sóc thú cưng dễ dàng hơn.</p>
-
-          <div className="relative max-w-2xl mx-auto group">
-            <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
-              <Search className="w-6 h-6 text-gray-300 group-focus-within:text-orange-500 transition-colors" />
+          <div className="inline-flex items-center gap-2 bg-white/15 text-white/90 rounded-full px-4 py-1.5 text-xs font-bold mb-6 tracking-wider uppercase">
+            <MessageCircle className="w-3.5 h-3.5" /> Trung tâm trợ giúp
+          </div>
+          <h1 className="text-3xl sm:text-5xl font-black text-white mb-4 tracking-tight">Chúng tôi có thể giúp gì cho bạn?</h1>
+          <p className="text-orange-100 text-base sm:text-lg mb-8 font-medium">Tra cứu câu hỏi thường gặp hoặc liên hệ đội ngũ hỗ trợ của PetGo</p>
+          <div className="relative max-w-xl mx-auto">
+            <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+              <Search className="w-5 h-5 text-gray-400" />
             </div>
             <input
               type="text"
-              placeholder="Search help topics..."
-              className="w-full pl-16 pr-6 py-5 bg-gray-50 border-2 border-transparent rounded-[2.5rem] text-lg font-bold focus:bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-50 transition-all outline-none shadow-inner"
+              placeholder="Tìm kiếm câu hỏi..."
+              className="w-full pl-14 pr-6 py-4 bg-white rounded-2xl text-sm font-bold shadow-xl shadow-orange-800/20 focus:ring-4 focus:ring-orange-200 outline-none transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -116,170 +128,151 @@ const HelpCenterPage = () => {
         </div>
       </section>
 
-      <main className="max-w-7xl mx-auto px-4 py-12 sm:py-20">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <main className="max-w-7xl mx-auto px-4 py-12 sm:py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
 
-          {/* FAQ Content Column */}
+          {/* Main Content */}
           <div className="lg:col-span-2 space-y-12">
 
             {/* Category Grid */}
             <section>
-              <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-8 flex items-center gap-2">
-                <div className="w-1.5 h-4 bg-orange-500 rounded-full"></div> Phân loại chủ đề
+              <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                <div className="w-1.5 h-4 bg-orange-500 rounded-full shrink-0" /> Danh mục
               </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {categories.map((cat) => (
                   <button
                     key={cat.id}
-                    className="p-6 bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col items-center gap-4 group"
+                    className="p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all flex flex-col items-center gap-3 group"
                   >
-                    <div className={`${cat.color} p-4 rounded-2xl group-hover:scale-110 transition-transform`}>
+                    <div className={`${cat.color} p-3 rounded-xl group-hover:scale-110 transition-transform`}>
                       {cat.icon}
                     </div>
-                    <span className="font-black text-gray-700 text-sm uppercase tracking-widest">{cat.name}</span>
+                    <span className="font-black text-gray-700 text-[10px] uppercase tracking-widest text-center leading-tight">{cat.name}</span>
                   </button>
                 ))}
               </div>
             </section>
 
-            {/* Accordion Questions */}
+            {/* FAQ Accordion */}
             <section>
-              <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-8 flex items-center gap-2">
-                <div className="w-1.5 h-4 bg-orange-500 rounded-full"></div> Câu hỏi thường gặp
+              <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                <div className="w-1.5 h-4 bg-orange-500 rounded-full shrink-0" /> Câu hỏi thường gặp
               </h2>
-              <div className="space-y-4">
-                {faqs.map((faq, idx) => (
-                  <div key={idx} className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden transition-all">
-                    <button
-                      onClick={() => toggleAccordion(idx)}
-                      className="w-full p-6 sm:p-8 flex items-center justify-between text-left group"
-                    >
-                      <span className="font-black text-gray-900 group-hover:text-orange-600 transition-colors leading-relaxed">
-                        {faq.question}
-                      </span>
-                      <div className={`p-2 rounded-xl transition-all ${activeAccordion === idx ? 'bg-orange-500 text-white' : 'bg-gray-50 text-gray-400 group-hover:bg-orange-50 group-hover:text-orange-500'}`}>
-                        {activeAccordion === idx ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                      </div>
-                    </button>
-                    {activeAccordion === idx && (
-                      <div className="px-6 sm:px-8 pb-8 animate-in fade-in slide-in-from-top-2 duration-300">
-                        <div className="h-px bg-gray-50 mb-6"></div>
-                        <p className="text-gray-500 font-medium leading-relaxed">
-                          {faq.answer}
-                        </p>
-                        <div className="mt-6 flex gap-4">
-                          <button className="text-[10px] font-black text-orange-600 uppercase tracking-widest flex items-center gap-1 hover:underline">
-                            Hữu ích <CheckCircle2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button className="text-[10px] font-black text-gray-300 uppercase tracking-widest flex items-center gap-1 hover:underline">
-                            Không hữu ích
-                          </button>
+              {filteredFaqs.length === 0 ? (
+                <p className="text-sm text-gray-400 font-semibold text-center py-12">Không tìm thấy kết quả phù hợp.</p>
+              ) : (
+                <div className="space-y-3">
+                  {filteredFaqs.map((faq, idx) => (
+                    <div key={idx} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all">
+                      <button
+                        onClick={() => setActiveAccordion(activeAccordion === idx ? null : idx)}
+                        className="w-full p-5 flex items-center justify-between text-left group"
+                      >
+                        <span className="text-sm font-bold text-gray-900 group-hover:text-orange-600 transition-colors leading-relaxed pr-4">
+                          {faq.question}
+                        </span>
+                        <div className={`p-1.5 rounded-lg shrink-0 transition-all ${activeAccordion === idx ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-orange-50 group-hover:text-orange-500'}`}>
+                          {activeAccordion === idx ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      </button>
+                      {activeAccordion === idx && (
+                        <div className="px-5 pb-6">
+                          <div className="h-px bg-gray-50 mb-4" />
+                          <p className="text-sm text-gray-600 leading-relaxed">{faq.answer}</p>
+                          <div className="mt-4 flex items-center gap-3">
+                            <span className="text-[10px] font-bold text-gray-400">Bài viết này có hữu ích không?</span>
+                            <button className="text-xs font-black text-emerald-600 flex items-center gap-1 hover:underline">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Có
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           </div>
 
-          {/* Support Sidebar */}
-          <aside className="space-y-8 lg:sticky lg:top-28">
-            <div className="bg-gray-900 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-10">
-                <MessageCircle className="w-32 h-32 rotate-12" />
+          {/* Sidebar */}
+          <aside className="space-y-6 lg:sticky lg:top-28 self-start">
+            {/* Support Card */}
+            <div className="bg-gray-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-6 opacity-10">
+                <MessageCircle className="w-28 h-28 rotate-12" />
               </div>
-              <h3 className="text-2xl font-black mb-8 relative z-10 italic">Liên hệ hỗ trợ</h3>
-
-              <div className="space-y-6 relative z-10">
-                <ContactCard
-                  icon={<MessageCircle className="w-5 h-5 text-orange-500" />}
-                  title="Live Chat"
-                  desc="Phản hồi trong 2 phút"
-                  action="Bắt đầu chat"
-                  onClick={handleStartSupportChat}
-                  loading={supportLoading}
-                />
-                <ContactCard
-                  icon={<Phone className="w-5 h-5 text-orange-500" />}
-                  title="Hotline"
-                  desc="1900 1234 (24/7)"
-                  action="Gọi ngay"
-                />
-                <ContactCard
-                  icon={<Mail className="w-5 h-5 text-orange-500" />}
-                  title="Email Support"
-                  desc="petgo.help@gmail.com"
-                  action="Gửi email"
-                />
+              <h3 className="text-xl font-black mb-6 relative z-10">Liên hệ hỗ trợ</h3>
+              <div className="space-y-5 relative z-10">
+                <button onClick={() => navigate('/chat')} className="w-full flex items-center gap-4 group text-left">
+                  <div className="w-11 h-11 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-all">
+                    <MessageCircle className="w-5 h-5 text-orange-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-black">Live Chat</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Phản hồi trong 2 phút</p>
+                    <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mt-0.5">Bắt đầu chat</p>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-orange-400 transition-all" />
+                </button>
+                <a href={`tel:${HELP_CENTER_PHONE.replace(/\s/g, '')}`} className="w-full flex items-center gap-4 group">
+                  <div className="w-11 h-11 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-all">
+                    <Phone className="w-5 h-5 text-orange-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-black">Hotline</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{HELP_CENTER_PHONE} (24/7)</p>
+                    <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mt-0.5">Gọi ngay</p>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-orange-400 transition-all" />
+                </a>
+                <a href={`mailto:${HELP_CENTER_EMAIL}`} className="w-full flex items-center gap-4 group">
+                  <div className="w-11 h-11 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-all">
+                    <Mail className="w-5 h-5 text-orange-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-black">Email</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{HELP_CENTER_EMAIL}</p>
+                    <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mt-0.5">Gửi email</p>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-orange-400 transition-all" />
+                </a>
               </div>
-
-              <div className="mt-10 pt-8 border-t border-white/10 relative z-10">
-                <button className="w-full py-5 bg-red-500 hover:bg-red-600 text-white font-black rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 uppercase tracking-widest text-[10px]">
+              <div className="mt-6 pt-6 border-t border-white/10 relative z-10">
+                <button onClick={() => navigate('/chat')} className="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-black rounded-2xl transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-[10px]">
                   <FileWarning className="w-4 h-4" /> Gửi khiếu nại dịch vụ
                 </button>
               </div>
             </div>
 
-            {/* Quick Links Card */}
-            <div className="bg-white border border-gray-100 p-8 rounded-[2.5rem] shadow-sm">
-              <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6">Liên kết nhanh</h4>
-              <div className="space-y-4">
-                <QuickLink label="Quy trình đặt lịch" />
-                <QuickLink label="Chính sách bảo mật" />
-                <QuickLink label="Điều khoản sử dụng" />
-                <QuickLink label="Hợp tác với PetGo" />
+            {/* Quick Links */}
+            <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
+              <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-5">Tiện ích</h4>
+              <div className="space-y-3">
+                <button onClick={() => navigate('/services')} className="w-full flex items-center justify-between text-gray-400 hover:text-orange-600 transition-colors">
+                  <span className="text-sm font-bold">Tìm dịch vụ</span>
+                  <ChevronDown className="w-4 h-4 -rotate-90" />
+                </button>
+                <button onClick={() => navigate('/my-bookings')} className="w-full flex items-center justify-between text-gray-400 hover:text-orange-600 transition-colors">
+                  <span className="text-sm font-bold">Lịch đã đặt</span>
+                  <ChevronDown className="w-4 h-4 -rotate-90" />
+                </button>
+                <button onClick={() => navigate('/shop')} className="w-full flex items-center justify-between text-gray-400 hover:text-orange-600 transition-colors">
+                  <span className="text-sm font-bold">Cửa hàng PetGo</span>
+                  <ChevronDown className="w-4 h-4 -rotate-90" />
+                </button>
+                <button onClick={() => navigate('/ai-grooming')} className="w-full flex items-center justify-between text-gray-400 hover:text-orange-600 transition-colors">
+                  <span className="text-sm font-bold">AI tư vấn chăm sóc</span>
+                  <ChevronDown className="w-4 h-4 -rotate-90" />
+                </button>
               </div>
             </div>
           </aside>
 
         </div>
       </main>
-
-      {/* Navigation Footer */}
-      <div className="max-w-7xl mx-auto px-4 mt-12 flex flex-col sm:flex-row justify-center items-center gap-4">
-        <button
-          onClick={() => window.location.href = '/'}
-          className="px-10 py-4 bg-white border-2 border-gray-100 text-gray-900 font-black rounded-2xl hover:border-orange-500 hover:text-orange-600 transition-all uppercase tracking-widest text-[10px] flex items-center gap-2"
-        >
-          Back to Home
-        </button>
-        <button
-          onClick={() => window.location.href = '/my-bookings'}
-          className="px-10 py-4 bg-gray-900 text-white font-black rounded-2xl shadow-xl shadow-gray-200 hover:bg-orange-500 transition-all uppercase tracking-widest text-[10px] flex items-center gap-2"
-        >
-          View My Bookings
-        </button>
-      </div>
     </div>
   );
 };
-
-// Component con: Thẻ liên hệ
-const ContactCard = ({ icon, title, desc, action, onClick, loading }) => (
-  <button type="button" onClick={onClick} disabled={loading} className="w-full flex items-center justify-between group cursor-pointer text-left disabled:opacity-60">
-    <div className="flex items-center gap-4">
-      <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-all">
-        {icon}
-      </div>
-      <div>
-        <p className="text-sm font-black">{title}</p>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{desc}</p>
-        <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest mt-1">{loading ? 'Đang mở...' : action}</p>
-      </div>
-    </div>
-    <div className="text-orange-500 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-      <ExternalLink className="w-4 h-4" />
-    </div>
-  </button>
-);
-
-// Component con: Link nhanh
-const QuickLink = ({ label }) => (
-  <div className="flex items-center justify-between text-gray-400 hover:text-orange-600 cursor-pointer group transition-colors">
-    <span className="text-xs font-bold">{label}</span>
-    <ChevronDown className="w-4 h-4 -rotate-90 group-hover:translate-x-1 transition-transform" />
-  </div>
-);
 
 export default HelpCenterPage;

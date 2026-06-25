@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { sendAiChatMessage } from "../api/aiChat";
 
-export default function AiChatWidget() {
-  const [open, setOpen] = useState(false);
+export default function AiChatWidget({ open: controlledOpen, setOpen: controlledSetOpen }) {
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : localOpen;
+  const setOpen = controlledSetOpen !== undefined ? controlledSetOpen : setLocalOpen;
+
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -71,15 +74,17 @@ export default function AiChatWidget() {
 
   return (
     <>
-      {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          style={styles.floatingButton}
-          aria-label="Mở chatbot"
-        >
-          <span style={styles.floatingIcon}>💬</span>
-        </button>
-      )}
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          ...styles.floatingButton,
+          background: open ? "linear-gradient(135deg, #ea580c, #f97316)" : styles.floatingButton.background,
+          boxShadow: open ? "0 0 15px rgba(249, 115, 22, 0.6)" : styles.floatingButton.boxShadow
+        }}
+        aria-label={open ? "Đóng chatbot" : "Mở chatbot"}
+      >
+        <span style={styles.floatingIcon}>💬</span>
+      </button>
 
       {open && (
         <div style={styles.chatBox}>
@@ -187,8 +192,8 @@ const styles = {
     position: "fixed",
     right: 24,
     bottom: 24,
-    width: 62,
-    height: 62,
+    width: 56,
+    height: 56,
     borderRadius: "50%",
     border: "none",
     background: "linear-gradient(135deg, #f97316, #fb923c)",
@@ -196,7 +201,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: "0 14px 35px rgba(249, 115, 22, 0.45)",
+    boxShadow: "0 10px 30px rgba(249, 115, 22, 0.4)",
     cursor: "pointer",
     zIndex: 9999,
   },
@@ -207,10 +212,10 @@ const styles = {
 
   chatBox: {
     position: "fixed",
-    right: 24,
+    right: 92,
     bottom: 24,
     width: 380,
-    maxWidth: "calc(100vw - 32px)",
+    maxWidth: "calc(100vw - 110px)",
     height: 560,
     maxHeight: "calc(100vh - 48px)",
     background: "#fff7ed",

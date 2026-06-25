@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import AdminLayout from '../../components/AdminLayout';
-import { AdminDialog, AdminToastStack, getAdminErrorMessage, useAdminDialog, useAdminToast } from '../../components/admin/AdminFeedback';
-import { createCategory, deleteCategory, getCategories, updateCategory } from '../../api/admin';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
+import { AdminTitleContext } from '../../components/AdminLayout';
+import { AdminDialog, getAdminErrorMessage, useAdminDialog, useAdminToast } from '../../components/admin/AdminFeedback';
+import { createCategory, deleteCategory, deleteCategoryHard, getCategories, updateCategory } from '../../api/admin';
 
 const emptyForm = {
     name: '',
@@ -23,13 +23,19 @@ const flattenCategories = (items = [], level = 0, parentNames = []) => (items ||
 const collectDescendantIds = (category) => (category?.children || []).flatMap((child) => [child.id, ...collectDescendantIds(child)]);
 
 const AdminServices = () => {
+    const setPageTitle = useContext(AdminTitleContext);
+    useEffect(() => { setPageTitle('Quản lý danh mục'); }, []);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [editingCategory, setEditingCategory] = useState(null);
     const [formData, setFormData] = useState(emptyForm);
-    const { toasts, showToast, dismissToast } = useAdminToast();
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deleteMode, setDeleteMode] = useState('soft');
+    const [moveToCategoryId, setMoveToCategoryId] = useState('');
+    const { showToast } = useAdminToast();
     const { dialog, confirmDialog, closeDialog } = useAdminDialog();
 
     const flatCategories = useMemo(() => flattenCategories(categories), [categories]);
@@ -128,33 +134,43 @@ const AdminServices = () => {
         }
     };
 
-    const handleDelete = async (category) => {
-        const accepted = await confirmDialog({
-            tone: 'warning',
-            title: 'Ẩn danh mục dịch vụ?',
-            message: `Bạn có chắc muốn ẩn danh mục "${category.name}"? Các danh mục con cũng sẽ bị ẩn.`,
-            confirmLabel: 'Ẩn danh mục',
-            cancelLabel: 'Hủy',
-        });
-        if (!accepted) return;
+    const handleOpenDeleteModal = (category) => {
+        setDeleteTarget(category);
+        setDeleteMode('soft');
+        setMoveToCategoryId('');
+        setShowDeleteModal(true);
+    };
 
-        try {
-            await deleteCategory(category.id);
-            showToast({
-                tone: 'success',
-                title: 'Đã ẩn danh mục',
-                message: `Danh mục "${category.name}" và các danh mục con đã được ẩn mềm.`,
-            });
-            fetchData();
-        } catch (error) {
-            console.error('Lỗi khi ẩn danh mục:', error);
-            showToast({
-                tone: 'error',
-                title: 'Ẩn danh mục thất bại',
-                message: getAdminErrorMessage(error, 'Không thể ẩn danh mục đã chọn.'),
-            });
+    const handleConfirmDelete = async () => {
+        if (!deleteTarget) return;
+        const cat = deleteTarget;
+        setShowDeleteModal(false);
+
+        if (deleteMode === 'soft') {
+            try {
+                await deleteCategory(cat.id);
+                showToast({ tone: 'success', title: 'Đã ẩn danh mục', message: `Danh mục "${cat.name}" và danh mục con đã được ẩn.` });
+                fetchData();
+            } catch (error) {
+                showToast({ tone: 'error', title: 'Ẩn thất bại', message: getAdminErrorMessage(error, 'Không thể ẩn danh mục.') });
+            }
+        } else {
+            try {
+                await deleteCategoryHard(cat.id, moveToCategoryId || null);
+                showToast({ tone: 'success', title: 'Đã xóa danh mục', message: `Danh mục "${cat.name}" đã bị xóa vĩnh viễn.` });
+                fetchData();
+            } catch (error) {
+                const msg = error.response?.data?.message || error.message || 'Không thể xóa danh mục.';
+                showToast({ tone: 'error', title: 'Xóa thất bại', message: msg });
+            }
         }
     };
+
+    const deleteMoveOptions = useMemo(() => {
+        if (!deleteTarget) return [];
+        const blockedIds = new Set([deleteTarget.id, ...collectDescendantIds(deleteTarget)]);
+        return flatCategories.filter((item) => !blockedIds.has(item.id) && item.active);
+    }, [deleteTarget, flatCategories]);
 
     const handleRestore = async (category) => {
         try {
@@ -187,25 +203,21 @@ const AdminServices = () => {
     }, [editingCategory, flatCategories]);
 
     return (
-        <AdminLayout title="Quản lý danh mục">
-            <AdminToastStack toasts={toasts} onDismiss={dismissToast} />
+        <>
             <AdminDialog dialog={dialog} onResolve={closeDialog} />
 
             <div className="metrics metrics-3">
                 <div className="metric-card">
                     <div className="metric-label">Tổng số danh mục</div>
                     <div className="metric-value">{totalCategories}</div>
-                    <div className="metric-change metric-up">Hỗ trợ phân cấp nhiều tầng</div>
                 </div>
                 <div className="metric-card">
                     <div className="metric-label">Đang hoạt động</div>
                     <div className="metric-value">{activeCategories}</div>
-                    <div className="metric-change metric-up">Hiển thị cho người dùng</div>
                 </div>
                 <div className="metric-card">
                     <div className="metric-label">Đã ẩn</div>
                     <div className="metric-value">{hiddenCategories}</div>
-                    <div className="metric-change metric-down">Ẩn mềm</div>
                 </div>
             </div>
 
@@ -244,7 +256,7 @@ const AdminServices = () => {
                                     category={category}
                                     level={0}
                                     onEdit={handleOpenModal}
-                                    onHide={handleDelete}
+                                    onDelete={handleOpenDeleteModal}
                                     onRestore={handleRestore}
                                 />
                             ))
@@ -254,6 +266,59 @@ const AdminServices = () => {
                     </tbody>
                 </table>
             </div>
+
+            {showDeleteModal && deleteTarget && (
+                <div className="modal-overlay" style={{
+                    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+                }} onClick={() => setShowDeleteModal(false)}>
+                    <div className="modal" style={{ background: '#fff', width: 520, borderRadius: 16, boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header" style={{ padding: '20px 24px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontWeight: 700, fontSize: 18, color: '#dc3545' }}>Xóa danh mục dịch vụ</div>
+                            <button onClick={() => setShowDeleteModal(false)} style={{ border: 'none', background: 'none', fontSize: 24, cursor: 'pointer', color: '#999' }}>✕</button>
+                        </div>
+                        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <p style={{ margin: 0, fontSize: 14, color: '#555' }}>
+                                Bạn đang xóa danh mục: <strong>{deleteTarget.name}</strong>
+                                {(deleteTarget.children || []).length > 0 && <span> (bao gồm {deleteTarget.children.length} danh mục con)</span>}
+                            </p>
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', background: deleteMode === 'soft' ? '#fff8e1' : '#fff' }}>
+                                <input type="radio" name="deleteMode" value="soft" checked={deleteMode === 'soft'} onChange={() => setDeleteMode('soft')} />
+                                <div><div style={{ fontWeight: 600 }}>Ẩn danh mục (Soft delete)</div><div style={{ fontSize: 12, color: '#888' }}>Danh mục và danh mục con sẽ bị ẩn, có thể khôi phục sau.</div></div>
+                            </label>
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', background: deleteMode === 'hard' ? '#ffebee' : '#fff' }}>
+                                <input type="radio" name="deleteMode" value="hard" checked={deleteMode === 'hard'} onChange={() => setDeleteMode('hard')} />
+                                <div><div style={{ fontWeight: 600 }}>Xóa vĩnh viễn (Hard delete)</div><div style={{ fontSize: 12, color: '#888' }}>Danh mục sẽ bị xóa khỏi CSDL, không thể khôi phục.</div></div>
+                            </label>
+
+                            {deleteMode === 'hard' && (
+                                <div style={{ paddingLeft: 36 }}>
+                                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Di chuyển dịch vụ đến danh mục:</label>
+                                    <select
+                                        value={moveToCategoryId}
+                                        onChange={(e) => setMoveToCategoryId(e.target.value)}
+                                        style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8 }}
+                                    >
+                                        <option value="">-- Chọn danh mục --</option>
+                                        {deleteMoveOptions.map((item) => (
+                                            <option key={item.id} value={item.id}>{`${'— '.repeat(item.level)}${item.pathLabel}`}</option>
+                                        ))}
+                                    </select>
+                                    <div style={{ fontSize: 12, color: '#888', marginTop: 6 }}>Nếu danh mục có dịch vụ, bắt buộc phải chọn danh mục để di chuyển đến.</div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-footer" style={{ padding: 24, borderTop: '1px solid #eee', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                            <button type="button" className="btn" onClick={() => setShowDeleteModal(false)}>Hủy</button>
+                            <button type="button" className="btn btn-danger" onClick={handleConfirmDelete}>
+                                {deleteMode === 'soft' ? 'Ẩn danh mục' : 'Xóa vĩnh viễn'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {showModal && (
                 <div className="modal-overlay" style={{
@@ -324,11 +389,11 @@ const AdminServices = () => {
                     </div>
                 </div>
             )}
-        </AdminLayout>
+        </>
     );
 };
 
-const CategoryRows = ({ category, level, onEdit, onHide, onRestore }) => (
+const CategoryRows = ({ category, level, onEdit, onDelete, onRestore }) => (
     <>
         <tr>
             <td className="text-tiny">{category.id}</td>
@@ -349,9 +414,8 @@ const CategoryRows = ({ category, level, onEdit, onHide, onRestore }) => (
             <td>
                 <div className="d-flex gap-6">
                     <button className="btn btn-sm" onClick={() => onEdit(category)}>Sửa</button>
-                    {category.active ? (
-                        <button className="btn btn-sm btn-danger" onClick={() => onHide(category)}>Ẩn</button>
-                    ) : (
+                    <button className="btn btn-sm btn-danger" onClick={() => onDelete(category)}>Xóa</button>
+                    {!category.active && (
                         <button className="btn btn-sm btn-success" onClick={() => onRestore(category)}>Hiện</button>
                     )}
                 </div>
@@ -363,7 +427,7 @@ const CategoryRows = ({ category, level, onEdit, onHide, onRestore }) => (
                 category={child}
                 level={level + 1}
                 onEdit={onEdit}
-                onHide={onHide}
+                onDelete={onDelete}
                 onRestore={onRestore}
             />
         ))}
