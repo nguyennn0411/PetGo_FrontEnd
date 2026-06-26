@@ -352,8 +352,18 @@ const ServicesPage = () => {
           <div className="mt-auto pt-4 border-t border-gray-50">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-baseline gap-0.5">
-                <span className="text-lg font-black text-gray-900">{formatPrice(s.basePriceAmount)}</span>
-                <span className="text-xs font-bold text-orange-500">₫</span>
+                {(s.priceTiers && s.priceTiers.length > 0) ? (
+                  <>
+                    <span className="text-[10px] font-bold text-gray-400 mr-0.5">từ</span>
+                    <span className="text-lg font-black text-gray-900">{formatPrice(Math.min(...s.priceTiers.map(t => t.priceAmount)))}</span>
+                    <span className="text-xs font-bold text-orange-500">₫</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-lg font-black text-gray-900">{formatPrice(s.basePriceAmount)}</span>
+                    <span className="text-xs font-bold text-orange-500">₫</span>
+                  </>
+                )}
                 <span className="text-[10px] font-bold text-gray-400 ml-1">/ {priceUnitLabel(s.priceUnit)}</span>
               </div>
               <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400">

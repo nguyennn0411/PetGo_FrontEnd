@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getMyBookings, cancelMyBooking, getBookingDetail } from '../api/areas';
+import { createReview } from '../api/reviews';
 import Swal from 'sweetalert2';
 import { toast } from 'react-hot-toast';
 
@@ -68,6 +69,32 @@ export default function MyBookingsPage() {
         }
     };
 
+    const [showReview, setShowReview] = useState(false);
+    const [reviewRating, setReviewRating] = useState(5);
+    const [reviewContent, setReviewContent] = useState('');
+    const [submittingReview, setSubmittingReview] = useState(false);
+
+    const handleReviewSubmit = async () => {
+        if (!selectedBooking) return;
+        setSubmittingReview(true);
+        try {
+            await createReview({ bookingId: selectedBooking.id, rating: reviewRating, content: reviewContent.trim() || null });
+            toast.success('Đánh giá thành công!', { duration: 3000 });
+            setShowReview(false);
+            setReviewRating(5);
+            setReviewContent('');
+            loadBookings();
+        } catch (e) {
+            toast.error(e?.response?.data?.message || 'Không thể gửi đánh giá.', { duration: 4000 });
+        } finally { setSubmittingReview(false); }
+    };
+
+    const Star = ({ filled, onClick }) => (
+        <button type="button" onClick={onClick} className={`text-2xl transition-colors ${filled ? 'text-orange-400' : 'text-gray-200 hover:text-orange-200'}`}>
+            {filled ? '★' : '☆'}
+        </button>
+    );
+
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-4xl mx-auto px-4 py-8">
@@ -128,6 +155,36 @@ export default function MyBookingsPage() {
                     </div>
                 )}
 
+                {showReview && selectedBooking && (
+                    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={() => setShowReview(false)}>
+                        <div className="bg-white rounded-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-black text-lg">Đánh giá dịch vụ</h3>
+                                <button onClick={() => setShowReview(false)} className="text-gray-400 hover:text-gray-600 text-2xl">✕</button>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-4">{selectedBooking.serviceName}</p>
+                            <div className="flex justify-center gap-1 mb-4">
+                                {[1, 2, 3, 4, 5].map((n) => (
+                                    <Star key={n} filled={n <= reviewRating} onClick={() => setReviewRating(n)} />
+                                ))}
+                            </div>
+                            <textarea placeholder="Chia sẻ trải nghiệm của bạn (không bắt buộc)"
+                                className="w-full p-3 border border-gray-200 rounded-xl text-sm min-h-[100px] resize-none focus:border-orange-300 focus:ring-1 focus:ring-orange-300 outline-none"
+                                value={reviewContent} onChange={(e) => setReviewContent(e.target.value)} />
+                            <div className="flex gap-3 mt-4">
+                                <button onClick={() => setShowReview(false)}
+                                    className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-black text-sm hover:bg-gray-50 transition-all">
+                                    Hủy
+                                </button>
+                                <button onClick={handleReviewSubmit} disabled={submittingReview}
+                                    className="flex-1 py-3 rounded-xl bg-orange-500 text-white font-black text-sm hover:bg-orange-600 transition-all disabled:opacity-50">
+                                    {submittingReview ? 'Đang gửi...' : 'Gửi đánh giá'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {selectedBooking && (
                     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedBooking(null)}>
                         <div className="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
@@ -157,6 +214,12 @@ export default function MyBookingsPage() {
                                         <button onClick={() => handleCancel(selectedBooking.id, selectedBooking.bookingCode)}
                                             className="w-full mt-4 py-3 rounded-xl border-2 border-red-200 text-red-600 font-black text-sm hover:bg-red-50 transition-all">
                                             Hủy đặt lịch
+                                        </button>
+                                    )}
+                                    {selectedBooking.status === 'COMPLETED' && (
+                                        <button onClick={() => setShowReview(true)}
+                                            className="w-full mt-4 py-3 rounded-xl bg-orange-500 text-white font-black text-sm hover:bg-orange-600 transition-all">
+                                            Đánh giá dịch vụ
                                         </button>
                                     )}
                                 </div>

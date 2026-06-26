@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
+  BarChart3,
   Bell,
   CalendarCheck,
   ChevronLeft,
   ClipboardList,
+  Star,
   Gift,
   Home,
   LayoutList,
@@ -27,6 +29,12 @@ export const AdminTitleContext = createContext(null);
 
 const navGroups = [
   {
+    title: 'Tổng quan',
+    items: [
+      { id: 'admin-dashboard', icon: BarChart3, label: 'Doanh thu', path: '/admin/dashboard', subtitle: 'Báo cáo doanh thu dịch vụ và cửa hàng' },
+    ],
+  },
+  {
     title: 'Quản lý hệ thống',
     items: [
       { id: 'admin-users', icon: Users, label: 'Người dùng', path: '/admin/users', subtitle: 'Quản lý tài khoản, role và trạng thái truy cập' },
@@ -45,6 +53,7 @@ const navGroups = [
     title: 'Hỗ trợ',
     items: [
       { id: 'admin-chat', icon: MessageCircle, label: 'Hội thoại', path: '/admin/chat', subtitle: 'Quản lý hội thoại báo lỗi và hỏi đáp với người dùng' },
+      { id: 'admin-reviews', icon: Star, label: 'Đánh giá', path: '/admin/reviews', subtitle: 'Quản lý đánh giá dịch vụ, ẩn/hiện, phản hồi và xóa' },
     ],
   },
   {

@@ -96,4 +96,29 @@ export const uploadAdminServiceImage = async (file) => {
   return response.data?.result || response.data;
 };
 
+export const getAdminReviews = async (params = {}) => {
+  const response = await api.get('/admin/reviews', { params });
+  return response.data?.result || response.data;
+};
+
+export const getAdminReviewDetail = async (id) => {
+  const response = await api.get(`/admin/reviews/${id}`);
+  return response.data?.result || response.data;
+};
+
+export const toggleAdminReviewHidden = async (id) => {
+  const response = await api.put(`/admin/reviews/${id}/toggle-hidden`);
+  return response.data?.result || response.data;
+};
+
+export const replyAdminReview = async (id, reply) => {
+  const response = await api.put(`/admin/reviews/${id}/reply`, { reply });
+  return response.data?.result || response.data;
+};
+
+export const deleteAdminReview = async (id) => {
+  const response = await api.delete(`/admin/reviews/${id}`);
+  return response.data;
+};
+
 

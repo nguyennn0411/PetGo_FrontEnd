@@ -25,6 +25,7 @@ const emptyForm = {
     serviceCode: '', name: '', categoryIds: [], shortDescription: '', description: '',
     defaultDurationMinutes: 30, basePriceAmount: '', priceUnit: 'SESSION',
     currencyCode: 'VND', imageUrl: '', active: true, bookingType: 'SHORT',
+    priceTiers: [],
 };
 
 const AdminAllServices = () => {
@@ -322,6 +323,7 @@ const AdminAllServices = () => {
             imageUrl: service.imageUrl || '',
             active: service.active ?? true,
             bookingType: service.bookingType || 'SHORT',
+            priceTiers: (service.priceTiers || []).map(t => ({ ...t })),
         } : emptyForm);
         setShowModal(true);
     };
@@ -335,6 +337,12 @@ const AdminAllServices = () => {
                 categoryIds: formData.categoryIds.length ? formData.categoryIds : null,
                 defaultDurationMinutes: formData.defaultDurationMinutes ? Number(formData.defaultDurationMinutes) : null,
                 basePriceAmount: formData.basePriceAmount ? Number(formData.basePriceAmount) : null,
+                priceTiers: formData.priceTiers.map(t => ({
+                    ...t,
+                    priceAmount: Number(t.priceAmount),
+                    weightFrom: Number(t.weightFrom),
+                    weightTo: Number(t.weightTo),
+                })),
             };
             if (editingService) {
                 await updateAdminService(editingService.id, payload);
@@ -645,6 +653,72 @@ const AdminAllServices = () => {
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* Price Tiers */}
+                                <div style={{ borderTop: '1px solid #eee', paddingTop: 16 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                                        <label style={{ fontSize: 14, fontWeight: 700, color: '#e67e22' }}>📊 Bảng giá theo loài & cân nặng</label>
+                                        <button type="button" onClick={() => setFormData(prev => ({
+                                            ...prev, priceTiers: [...prev.priceTiers, { species: 'DOG', weightFrom: 0, weightTo: 5, priceAmount: '' }]
+                                        }))} style={{ padding: '6px 14px', border: '1px solid #e67e22', borderRadius: 8, background: '#fff8e1', cursor: 'pointer', fontWeight: 700, fontSize: 12, color: '#e67e22' }}>
+                                            + Thêm tier
+                                        </button>
+                                    </div>
+                                    {formData.priceTiers.length === 0 ? (
+                                        <p style={{ fontSize: 13, color: '#999', fontStyle: 'italic' }}>Chưa có bảng giá chi tiết. Khách hàng sẽ thấy giá mặc định ở trên.</p>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            {formData.priceTiers.map((tier, idx) => (
+                                                <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 12px', borderRadius: 10, border: '1px solid #f0f0f0', background: '#fafafa' }}>
+                                                    <select value={tier.species} onChange={(e) => {
+                                                        const updated = [...formData.priceTiers];
+                                                        updated[idx] = { ...updated[idx], species: e.target.value };
+                                                        setFormData({ ...formData, priceTiers: updated });
+                                                    }} style={{ padding: '6px 8px', border: '1px solid #ddd', borderRadius: 6, fontSize: 12, fontWeight: 600, minWidth: 70 }}>
+                                                        <option value="DOG">Chó</option>
+                                                        <option value="CAT">Mèo</option>
+                                                        <option value="ALL">Tất cả</option>
+                                                    </select>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#666' }}>
+                                                        <input type="number" min={0} step="0.5" placeholder="Từ"
+                                                            style={{ width: 56, padding: '6px 6px', border: '1px solid #ddd', borderRadius: 6, fontSize: 12, textAlign: 'center' }}
+                                                            value={tier.weightFrom} onChange={(e) => {
+                                                                const updated = [...formData.priceTiers];
+                                                                updated[idx] = { ...updated[idx], weightFrom: e.target.value };
+                                                                setFormData({ ...formData, priceTiers: updated });
+                                                            }} />
+                                                        <span>→</span>
+                                                        <input type="number" min={0} step="0.5" placeholder="Đến"
+                                                            style={{ width: 56, padding: '6px 6px', border: '1px solid #ddd', borderRadius: 6, fontSize: 12, textAlign: 'center' }}
+                                                            value={tier.weightTo} onChange={(e) => {
+                                                                const updated = [...formData.priceTiers];
+                                                                updated[idx] = { ...updated[idx], weightTo: e.target.value };
+                                                                setFormData({ ...formData, priceTiers: updated });
+                                                            }} />
+                                                        <span style={{ fontSize: 11, color: '#999' }}>kg</span>
+                                                    </div>
+                                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                        <input type="text" inputMode="numeric" placeholder="Giá"
+                                                            style={{ flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: 6, fontSize: 12, textAlign: 'right', fontVariantNumeric: 'tabular-nums', minWidth: 80 }}
+                                                            value={tier.priceAmount ? Math.round(Number(tier.priceAmount)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''}
+                                                            onChange={(e) => {
+                                                                const raw = e.target.value.replace(/\./g, '').replace(/\D/g, '');
+                                                                const updated = [...formData.priceTiers];
+                                                                updated[idx] = { ...updated[idx], priceAmount: raw };
+                                                                setFormData({ ...formData, priceTiers: updated });
+                                                            }} />
+                                                        <span style={{ fontSize: 11, fontWeight: 700, color: '#e67e22', minWidth: 16 }}>₫</span>
+                                                    </div>
+                                                    <button type="button" onClick={() => {
+                                                        const updated = formData.priceTiers.filter((_, i) => i !== idx);
+                                                        setFormData({ ...formData, priceTiers: updated });
+                                                    }} style={{ padding: '4px 8px', border: 'none', borderRadius: 6, background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>✕</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                                     <div>
                                         <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Thời lượng mỗi lượt (phút)</label>
