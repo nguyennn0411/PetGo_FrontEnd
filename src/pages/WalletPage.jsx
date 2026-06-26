@@ -9,7 +9,7 @@ const formatDate = (d) => d || '—';
 
 const statusLabel = {
   ACTIVE: 'Hoạt động', INBOUND_LOCKED: 'Khóa nhận/nạp', OUTBOUND_LOCKED: 'Khóa chuyển/rút', LOCKED: 'Khóa hoàn toàn',
-  PAYMENT_PENDING: 'Chờ thanh toán', PENDING_ADMIN_APPROVAL: 'Chờ admin duyệt', COMPLETED: 'Hoàn tất', REJECTED: 'Từ chối', CANCELLED: 'Đã hủy', FAILED: 'Thất bại',
+  PAYMENT_PENDING: 'Chờ thanh toán', PENDING_ADMIN_APPROVAL: 'Chờ duyệt', COMPLETED: 'Hoàn tất', REJECTED: 'Từ chối', CANCELLED: 'Đã hủy', FAILED: 'Thất bại',
 };
 
 const txTypeIcon = {
@@ -118,6 +118,11 @@ export default function WalletPage() {
           <h1 style={{ fontSize: 36, fontWeight: 900, margin: '4px 0 0', letterSpacing: -1 }}>
             {loading ? '...' : money(wallet?.balance)}
           </h1>
+          {!loading && Number(wallet?.heldBalance) > 0 && (
+            <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.7, marginTop: 2 }}>
+              Đang giữ: {money(wallet.heldBalance)} · Khả dụng: {money(wallet.balance)}
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, fontSize: 13, fontWeight: 600, opacity: 0.8 }}>
             <span style={{ background: 'rgba(255,255,255,0.2)', padding: '3px 10px', borderRadius: 20 }}>
               {statusLabel[wallet?.status] || '—'}
@@ -264,7 +269,7 @@ export default function WalletPage() {
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
                         <span style={{ fontSize: 12, color: '#9ca3af' }}>
-                          {tx.transactionCode} · {tx.bankName || tx.counterpartyUserCode || ''}
+                          {tx.transactionCode} · {tx.bankName || tx.counterpartyUserCode || tx.gatewayName || ''}
                         </span>
                         <span style={{ fontSize: 11, color: '#d1d5db' }}>{formatDate(tx.createdAt)}</span>
                       </div>
