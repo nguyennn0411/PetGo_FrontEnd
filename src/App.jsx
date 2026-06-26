@@ -30,6 +30,8 @@ import AdminChat from './pages/admin/AdminChat';
 import AdminAreas from './pages/admin/AdminAreas';
 import AdminBookings from './pages/admin/AdminBookings';
 import AdminAllServices from './pages/admin/AdminAllServices';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminReviews from './pages/admin/AdminReviews';
 import ChatPage from './pages/ChatPage';
 import HelpCenterPage from './pages/HelpCenterPage';
 import ShopHomePage from './pages/shop/ShopHomePage';
@@ -95,7 +97,8 @@ export default function App() {
 
         {/* Admin Routes */}
         <Route path='/admin' element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}>
-          <Route index element={<AdminUsers />} />
+          <Route index element={<AdminDashboard />} />
+          <Route path='dashboard' element={<AdminDashboard />} />
           <Route path='users' element={<AdminUsers />} />
           <Route path='vouchers' element={<AdminVouchers />} />
           <Route path='categories-services' element={<AdminServices />} />
@@ -106,6 +109,7 @@ export default function App() {
           <Route path='products' element={<AdminProducts />} />
           <Route path='shop-orders' element={<AdminShopOrders />} />
           <Route path='chat' element={<AdminChat />} />
+          <Route path='reviews' element={<AdminReviews />} />
           <Route path='areas' element={<AdminAreas />} />
           <Route path='services' element={<AdminAllServices />} />
           <Route path='bookings' element={<AdminBookings />} />

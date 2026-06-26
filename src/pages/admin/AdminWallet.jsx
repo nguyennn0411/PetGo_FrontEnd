@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from 'react';
 import { AdminTitleContext } from '../../components/AdminLayout';
 import { AdminDialog, getAdminErrorMessage, useAdminDialog, useAdminToast } from '../../components/admin/AdminFeedback';
-import { getAdminBookingDisputes, getAdminSystemWalletTransactions, getAdminWalletAutoConfirm, getAdminWalletFailedTopUps, getAdminWalletPendingTransactions, resolveAdminBookingDispute, resolveAdminWalletFailedTopUp, reviewAdminWalletTransaction, updateAdminWalletAutoConfirm, updateAdminWalletStatus } from '../../api/wallet';
+import { getAdminBookingDisputes, getAdminSystemWallet, getAdminSystemWalletTransactions, getAdminWalletAutoConfirm, getAdminWalletFailedTopUps, getAdminWalletPendingTransactions, resolveAdminBookingDispute, resolveAdminWalletFailedTopUp, reviewAdminWalletTransaction, systemWalletWithdraw, updateAdminWalletAutoConfirm, updateAdminWalletStatus } from '../../api/wallet';
 
 const money = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(value || 0));
 const labels = { TOP_UP: 'Nạp ví', WITHDRAW: 'Rút tiền', PENDING_ADMIN_APPROVAL: 'Chờ duyệt', COMPLETED: 'Hoàn tất', REJECTED: 'Từ chối', FAILED: 'Thất bại/hết hạn' };
@@ -14,27 +14,32 @@ export default function AdminWallet() {
     const [bookingDisputes, setBookingDisputes] = useState([]);
     const [autoConfirm, setAutoConfirm] = useState(false);
     const [systemTxs, setSystemTxs] = useState([]);
+    const [systemWallet, setSystemWallet] = useState(null);
+    const [withdrawForm, setWithdrawForm] = useState({ amount: '', bankName: '', bankAccountNumber: '', bankAccountHolder: '', note: '' });
+    const [withdrawing, setWithdrawing] = useState(false);
     const [walletLock, setWalletLock] = useState({ userId: '', status: 'ACTIVE', note: '' });
     const [loading, setLoading] = useState(true);
-    
+
     const { showToast } = useAdminToast();
     const { dialog, confirmDialog, promptDialog, closeDialog } = useAdminDialog();
 
     const load = async () => {
         setLoading(true);
         try {
-            const [txs, failed, setting, disputes, sysTxs] = await Promise.all([
+            const [txs, failed, setting, disputes, sysTxs, sysWallet] = await Promise.all([
                 getAdminWalletPendingTransactions(),
                 getAdminWalletFailedTopUps(),
                 getAdminWalletAutoConfirm(),
                 getAdminBookingDisputes(),
                 getAdminSystemWalletTransactions(),
+                getAdminSystemWallet(),
             ]);
             setPending(Array.isArray(txs) ? txs : []);
             setFailedTopUps(Array.isArray(failed) ? failed : []);
             setAutoConfirm(Boolean(setting?.enabled));
             setBookingDisputes(Array.isArray(disputes) ? disputes : []);
             setSystemTxs(Array.isArray(sysTxs) ? sysTxs : []);
+            setSystemWallet(sysWallet);
         } catch (err) {
             showToast({
                 tone: 'error',
@@ -137,6 +142,42 @@ export default function AdminWallet() {
                 message: getAdminErrorMessage(err, 'Không xử lý được giao dịch nạp thất bại.'),
             });
         }
+    };
+
+    const handleSystemWithdraw = async (e) => {
+        e.preventDefault();
+        const amount = parseFloat(withdrawForm.amount);
+        if (!amount || amount < 50000) {
+            showToast({ tone: 'error', title: 'Số tiền không hợp lệ', message: 'Số tiền rút tối thiểu là 50.000₫.' });
+            return;
+        }
+        if (!withdrawForm.bankName.trim() || !withdrawForm.bankAccountNumber.trim() || !withdrawForm.bankAccountHolder.trim()) {
+            showToast({ tone: 'error', title: 'Thiếu thông tin', message: 'Vui lòng nhập đầy đủ thông tin ngân hàng.' });
+            return;
+        }
+        const accepted = await confirmDialog({
+            tone: 'warning',
+            title: 'Xác nhận rút tiền ví hệ thống',
+            message: `Bạn sắp rút ${money(amount)} từ ví hệ thống về tài khoản ${withdrawForm.bankAccountHolder} - ${withdrawForm.bankName} (${withdrawForm.bankAccountNumber}). Tiếp tục?`,
+            confirmLabel: 'Xác nhận rút tiền',
+            cancelLabel: 'Hủy',
+        });
+        if (!accepted) return;
+        setWithdrawing(true);
+        try {
+            await systemWalletWithdraw({
+                amount,
+                bankName: withdrawForm.bankName.trim(),
+                bankAccountNumber: withdrawForm.bankAccountNumber.trim(),
+                bankAccountHolder: withdrawForm.bankAccountHolder.trim(),
+                note: withdrawForm.note.trim() || null,
+            });
+            showToast({ tone: 'success', title: 'Rút tiền thành công', message: '' });
+            setWithdrawForm({ amount: '', bankName: '', bankAccountNumber: '', bankAccountHolder: '', note: '' });
+            await load();
+        } catch (err) {
+            showToast({ tone: 'error', title: 'Rút tiền thất bại', message: getAdminErrorMessage(err, '') });
+        } finally { setWithdrawing(false); }
     };
 
     const submitLock = async (e) => {
@@ -291,6 +332,40 @@ export default function AdminWallet() {
         </div>
         <div className="card" style={{ marginTop: 24 }}>
             <h3>Ví hệ thống (SYSTEM_WALLET) — nhận tiền giải ngân booking</h3>
+            {systemWallet && (
+                <div style={{ marginBottom: 16, padding: '12px 16px', background: 'var(--bg-secondary)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>Số dư hiện tại:</span>
+                    <span style={{ fontWeight: 900, fontSize: 20, color: 'var(--petgo-orange)' }}>{money(systemWallet.balance)}</span>
+                </div>
+            )}
+            <details style={{ marginBottom: 16 }}>
+                <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)', padding: '8px 0' }}>Rút tiền từ ví hệ thống</summary>
+                <form onSubmit={handleSystemWithdraw} style={{ padding: '12px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <input type="number" min="50000" step="1000" placeholder="Số tiền rút (₫)" required
+                            value={withdrawForm.amount} onChange={e => setWithdrawForm(f => ({ ...f, amount: e.target.value }))}
+                            style={{ padding: '10px 12px', border: '1px solid var(--border-secondary)', borderRadius: 10, fontSize: 13, fontWeight: 500 }} />
+                        <input type="text" placeholder="Ngân hàng thụ hưởng" required
+                            value={withdrawForm.bankName} onChange={e => setWithdrawForm(f => ({ ...f, bankName: e.target.value }))}
+                            style={{ padding: '10px 12px', border: '1px solid var(--border-secondary)', borderRadius: 10, fontSize: 13, fontWeight: 500 }} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <input type="text" placeholder="Số tài khoản" required
+                            value={withdrawForm.bankAccountNumber} onChange={e => setWithdrawForm(f => ({ ...f, bankAccountNumber: e.target.value }))}
+                            style={{ padding: '10px 12px', border: '1px solid var(--border-secondary)', borderRadius: 10, fontSize: 13, fontWeight: 500 }} />
+                        <input type="text" placeholder="Chủ tài khoản" required
+                            value={withdrawForm.bankAccountHolder} onChange={e => setWithdrawForm(f => ({ ...f, bankAccountHolder: e.target.value }))}
+                            style={{ padding: '10px 12px', border: '1px solid var(--border-secondary)', borderRadius: 10, fontSize: 13, fontWeight: 500 }} />
+                    </div>
+                    <input type="text" placeholder="Ghi chú (tuỳ chọn)"
+                        value={withdrawForm.note} onChange={e => setWithdrawForm(f => ({ ...f, note: e.target.value }))}
+                        style={{ padding: '10px 12px', border: '1px solid var(--border-secondary)', borderRadius: 10, fontSize: 13, fontWeight: 500 }} />
+                    <button type="submit" disabled={withdrawing}
+                        className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>
+                        {withdrawing ? 'Đang xử lý...' : 'Xác nhận rút tiền'}
+                    </button>
+                </form>
+            </details>
             <table><thead><tr><th>Mã GD</th><th>Loại</th><th>Số tiền</th><th>Số dư trước</th><th>Số dư sau</th><th>Đối tác</th><th>Ghi chú</th><th>Thời gian</th></tr></thead><tbody>
                 {loading ? <tr><td colSpan="8">Đang tải...</td></tr> : systemTxs.length === 0 ? <tr><td colSpan="8">Chưa có giao dịch nào.</td></tr> : systemTxs.map(tx => <tr key={tx.id}><td>{tx.transactionCode}</td><td>{tx.type}</td><td className="fw-500">{money(tx.amount)}</td><td>{tx.balanceBefore != null ? money(tx.balanceBefore) : '—'}</td><td>{tx.balanceAfter != null ? money(tx.balanceAfter) : '—'}</td><td>{tx.counterpartyUserName || tx.counterpartyUserCode || '—'}</td><td>{tx.note || '—'}</td><td>{tx.createdAt || '—'}</td></tr>)}
             </tbody></table>

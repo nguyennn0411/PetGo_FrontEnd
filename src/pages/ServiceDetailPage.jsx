@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getPublicServiceById, getServiceAreas, toggleFavorite, getFavoriteIds } from '../api/services';
+import { getReviewsByService } from '../api/reviews';
 import { AuthContext } from '../context/AuthContext';
 
 const defaultIcon = L.icon({
@@ -43,6 +44,8 @@ export default function ServiceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [favorited, setFavorited] = useState(false);
   const [placeNames, setPlaceNames] = useState({});
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
@@ -70,6 +73,7 @@ export default function ServiceDetailPage() {
       })
       .catch(() => navigate('/services'))
       .finally(() => setLoading(false));
+    getReviewsByService(serviceId).then(setReviews).catch(() => {}).finally(() => setReviewsLoading(false));
   }, [serviceId, account]);
 
   const handleToggleFav = async () => {
@@ -146,8 +150,18 @@ export default function ServiceDetailPage() {
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Giá</p>
                 <div className="flex items-baseline gap-0.5 mt-1">
-                  <span className="text-2xl font-black text-gray-900">{formatPrice(service.basePriceAmount)}</span>
-                  <span className="text-sm font-bold text-orange-500">₫</span>
+                  {(service.priceTiers && service.priceTiers.length > 0) ? (
+                    <>
+                      <span className="text-[10px] font-bold text-gray-400 mr-0.5">từ</span>
+                      <span className="text-2xl font-black text-gray-900">{formatPrice(Math.min(...service.priceTiers.map(t => t.priceAmount)))}</span>
+                      <span className="text-sm font-bold text-orange-500">₫</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-2xl font-black text-gray-900">{formatPrice(service.basePriceAmount)}</span>
+                      <span className="text-sm font-bold text-orange-500">₫</span>
+                    </>
+                  )}
                   <span className="text-xs font-bold text-gray-400 ml-1">/ {priceUnitLabel(service.priceUnit)}</span>
                 </div>
               </div>
@@ -160,6 +174,39 @@ export default function ServiceDetailPage() {
                 </div>
               </div>
             </div>
+
+            {/* Price Tiers */}
+            {(service.priceTiers && service.priceTiers.length > 0) && (
+              <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-50">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Bảng giá chi tiết</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                        <th className="text-left px-4 py-2.5">Loại</th>
+                        <th className="text-left px-4 py-2.5">Cân nặng</th>
+                        <th className="text-right px-4 py-2.5">Giá</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {service.priceTiers.map((t, i) => {
+                        const speciesLabel = { DOG: 'Chó', CAT: 'Mèo', ALL: 'Tất cả' }[t.species] || t.species;
+                        const weightLabel = t.weightTo >= 200 ? `≥ ${t.weightFrom}kg` : `${t.weightFrom} - ${t.weightTo}kg`;
+                        return (
+                          <tr key={i} className="hover:bg-gray-50/50">
+                            <td className="px-4 py-2.5 font-bold text-gray-700">{speciesLabel}</td>
+                            <td className="px-4 py-2.5 text-gray-500">{weightLabel}</td>
+                            <td className="px-4 py-2.5 text-right font-black text-gray-900">{formatPrice(t.priceAmount)}<span className="text-[10px] font-bold text-orange-500 ml-0.5">₫</span></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {/* Description */}
             {service.shortDescription && (
@@ -210,6 +257,72 @@ export default function ServiceDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Reviews */}
+            <div className="pt-2">
+              <h2 className="text-sm font-black uppercase tracking-widest text-gray-900 mb-4">Đánh giá</h2>
+
+              {reviewsLoading ? (
+                <div className="text-sm text-gray-400">Đang tải...</div>
+              ) : reviews.length === 0 ? (
+                <p className="text-sm text-gray-400">Chưa có đánh giá nào.</p>
+              ) : (
+                <>
+                  {/* Summary */}
+                  <div className="flex items-center gap-3 mb-5 p-4 bg-orange-50 rounded-2xl">
+                    <div className="text-center">
+                      <div className="text-3xl font-black text-gray-900">
+                        {service.averageRating != null ? Number(service.averageRating).toFixed(1) : '0.0'}
+                      </div>
+                      <div className="flex items-center gap-0.5 mt-0.5 justify-center">
+                        {[1,2,3,4,5].map(s => (
+                          <Star key={s} className={`w-3 h-3 ${s <= Math.round(Number(service.averageRating || 0)) ? 'fill-orange-400 text-orange-400' : 'text-gray-300'}`} />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="w-px h-10 bg-orange-200" />
+                    <div className="text-sm text-gray-600">
+                      <span className="font-black text-gray-900">{service.totalReviews || 0}</span> đánh giá
+                    </div>
+                  </div>
+
+                  {/* List */}
+                  <div className="space-y-4">
+                    {reviews.map(r => (
+                      <div key={r.id} className="flex gap-3 p-3 bg-gray-50 rounded-xl">
+                        <div className="w-8 h-8 rounded-full bg-orange-100 overflow-hidden shrink-0 mt-0.5">
+                          {r.userAvatar ? (
+                            <img src={r.userAvatar} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs font-bold text-orange-500">
+                              {(r.userName || '?')[0].toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-bold text-gray-900">{r.userName || 'Người dùng'}</span>
+                            <div className="flex items-center gap-0.5">
+                              {[1,2,3,4,5].map(s => (
+                                <Star key={s} className={`w-3 h-3 ${s <= r.rating ? 'fill-orange-400 text-orange-400' : 'text-gray-300'}`} />
+                              ))}
+                            </div>
+                            {r.createdAt && (
+                              <span className="text-[10px] text-gray-400 ml-auto">
+                                {new Date(r.createdAt).toLocaleDateString('vi-VN')}
+                              </span>
+                            )}
+                          </div>
+                          {r.content && (
+                            <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">{r.content}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Book button */}
             <button onClick={() => {

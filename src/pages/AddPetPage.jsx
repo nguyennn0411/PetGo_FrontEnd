@@ -17,10 +17,6 @@ import { resolveUserId } from '../utils/userIdentity';
 const SPECIES_OPTIONS = [
   { value: 'DOG', label: 'Chó' },
   { value: 'CAT', label: 'Mèo' },
-  { value: 'BIRD', label: 'Chim' },
-  { value: 'RABBIT', label: 'Thỏ' },
-  { value: 'HAMSTER', label: 'Hamster' },
-  { value: 'REPTILE', label: 'Bò sát' },
   { value: 'OTHER', label: 'Khác' },
 ];
 
@@ -42,6 +38,7 @@ const SIZE_OPTIONS = [
 const emptyForm = {
   name: '',
   species: 'DOG',
+  customSpecies: '',
   breed: '',
   gender: 'UNKNOWN',
   dateOfBirth: '',
@@ -59,7 +56,8 @@ const emptyForm = {
 
 const normalizePetToForm = (pet) => ({
   name: pet?.name || '',
-  species: pet?.species || 'DOG',
+  species: ['DOG', 'CAT', 'OTHER'].includes(pet?.species) ? (pet?.species || 'DOG') : 'OTHER',
+  customSpecies: (pet?.species && !['DOG', 'CAT', 'OTHER'].includes(pet.species)) ? pet.species : '',
   breed: pet?.breed || '',
   gender: pet?.gender || 'UNKNOWN',
   dateOfBirth: pet?.dateOfBirth || '',
@@ -77,7 +75,7 @@ const normalizePetToForm = (pet) => ({
 
 const buildPayload = (form) => ({
   name: form.name.trim(),
-  species: form.species,
+  species: form.species === 'OTHER' ? (form.customSpecies.trim() || 'OTHER') : form.species,
   breed: form.breed.trim() || null,
   gender: form.gender || null,
   dateOfBirth: form.dateOfBirth || null,
@@ -356,12 +354,22 @@ const AddPetPage = () => {
                     required
                   />
 
-                  <FormSelect
-                    label="Loại thú cưng"
-                    value={formData.species}
-                    onChange={handleChange('species')}
-                    options={SPECIES_OPTIONS}
-                  />
+                  {formData.species === 'OTHER' ? (
+                    <FormInput
+                      label="Loại thú cưng"
+                      value={formData.customSpecies}
+                      onChange={handleChange('customSpecies')}
+                      placeholder="VD: Rùa, Thỏ, ..."
+                      required
+                    />
+                  ) : (
+                    <FormSelect
+                      label="Loại thú cưng"
+                      value={formData.species}
+                      onChange={handleChange('species')}
+                      options={SPECIES_OPTIONS}
+                    />
+                  )}
 
                   <FormInput
                     label="Giống loài"

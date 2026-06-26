@@ -1,7 +1,7 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getCreateContext, getAvailabilityDates, getAvailabilitySlots, calculateShippingFee, createBooking, getUserLocations } from '../api/areas';
-import { getServiceAreas } from '../api/services';
+import { getPublicServiceById, getServiceAreas } from '../api/services';
 import { getAdminErrorMessage } from '../components/admin/AdminFeedback';
 import { toast } from 'react-hot-toast';
 import LocationPicker from '../components/LocationPicker';
@@ -78,8 +78,16 @@ export default function BookingPage() {
         setContext(ctx);
         const sid = searchParams.get('serviceId');
         if (sid && ctx?.services) {
-          const match = ctx.services.find(s => s.id === Number(sid));
-          if (match) setSelectedService(match);
+          let match = ctx.services.find(s => s.id === Number(sid));
+          if (match) {
+            if (!match.priceTiers || !match.priceTiers.length) {
+              try {
+                const full = await getPublicServiceById(sid);
+                match = { ...match, ...full };
+              } catch {}
+            }
+            setSelectedService(match);
+          }
         }
       } catch (e) {
         toast.error(getAdminErrorMessage(e, 'Không tải được thông tin.'), { duration: 4000 });
@@ -289,11 +297,33 @@ export default function BookingPage() {
     fetchAddr();
   }, [pickupPos]);
 
+  const servicePrice = useMemo(() => {
+    if (!selectedService) return 0;
+    if (!selectedService.priceTiers?.length)
+      return Number(selectedService.basePriceAmount) || 0;
+
+    const species = selectedPet?.species;
+    if (!species)
+      return Math.min(...selectedService.priceTiers.map(t => Number(t.priceAmount)));
+
+    const weight = Number(selectedPet?.weightKg) || 0;
+
+    for (const tier of selectedService.priceTiers) {
+      const ts = tier.species;
+      if (ts !== 'ALL' && ts !== species) continue;
+      if (weight >= Number(tier.weightFrom) && weight <= Number(tier.weightTo))
+        return Number(tier.priceAmount);
+      if (Number(tier.weightTo) >= 200 && weight >= Number(tier.weightFrom))
+        return Number(tier.priceAmount);
+    }
+
+    const last = selectedService.priceTiers[selectedService.priceTiers.length - 1];
+    return Number(last.priceAmount);
+  }, [selectedService, selectedPet]);
+
   const totalAmount = useMemo(() => {
-    const price = selectedService?.basePriceAmount ? Number(selectedService.basePriceAmount) : 0;
-    const ship = shippingFee?.shippingFee ? Number(shippingFee.shippingFee) : 0;
-    return price + ship;
-  }, [selectedService, shippingFee]);
+    return servicePrice + (shippingFee?.shippingFee ? Number(shippingFee.shippingFee) : 0);
+  }, [servicePrice, shippingFee]);
 
   const canSubmit = !!(selectedArea && selectedService && selectedPet && selectedDate && selectedSlot);
 
@@ -378,7 +408,11 @@ export default function BookingPage() {
                       <div className="min-w-0">
                         <div className="font-extrabold text-gray-900">{selectedService.name}</div>
                         <div className="flex items-center gap-2 flex-wrap mt-1">
-                          <span className="text-base font-black text-orange-600">{formatPrice(selectedService.basePriceAmount)}₫</span>
+                          <span className="text-base font-black text-orange-600">
+                            {selectedService.priceTiers?.length > 0
+                              ? `từ ${formatPrice(Math.min(...selectedService.priceTiers.map(t => Number(t.priceAmount))))}₫`
+                              : `${formatPrice(selectedService.basePriceAmount)}₫`}
+                          </span>
                           <span className="text-xs text-gray-400 font-bold flex items-center gap-0.5"><Clock className="w-3 h-3" />{selectedService.defaultDurationMinutes} phút</span>
                           <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${selectedService.bookingType === 'LONG' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-orange-50 text-orange-600 border border-orange-100'}`}>
                             {selectedService.bookingType === 'LONG' ? 'Dài hạn' : 'Ngắn hạn'}
@@ -784,7 +818,7 @@ export default function BookingPage() {
                 <SidebarItem icon="📅" title="Thời gian" value={selectedDate && selectedSlot ? `${new Date(selectedDate + 'T00:00:00').toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric' })} ${selectedSlot.startTime}-${selectedSlot.endTime}` : null} empty={selectedPet ? 'Chưa chọn thời gian' : null} />
                 {selectedService && (
                   <div className="pt-3.5 border-t border-dashed border-gray-200 space-y-2 text-xs font-semibold text-gray-600">
-                    <div className="flex justify-between"><span>Phí dịch vụ</span><span className="text-gray-900 font-bold">{formatPrice(selectedService.basePriceAmount)}₫</span></div>
+                    <div className="flex justify-between"><span>Phí dịch vụ</span><span className="text-gray-900 font-bold">{formatPrice(servicePrice)}₫</span></div>
                     <div className="flex justify-between"><span>Phí vận chuyển</span><span className="text-gray-900 font-bold">{shippingFee ? `${formatPrice(shippingFee.shippingFee)}₫` : '—'}</span></div>
                     <div className="pt-3 border-t border-gray-100 flex justify-between items-center text-sm font-black">
                       <span className="text-gray-800">TỔNG CỘNG</span>
