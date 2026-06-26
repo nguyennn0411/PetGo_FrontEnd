@@ -10,12 +10,8 @@ export const transferWalletMoney = async (payload) => unwrap(await api.post('/wa
 export const requestWalletWithdraw = async (payload) => unwrap(await api.post('/wallet/withdraw', payload));
 
 export const getAdminWalletPendingTransactions = async () => unwrap(await api.get('/admin/wallet/pending-transactions'));
-export const getAdminWalletFailedTopUps = async () => unwrap(await api.get('/admin/wallet/failed-top-ups'));
 export const reviewAdminWalletTransaction = async (transactionId, payload) => unwrap(await api.post(`/admin/wallet/transactions/${transactionId}/review`, payload));
-export const resolveAdminWalletFailedTopUp = async (transactionId, payload) => unwrap(await api.post(`/admin/wallet/failed-top-ups/${transactionId}/resolve`, payload));
 export const updateAdminWalletStatus = async (userId, payload) => unwrap(await api.patch(`/admin/wallet/users/${userId}/status`, payload));
-export const getAdminWalletAutoConfirm = async () => unwrap(await api.get('/admin/wallet/settings/auto-confirm-top-up'));
-export const updateAdminWalletAutoConfirm = async (enabled) => unwrap(await api.patch('/admin/wallet/settings/auto-confirm-top-up', { enabled }));
 export const getAdminSystemWallet = async () => unwrap(await api.get('/admin/wallet/system-wallet'));
 export const getAdminSystemWalletTransactions = async () => unwrap(await api.get('/admin/wallet/system-transactions'));
 export const systemWalletWithdraw = async (payload) => unwrap(await api.post('/admin/wallet/system-withdraw', payload));

@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from 'react';
 import { AdminTitleContext } from '../../components/AdminLayout';
 import { AdminDialog, getAdminErrorMessage, useAdminDialog, useAdminToast } from '../../components/admin/AdminFeedback';
-import { getAdminBookingDisputes, getAdminSystemWallet, getAdminSystemWalletTransactions, getAdminWalletAutoConfirm, getAdminWalletFailedTopUps, getAdminWalletPendingTransactions, resolveAdminBookingDispute, resolveAdminWalletFailedTopUp, reviewAdminWalletTransaction, systemWalletWithdraw, updateAdminWalletAutoConfirm, updateAdminWalletStatus } from '../../api/wallet';
+import { getAdminBookingDisputes, getAdminSystemWallet, getAdminSystemWalletTransactions, getAdminWalletPendingTransactions, resolveAdminBookingDispute, reviewAdminWalletTransaction, systemWalletWithdraw, updateAdminWalletStatus } from '../../api/wallet';
 
 const money = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(value || 0));
 const labels = { TOP_UP: 'Nạp ví', WITHDRAW: 'Rút tiền', PENDING_ADMIN_APPROVAL: 'Chờ duyệt', COMPLETED: 'Hoàn tất', REJECTED: 'Từ chối', FAILED: 'Thất bại/hết hạn' };
@@ -10,9 +10,7 @@ export default function AdminWallet() {
     const setPageTitle = useContext(AdminTitleContext);
     useEffect(() => { setPageTitle('Quản lý ví'); }, []);
     const [pending, setPending] = useState([]);
-    const [failedTopUps, setFailedTopUps] = useState([]);
     const [bookingDisputes, setBookingDisputes] = useState([]);
-    const [autoConfirm, setAutoConfirm] = useState(false);
     const [systemTxs, setSystemTxs] = useState([]);
     const [systemWallet, setSystemWallet] = useState(null);
     const [withdrawForm, setWithdrawForm] = useState({ amount: '', bankName: '', bankAccountNumber: '', bankAccountHolder: '', note: '' });
@@ -26,17 +24,13 @@ export default function AdminWallet() {
     const load = async () => {
         setLoading(true);
         try {
-            const [txs, failed, setting, disputes, sysTxs, sysWallet] = await Promise.all([
+            const [txs, disputes, sysTxs, sysWallet] = await Promise.all([
                 getAdminWalletPendingTransactions(),
-                getAdminWalletFailedTopUps(),
-                getAdminWalletAutoConfirm(),
                 getAdminBookingDisputes(),
                 getAdminSystemWalletTransactions(),
                 getAdminSystemWallet(),
             ]);
             setPending(Array.isArray(txs) ? txs : []);
-            setFailedTopUps(Array.isArray(failed) ? failed : []);
-            setAutoConfirm(Boolean(setting?.enabled));
             setBookingDisputes(Array.isArray(disputes) ? disputes : []);
             setSystemTxs(Array.isArray(sysTxs) ? sysTxs : []);
             setSystemWallet(sysWallet);
@@ -53,32 +47,7 @@ export default function AdminWallet() {
 
     useEffect(() => { load(); }, []);
 
-    const toggleAuto = async () => {
-        const nextState = !autoConfirm;
-        const accepted = await confirmDialog({
-            tone: nextState ? 'success' : 'warning',
-            title: nextState ? 'Bật tự động cộng tiền?' : 'Tắt tự động cộng tiền?',
-            message: `Bạn có chắc muốn ${nextState ? 'bật' : 'tắt'} tự động cộng tiền nạp ví?`,
-            confirmLabel: nextState ? 'Bật tự động' : 'Tắt tự động',
-            cancelLabel: 'Hủy',
-        });
-        if (!accepted) return;
-        try {
-            const result = await updateAdminWalletAutoConfirm(nextState);
-            setAutoConfirm(Boolean(result.enabled));
-            showToast({
-                tone: 'success',
-                title: 'Cập nhật cấu hình',
-                message: `Đã ${result.enabled ? 'bật' : 'tắt'} tự động cộng tiền nạp ví thành công.`,
-            });
-        } catch (err) {
-            showToast({
-                tone: 'error',
-                title: 'Lỗi cấu hình',
-                message: getAdminErrorMessage(err, 'Không cập nhật được cấu hình.'),
-            });
-        }
-    };
+    /* toggleAuto removed — auto-confirm is always enabled */
 
     const review = async (id, action) => {
         const isApprove = action === 'APPROVE';
@@ -108,38 +77,6 @@ export default function AdminWallet() {
                 tone: 'error',
                 title: 'Xử lý thất bại',
                 message: getAdminErrorMessage(err, 'Không xử lý được giao dịch.'),
-            });
-        }
-    };
-
-    const resolveFailed = async (id, action) => {
-        const isApprove = action === 'APPROVE';
-        const tone = isApprove ? 'success' : 'error';
-        const title = isApprove ? 'Xác nhận nạp ví' : 'Từ chối khiếu nại nạp';
-        const reviewNote = await promptDialog({
-            tone,
-            title,
-            message: isApprove ? 'Nhập ghi chú xác minh đã nhận tiền (tuỳ chọn):' : 'Nhập lý do đóng/từ chối khiếu nại (bắt buộc):',
-            placeholder: isApprove ? 'Ghi chú xác minh...' : 'Lý do từ chối...',
-            required: !isApprove,
-            confirmLabel: isApprove ? 'Xác nhận' : 'Từ chối',
-            cancelLabel: 'Hủy',
-        });
-        if (reviewNote === null) return;
-
-        try {
-            await resolveAdminWalletFailedTopUp(id, { action, reviewNote });
-            showToast({
-                tone: 'success',
-                title: 'Đã cập nhật giao dịch',
-                message: 'Giao dịch nạp ví thất bại đã được xử lý thành công.',
-            });
-            await load();
-        } catch (err) {
-            showToast({
-                tone: 'error',
-                title: 'Xử lý thất bại',
-                message: getAdminErrorMessage(err, 'Không xử lý được giao dịch nạp thất bại.'),
             });
         }
     };
@@ -297,10 +234,8 @@ export default function AdminWallet() {
         <AdminDialog dialog={dialog} onResolve={closeDialog} />
 
         <div className="metrics">
-            <div className="metric-card"><div className="metric-label">Giao dịch chờ duyệt</div><div className="metric-value">{pending.length}</div><div className="metric-change metric-up">Nạp/rút thủ công</div></div>
-            <div className="metric-card"><div className="metric-label">Nạp thất bại/khiếu nại</div><div className="metric-value">{failedTopUps.length}</div><div className="metric-change metric-down">Quá hạn 5 phút</div></div>
+            <div className="metric-card"><div className="metric-label">Giao dịch chờ duyệt</div><div className="metric-value">{pending.length}</div><div className="metric-change metric-up">Yêu cầu rút tiền</div></div>
             <div className="metric-card"><div className="metric-label">Booking dispute</div><div className="metric-value">{bookingDisputes.length}</div><div className="metric-change metric-down">Escrow cần phân bổ</div></div>
-            <div className="metric-card"><div className="metric-label">Tự động cộng tiền</div><div className="metric-value">{autoConfirm ? 'ON' : 'OFF'}</div><button className="btn btn-primary" onClick={toggleAuto}>{autoConfirm ? 'Tắt tự động' : 'Bật tự động'}</button></div>
         </div>
         <div className="card" style={{ marginBottom: 24 }}>
             <h3>Khóa/mở ví người dùng</h3>
@@ -325,17 +260,16 @@ export default function AdminWallet() {
             </tbody></table>
         </div>
         <div className="card" style={{ marginTop: 24 }}>
-            <h3>Nạp ví thất bại / khiếu nại cần kiểm tra</h3>
-            <table><thead><tr><th>Mã</th><th>User</th><th>Số tiền</th><th>PayOS</th><th>Ghi chú hệ thống</th><th>Thời gian</th><th>Thao tác</th></tr></thead><tbody>
-                {loading ? <tr><td colSpan="7">Đang tải...</td></tr> : failedTopUps.length === 0 ? <tr><td colSpan="7">Không có giao dịch nạp thất bại cần xử lý.</td></tr> : failedTopUps.map(tx => <tr key={tx.id}><td>{tx.transactionCode}</td><td>{tx.userCode}<br /><span className="text-muted">{tx.userName}</span></td><td className="fw-500">{money(tx.amount)}</td><td>{tx.gatewayName}<br /><span className="text-muted">{tx.gatewayTransactionId}</span></td><td>{tx.reviewNote || tx.note || '—'}</td><td>{tx.createdAt || '—'}</td><td><button className="btn btn-sm btn-success" onClick={() => resolveFailed(tx.id, 'APPROVE')}>Đã nhận tiền - cộng ví</button> <button className="btn btn-sm btn-danger" onClick={() => resolveFailed(tx.id, 'REJECT')}>Đóng/Từ chối</button></td></tr>)}
-            </tbody></table>
-        </div>
-        <div className="card" style={{ marginTop: 24 }}>
             <h3>Ví hệ thống (SYSTEM_WALLET) — nhận tiền giải ngân booking</h3>
             {systemWallet && (
-                <div style={{ marginBottom: 16, padding: '12px 16px', background: 'var(--bg-secondary)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ marginBottom: 16, padding: '12px 16px', background: 'var(--bg-secondary)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                     <span style={{ fontWeight: 600, fontSize: 14 }}>Số dư hiện tại:</span>
                     <span style={{ fontWeight: 900, fontSize: 20, color: 'var(--petgo-orange)' }}>{money(systemWallet.balance)}</span>
+                    {Number(systemWallet.heldBalance) > 0 && (
+                        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', width: '100%' }}>
+                            Đang giữ: {money(systemWallet.heldBalance)}
+                        </span>
+                    )}
                 </div>
             )}
             <details style={{ marginBottom: 16 }}>

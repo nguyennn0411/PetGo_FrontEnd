@@ -12,6 +12,15 @@ import {
   Scissors, HelpCircle, Bookmark
 } from 'lucide-react';
 
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+const nowTimeStr = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+};
+
 const formatPrice = (amount) => {
   if (amount == null) return '0';
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
@@ -217,17 +226,25 @@ export default function BookingPage() {
     if (selectedDate) { loadSlots(); setSelectedSlot(null); }
   }, [selectedDate, loadSlots]);
 
+  const validDates = useMemo(() => {
+    const today = todayStr();
+    return availableDates.filter(d => d.status === 'AVAILABLE' && d.date >= today);
+  }, [availableDates]);
+
   const groupedSlots = useMemo(() => {
+    const now = nowTimeStr();
+    const isToday = selectedDate === todayStr();
     const morning = [], afternoon = [], evening = [];
     availableSlots.forEach(s => {
       if (s.status !== 'AVAILABLE') return;
+      if (isToday && s.startTime < now) return;
       const hour = parseInt(s.startTime.split(':')[0], 10);
       if (hour < 12) morning.push(s);
       else if (hour < 18) afternoon.push(s);
       else evening.push(s);
     });
     return { morning, afternoon, evening };
-  }, [availableSlots]);
+  }, [availableSlots, selectedDate]);
 
   const calcShippingFee = async (lat, lng) => {
     if (!selectedArea) return;
@@ -545,10 +562,10 @@ export default function BookingPage() {
                     <span className="h-0.5 flex-1 bg-gray-100" />
                   </h3>
                   <div className="flex gap-2.5 overflow-x-auto pb-4 mb-6 scrollbar-thin scroll-smooth">
-                    {availableDates.filter(d => d.status === 'AVAILABLE').length === 0 ? (
+                    {validDates.length === 0 ? (
                       <p className="text-gray-400 text-sm py-6 w-full text-center font-bold bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">Không có ngày khả dụng trong 30 ngày tới.</p>
                     ) : (
-                      availableDates.filter(d => d.status === 'AVAILABLE').map((d) => {
+                      validDates.map((d) => {
                         const dateObj = new Date(d.date + 'T00:00:00');
                         const dayName = dateObj.toLocaleDateString('vi-VN', { weekday: 'short' });
                         const dayNum = dateObj.getDate();
