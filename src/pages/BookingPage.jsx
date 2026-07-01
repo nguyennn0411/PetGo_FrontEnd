@@ -304,8 +304,7 @@ export default function BookingPage() {
     const fetchAddr = async () => {
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`,
-          { headers: { 'User-Agent': 'PetGo/1.0' } }
+          `/geocode/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`
         );
         const data = await res.json();
         if (data.display_name) setPickupAddress(data.display_name);

@@ -19,6 +19,7 @@ import {
   Crown,
   Check,
   Quote,
+  Facebook,
 } from 'lucide-react';
 import { getHomePage } from '../api/home';
 
@@ -185,19 +186,19 @@ const App = () => {
       {/* Introduction */}
       <section className="py-18 bg-white">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+          <div className="grid gap-10 lg:grid-cols-[1fr_1fr] lg:items-center">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500 mb-3">PetGo là gì?</p>
               <h2 className="text-3xl font-black tracking-tight text-gray-950 sm:text-5xl">
-                Nền tảng kết cung cấp dịch vụ chăm sóc thú cưng cùng các sản phẩm đáng tin cậy.
+                Nơi cung cấp dịch vụ chăm sóc thú cưng cùng các sản phẩm đáng tin cậy.
               </h2>
               <p className="mt-5 text-base font-medium leading-8 text-gray-500">
-                PetGo giúp bạn tìm kiếm, so sánh, đặt lịch và quản lý các nhu cầu chăm sóc thú cưng hằng ngày — từ spa làm đẹp, khám thú y đến khách sạn lưu trú.
+                PetGo giúp bạn tìm kiếm, đặt lịch và quản lý các nhu cầu chăm sóc thú cưng hằng ngày.
               </p>
             </div>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               {introSteps.map((step, index) => (
-                <div key={step.title} className="rounded-[2rem] border border-orange-100 bg-orange-50/40 p-6">
+                <div key={step.title} className="rounded-[2rem] border border-orange-100 bg-orange-50/40 p-7">
                   <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-orange-500 shadow-sm">
                     {step.icon}
                   </div>
@@ -276,17 +277,17 @@ const App = () => {
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500 mb-3">PetGo dành cho ai?</p>
             <h2 className="text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">Một hệ sinh thái cho chủ nuôi.</h2>
           </div>
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="flex justify-center">
             {audienceCards.map((card) => (
-              <div key={card.title} className="rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
-                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-500">
+              <div key={card.title} className="rounded-[2.5rem] border border-gray-100 bg-white p-10 shadow-sm max-w-2xl w-full text-center">
+                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-50 text-orange-500">
                   {card.icon}
                 </div>
                 <h3 className="text-2xl font-black text-gray-950">{card.title}</h3>
-                <p className="mt-3 text-sm font-medium leading-7 text-gray-500">{card.desc}</p>
+                <p className="mt-3 text-base font-medium leading-7 text-gray-500 max-w-lg mx-auto">{card.desc}</p>
                 <button
                   onClick={() => window.location.href = card.href}
-                  className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-gray-950 px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-orange-500"
+                  className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-gray-950 px-8 py-5 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-orange-500"
                 >
                   {card.cta} <ArrowRight className="w-4 h-4" />
                 </button>
@@ -414,9 +415,9 @@ const App = () => {
       </section>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-100 pt-24 pb-12">
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-16 mb-24">
-          <div className="space-y-6">
+      <footer className="bg-white border-t border-gray-100 pt-20 pb-10">
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-12 mb-16">
+          <div className="space-y-5">
             <div className="flex items-center gap-2">
               <div className="bg-orange-500 p-1.5 rounded-lg">
                 <PawPrint className="w-6 h-6 text-white" />
@@ -427,11 +428,29 @@ const App = () => {
               Dịch vụ chăm sóc thú cưng hàng đầu. Chúng tôi mang đến sự an tâm cho chủ nhân và hạnh phúc cho các bé.
             </p>
           </div>
-          <FooterGroup title="Liên kết nhanh" links={['Trang chủ', 'Dịch vụ', 'Hội viên', 'Trung tâm hỗ trợ', 'Cửa hàng', 'Đơn hàng của tôi']} />
-          <FooterGroup title="Pháp lý" links={['Điều khoản', 'Quyền riêng tư', 'Chính sách cookie']} />
-          <FooterGroup title="Liên hệ" links={['Hỗ trợ: 1900 1234', 'petgo.help@gmail.com', 'Hà Nội, Việt Nam']} />
+          <div className="space-y-5">
+            <h5 className="text-sm font-black text-gray-900 uppercase tracking-widest italic">Liên hệ</h5>
+            <ul className="space-y-3">
+              <li className="text-sm font-medium text-gray-400">Hỗ trợ: 1900 1234</li>
+              <li className="text-sm font-medium text-gray-400">petgo.help@gmail.com</li>
+              <li className="text-sm font-medium text-gray-400">Hà Nội, Việt Nam</li>
+            </ul>
+          </div>
+          <div className="space-y-5">
+            <h5 className="text-sm font-black text-gray-900 uppercase tracking-widest italic">Mạng xã hội</h5>
+            <div className="flex items-center gap-4">
+              <a href="https://www.facebook.com/petgo.io.vn" target="_blank" rel="noopener noreferrer" className="w-14 h-14 border-2 border-[#1877F2] rounded flex items-center justify-center text-[#1877F2] hover:shadow-lg hover:shadow-blue-200/50 hover:ring-2 hover:ring-[#1877F2]/30 transition-all duration-300">
+                <Facebook className="w-7 h-7" />
+              </a>
+              <a href="https://www.tiktok.com/@petgo.chamsocthucung" target="_blank" rel="noopener noreferrer" className="w-14 h-14 border-2 border-[#222222] rounded flex items-center justify-center text-[#222222] hover:shadow-lg hover:shadow-gray-200/50 hover:ring-2 hover:ring-[#222222]/20 transition-all duration-300">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7">
+                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.9 2.89 2.89 0 0 1-2.88-2.89 2.89 2.89 0 0 1 2.88-2.89c.29 0 .57.04.84.11V8.77a6.24 6.24 0 0 0-.84-.08 6.33 6.33 0 1 0 6.33 6.33V9.58a8.2 8.2 0 0 0 4.77 1.52v-3.4a4.84 4.84 0 0 1-1-.99Z" />
+                </svg>
+              </a>
+            </div>
+          </div>
         </div>
-        <div className="max-w-7xl mx-auto px-4 pt-12 border-t border-gray-100 text-center">
+        <div className="max-w-7xl mx-auto px-4 pt-8 border-t border-gray-100 text-center">
           <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest italic">© 2025 Nền tảng PetGo. Mọi quyền được bảo lưu.</p>
         </div>
       </footer>
@@ -458,20 +477,6 @@ const BenefitItem = ({ text }) => (
     </div>
     <span className="text-sm font-bold text-gray-700">{text}</span>
   </li>
-);
-
-// Component con: Footer group
-const FooterGroup = ({ title, links }) => (
-  <div className="space-y-6">
-    <h5 className="text-sm font-black text-gray-900 uppercase tracking-widest italic">{title}</h5>
-    <ul className="space-y-4">
-      {links.map((link, i) => (
-        <li key={i}>
-          <a href="#" className="text-sm font-medium text-gray-400 hover:text-orange-600 transition-colors uppercase tracking-tight">{link}</a>
-        </li>
-      ))}
-    </ul>
-  </div>
 );
 
 export default App;

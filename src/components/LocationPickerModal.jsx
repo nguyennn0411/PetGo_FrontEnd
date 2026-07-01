@@ -65,8 +65,7 @@ export default function LocationPickerModal({ open, onClose, onConfirm, initialL
 
   const reverseGeocode = async (lat, lng) => {
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`,
-        { headers: { 'User-Agent': 'PetGo/1.0' } });
+      const res = await fetch(`/geocode/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`);
       const data = await res.json();
       if (data.display_name) setAddress(data.display_name);
     } catch { /* ignore */ }
@@ -77,20 +76,21 @@ export default function LocationPickerModal({ open, onClose, onConfirm, initialL
     reverseGeocode(lat, lng);
   }, []);
 
-  const handleSearch = useCallback((q) => {
-    setSq(q);
+  const doSearch = async (query) => {
+    if (!query.trim()) { setSearchResults([]); return; }
+    setSearching(true);
+    try {
+      const res = await fetch(`/geocode/search?format=json&q=${encodeURIComponent(query)}&limit=5&accept-language=vi`);
+      const data = await res.json();
+      setSearchResults(data || []);
+    } catch { setSearchResults([]); } finally { setSearching(false); }
+  };
+
+  const handleSearchInput = (value) => {
+    setSq(value);
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    if (!q.trim()) { setSearchResults([]); return; }
-    searchTimer.current = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=vi`,
-          { headers: { 'User-Agent': 'PetGo/1.0' } });
-        const data = await res.json();
-        setSearchResults(Array.isArray(data) ? data : []);
-      } catch { setSearchResults([]); } finally { setSearching(false); }
-    }, 400);
-  }, []);
+    searchTimer.current = setTimeout(() => doSearch(value), 400);
+  };
 
   const handleSelectSearchResult = (r) => {
     handleMove(Number(r.lat), Number(r.lon));
@@ -185,12 +185,12 @@ export default function LocationPickerModal({ open, onClose, onConfirm, initialL
                 <div className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 rounded-xl bg-white focus-within:ring-2 focus-within:ring-orange-300">
                   <Search className="w-4 h-4 text-gray-400 shrink-0" />
                   <input type="text" placeholder="Tìm địa điểm..." value={sq}
-                    onChange={e => handleSearch(e.target.value)}
+                    onChange={e => handleSearchInput(e.target.value)}
                     className="flex-1 text-sm outline-none bg-transparent" />
                   {searching && <Loader className="w-4 h-4 text-gray-400 animate-spin" />}
                 </div>
                 {searchResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-10 max-h-48 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-[9999] max-h-48 overflow-y-auto">
                     {searchResults.map((r, i) => (
                       <button key={i} onClick={() => handleSelectSearchResult(r)}
                         className="w-full text-left px-3 py-2.5 text-sm hover:bg-orange-50 border-b border-gray-50 last:border-0">

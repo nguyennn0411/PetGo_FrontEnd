@@ -61,7 +61,7 @@ export default function ServiceDetailPage() {
           if (a.pickupLatitude != null && a.pickupLongitude != null) {
             const lat = Number(a.pickupLatitude);
             const lng = Number(a.pickupLongitude);
-            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=vi`)
+            fetch(`/geocode/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=vi`)
               .then(r => r.json())
               .then(data => {
                 if (data?.display_name)
