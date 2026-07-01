@@ -132,8 +132,7 @@ const LocationPicker = ({
     const fetchAddress = async (lat, lng) => {
         try {
             const res = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`,
-                { headers: { 'User-Agent': 'PetGo/1.0' } }
+                `/geocode/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`
             );
             const data = await res.json();
             if (data.display_name) {
@@ -161,8 +160,7 @@ const LocationPicker = ({
         setSearching(true);
         try {
             const res = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&accept-language=vi`,
-                { headers: { 'User-Agent': 'PetGo/1.0' } }
+                `/geocode/search?format=json&q=${encodeURIComponent(query)}&limit=5&accept-language=vi`
             );
             const data = await res.json();
             setSearchResults(data || []);
